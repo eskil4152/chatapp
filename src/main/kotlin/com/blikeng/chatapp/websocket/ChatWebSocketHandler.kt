@@ -20,12 +20,14 @@ class ChatWebSocketHandler(private val chatService: ChatService) : TextWebSocket
 
     override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
         val json = jacksonObjectMapper().readTree(message.payload)
-        val type = json.get("type")
+        val room = json.get("room")
 
-        chatService.broadcast(message, session)
+        val users = chatService.getUsersInRoom(room.asInt()) ?: return
+
+        chatService.broadcast(message, users)
     }
 
     override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
-
+        chatService.tempbar(session)
     }
 }

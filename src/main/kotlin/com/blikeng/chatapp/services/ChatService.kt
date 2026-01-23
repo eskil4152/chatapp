@@ -9,11 +9,28 @@ import java.util.concurrent.CopyOnWriteArraySet
 
 @Service
 class ChatService (@Autowired private val roomService: RoomService) {
-    private val userSessions = ConcurrentHashMap<String, MutableSet<WebSocketSession>>()
+    private val rooms = HashMap<Int, MutableSet<WebSocketSession>>()
+        .apply {
+            put(1, CopyOnWriteArraySet())
+            put(2, CopyOnWriteArraySet())
+            put(3, CopyOnWriteArraySet())
+        }
 
-    private val sessions = CopyOnWriteArraySet<WebSocketSession>()
+    fun tempfoo(session: WebSocketSession){
+        for (room in rooms) {
+            room.value.add(session)
+        }
+    }
 
-    fun tempfoo(session: WebSocketSession) = sessions.add(session)
+    fun tempbar(session: WebSocketSession){
+        for (room in rooms) {
+            room.value.remove(session)
+        }
+    }
+
+    fun getUsersInRoom(roomId: Int): List<WebSocketSession>? {
+        return rooms[roomId]?.toList()
+    }
 
     fun addSession(session: WebSocketSession) {
         //roomService.addToRoom(session, roomId)
@@ -23,9 +40,10 @@ class ChatService (@Autowired private val roomService: RoomService) {
         roomService.removeFromRoom(session, roomId)
     }
 
-    fun broadcast(message: TextMessage, sender: WebSocketSession) {
-        for (session in sessions) {
-            session.sendMessage(message)
+    fun broadcast(message: TextMessage, recipients: List<WebSocketSession>) {
+        for (recipient in recipients) {
+            recipient.sendMessage(message)
+            print("MESSAGE SENT")
         }
     }
 }

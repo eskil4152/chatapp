@@ -25,6 +25,8 @@ class AuthController(
 
         val token = jwtService.generateToken(username)
 
+        // TODO: Register the user. Make sure username is free as well.
+
         val cookie = Cookie("AUTH", token).apply {
             path = "/"
             secure = false
@@ -33,6 +35,7 @@ class AuthController(
         }
 
         response.addCookie(cookie)
+
         return ResponseEntity.ok("User registered successfully")
     }
 
@@ -40,6 +43,8 @@ class AuthController(
     fun login(@RequestBody loginDto: LoginDto): ResponseEntity<String> {
         val username = loginDto.username
         val password = loginDto.password
+
+        // TODO: Allow log-in. First finish register and persistence.
 
         return ResponseEntity.ok("User logged in")
     }
