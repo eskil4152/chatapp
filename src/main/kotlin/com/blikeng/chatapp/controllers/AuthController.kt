@@ -2,6 +2,7 @@ package com.blikeng.chatapp.controllers
 
 import com.blikeng.chatapp.security.JwtService
 import com.blikeng.chatapp.security.PasswordService
+import com.blikeng.chatapp.services.AuthService
 import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Autowired
@@ -15,17 +16,10 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api")
 class AuthController(
     @Autowired private val jwtService: JwtService,
-    @Autowired private val passwordService: PasswordService
+    @Autowired private val authService: AuthService
 ) {
-    @PostMapping("/register")
-    fun register(@RequestBody loginDto: LoginDto, response: HttpServletResponse): ResponseEntity<String> {
-        val username = loginDto.username
-        val password = loginDto.password
-        val encryptedPassword = passwordService.encodePassword(password)
-
+    fun makeCookie(username: String): Cookie {
         val token = jwtService.generateToken(username)
-
-        // TODO: Register the user. Make sure username is free as well.
 
         val cookie = Cookie("AUTH", token).apply {
             path = "/"
@@ -34,17 +28,34 @@ class AuthController(
             maxAge = 24 * 60 * 60
         }
 
+        return cookie
+    }
+
+    @PostMapping("/register")
+    fun register(@RequestBody loginDto: LoginDto, response: HttpServletResponse): ResponseEntity<String> {
+        val username = loginDto.username
+        val password = loginDto.password
+
+        authService.registerUser(username, password) ?: return ResponseEntity.badRequest()
+            .body("Username already taken")
+
+        val cookie = makeCookie(username)
+
         response.addCookie(cookie)
 
         return ResponseEntity.ok("User registered successfully")
     }
 
     @PostMapping("/login")
-    fun login(@RequestBody loginDto: LoginDto): ResponseEntity<String> {
+    fun login(@RequestBody loginDto: LoginDto, response: HttpServletResponse): ResponseEntity<String> {
         val username = loginDto.username
         val password = loginDto.password
 
-        // TODO: Allow log-in. First finish register and persistence.
+        authService.loginUser(username, password) ?: return ResponseEntity.badRequest().body("Invalid credentials")
+
+        val cookie = makeCookie(username)
+
+        response.addCookie(cookie)
 
         return ResponseEntity.ok("User logged in")
     }

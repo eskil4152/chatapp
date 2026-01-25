@@ -9,9 +9,4 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/chat")
 class ChatController {
-
-    @PostMapping("/sendMessage")
-    fun sendMessage(@RequestBody message: Message): Message {
-        return message
-    }
 }

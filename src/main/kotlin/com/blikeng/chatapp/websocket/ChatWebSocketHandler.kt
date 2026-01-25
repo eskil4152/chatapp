@@ -13,9 +13,6 @@ import tools.jackson.module.kotlin.jacksonObjectMapper
 class ChatWebSocketHandler(private val chatService: ChatService) : TextWebSocketHandler() {
     override fun afterConnectionEstablished(session: WebSocketSession) {
         chatService.tempfoo(session)
-
-        val user = session.attributes["userId"] as String
-        print("User: $user")
     }
 
     override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
@@ -23,7 +20,6 @@ class ChatWebSocketHandler(private val chatService: ChatService) : TextWebSocket
         val room = json.get("room")
 
         val users = chatService.getUsersInRoom(room.asInt()) ?: return
-
         chatService.broadcast(message, users)
     }
 
