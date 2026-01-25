@@ -9,6 +9,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.JoinTable
 import jakarta.persistence.ManyToMany
+import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
 import java.util.UUID
 
@@ -33,5 +34,8 @@ class UserEntity (
         joinColumns = [JoinColumn(name = "user_id")],
         inverseJoinColumns = [JoinColumn(name = "room_id")]
     )
-    val rooms: MutableSet<RoomEntity> = mutableSetOf()
+    val rooms: MutableSet<RoomEntity> = mutableSetOf(),
+
+    @OneToMany(mappedBy = "owner", fetch = FetchType.LAZY)
+    val ownedRooms: MutableSet<RoomEntity> = mutableSetOf()
 )

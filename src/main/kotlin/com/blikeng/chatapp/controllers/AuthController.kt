@@ -1,5 +1,6 @@
 package com.blikeng.chatapp.controllers
 
+import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.security.JwtService
 import com.blikeng.chatapp.security.PasswordService
 import com.blikeng.chatapp.services.AuthService
@@ -18,8 +19,8 @@ class AuthController(
     @Autowired private val jwtService: JwtService,
     @Autowired private val authService: AuthService
 ) {
-    fun makeCookie(username: String): Cookie {
-        val token = jwtService.generateToken(username)
+    fun makeCookie(user: UserEntity): Cookie {
+        val token = jwtService.generateToken(user)
 
         val cookie = Cookie("AUTH", token).apply {
             path = "/"
@@ -36,10 +37,11 @@ class AuthController(
         val username = loginDto.username
         val password = loginDto.password
 
-        authService.registerUser(username, password) ?: return ResponseEntity.badRequest()
-            .body("Username already taken")
+        val user = authService.registerUser(username, password)
 
-        val cookie = makeCookie(username)
+        if (user == null) return ResponseEntity.badRequest().body("Username already exists")
+
+        val cookie = makeCookie(user)
 
         response.addCookie(cookie)
 
@@ -51,9 +53,11 @@ class AuthController(
         val username = loginDto.username
         val password = loginDto.password
 
-        authService.loginUser(username, password) ?: return ResponseEntity.badRequest().body("Invalid credentials")
+        val user = authService.loginUser(username, password)
 
-        val cookie = makeCookie(username)
+        if (user == null) return ResponseEntity.badRequest().body("Invalid credentials")
+
+        val cookie = makeCookie(user)
 
         response.addCookie(cookie)
 

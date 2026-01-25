@@ -7,11 +7,15 @@ import java.util.UUID
 @Table(name = "rooms")
 class RoomEntity(
     @Id
-    @GeneratedValue
-    val id: UUID = UUID.randomUUID(),
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    val id: UUID? = null,
 
     @Column(unique = true, nullable = false)
     val name: String,
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "owner_id")
+    val owner: UserEntity,
 
     @ManyToMany(mappedBy = "rooms")
     val users: MutableSet<UserEntity> = mutableSetOf()

@@ -1,36 +1,37 @@
 package com.blikeng.chatapp.security
 
+import com.blikeng.chatapp.entities.UserEntity
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.security.Keys
 import org.springframework.stereotype.Service
 import java.util.Date
+import java.util.UUID
 import javax.crypto.SecretKey
 
 @Service
 class JwtService {
 
-    //private val key = Keys.secretKeyFor(SignatureAlgorithm.HS512)
     private val k = "keykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykey"
     private val key: SecretKey = Keys.hmacShaKeyFor(k.encodeToByteArray())
 
-    fun generateToken(username: String): String {
+    fun generateToken(user: UserEntity): String {
         return Jwts.builder()
-            .setSubject(username)
+            .setSubject(user.id.toString())
+            .claim("username", user.username)
             .setIssuedAt(Date())
             .setExpiration(Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
-            //.signWith(key)
             .signWith(key, SignatureAlgorithm.HS512)
             .compact()
     }
 
-    fun validateToken(token: String): String? {
+    fun validateToken(token: String): UUID? {
         return try {
             val claims = Jwts.parserBuilder()
                 .setSigningKey(key)
                 .build()
                 .parseClaimsJws(token)
-            claims.body.subject
+            UUID.fromString(claims.body.subject)
         } catch (e: Exception){
             print("Caught Exception: $e")
             null
