@@ -26,8 +26,6 @@ class UserEntity (
     @Column(name = "password", nullable = false)
     val password: String,
 
-    //val friends: MutableList<UserEntity>,
-
     @ManyToMany
     @JoinTable(
         name = "user_rooms",
@@ -35,7 +33,4 @@ class UserEntity (
         inverseJoinColumns = [JoinColumn(name = "room_id")]
     )
     val rooms: MutableSet<RoomEntity> = mutableSetOf(),
-
-    @OneToMany(mappedBy = "owner", fetch = FetchType.LAZY)
-    val ownedRooms: MutableSet<RoomEntity> = mutableSetOf()
 )

@@ -12,11 +12,4 @@ class RoomEntity(
 
     @Column(unique = true, nullable = false)
     val name: String,
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "owner_id")
-    val owner: UserEntity,
-
-    @ManyToMany(mappedBy = "rooms")
-    val users: MutableSet<UserEntity> = mutableSetOf()
 )

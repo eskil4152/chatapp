@@ -1,5 +1,6 @@
 package com.blikeng.chatapp.controllers
 
+import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.security.JwtService
 import com.blikeng.chatapp.services.ChatService
 import com.blikeng.chatapp.services.RoomService
@@ -17,29 +18,27 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/api/rooms")
-class RoomController(@Autowired private val chatService: ChatService) {
+class RoomController(
+    @Autowired private val roomService: RoomService,
+) {
+    @GetMapping("/")
+    fun getRooms(
+        @CookieValue("AUTH") authCookie: String?
+    ): ResponseEntity<List<RoomEntity>> {
+        if (authCookie == null) return ResponseEntity.badRequest().body(emptyList())
 
-    @Autowired
-    private lateinit var roomService: RoomService
-
-    @Autowired
-    private lateinit var jwtService: JwtService
-
-    @GetMapping("/get")
-    fun getRooms(){
-        return
+        val rooms = roomService.getAllUserRooms(authCookie) ?: return ResponseEntity.badRequest().body(emptyList())
+        return ResponseEntity.ok(rooms)
     }
 
     @PostMapping("/make")
     fun makeRoom(
         @CookieValue("AUTH") authCookie: String?,
-        @RequestBody roomName: String): ResponseEntity<String>
+        @RequestBody roomInfo: RoomInfo): ResponseEntity<String>
     {
         if (authCookie == null) return ResponseEntity.badRequest().body("No cookie found")
 
-        val userId = jwtService.validateToken(authCookie) ?: return ResponseEntity.badRequest().body("Invalid cookie")
-
-        val room = roomService.makeNewRoom(roomName, userId)
+        val room = roomService.makeNewRoom(roomInfo.roomName, authCookie)
 
         if (room == null) return ResponseEntity.badRequest().body("Failed to create room")
 
@@ -56,3 +55,7 @@ class RoomController(@Autowired private val chatService: ChatService) {
 
     }
 }
+
+data class RoomInfo (
+    val roomName: String
+)
