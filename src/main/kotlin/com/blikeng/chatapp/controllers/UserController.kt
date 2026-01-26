@@ -25,4 +25,9 @@ class UserController {
     fun removeFriend(){
 
     }
+
+    @GetMapping("/friends")
+    fun getFriends(){
+
+    }
 }
