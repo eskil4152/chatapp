@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import java.util.UUID
 
 @RestController
 @RequestMapping("/api/rooms")
@@ -38,6 +39,7 @@ class RoomController(
     {
         if (authCookie == null) return ResponseEntity.badRequest().body("No cookie found")
 
+        if (roomInfo.roomName == null) return ResponseEntity.badRequest().body("Invalid room name")
         val room = roomService.makeNewRoom(roomInfo.roomName, authCookie)
 
         if (room == null) return ResponseEntity.badRequest().body("Failed to create room")
@@ -45,17 +47,30 @@ class RoomController(
         return ResponseEntity.ok("Room created successfully")
     }
 
-    @DeleteMapping("/leave")
-    fun leaveRooms(){
+    @PostMapping("/join")
+    fun joinRoom(
+        @CookieValue("AUTH") authCookie: String?,
+        @RequestBody roomInfo: RoomInfo
+    ) : ResponseEntity<String> {
+        if (authCookie == null) return ResponseEntity.badRequest().body("No cookie found")
 
+        val roomId = roomInfo.roomId
+        if (roomId == null) return ResponseEntity.badRequest().body("Invalid room id")
+
+        val request = roomService.joinRoom(UUID.fromString(roomId), authCookie)
+
+        if (request == null) return ResponseEntity.badRequest().body("Failed to join room")
+
+        return ResponseEntity.ok("Joined room successfully")
     }
 
-    @PostMapping("/join")
-    fun joinRoom(){
+    @DeleteMapping("/leave")
+    fun leaveRooms(){
 
     }
 }
 
 data class RoomInfo (
-    val roomName: String
+    val roomName: String?,
+    val roomId: String?
 )

@@ -62,4 +62,18 @@ class RoomService(
 
         return rooms
     }
+
+    fun joinRoom(roomId: UUID, token: String){
+        val userId = jwtService.validateToken(token)
+        if (userId == null) return
+
+        val user = userService.getUserById(userId)
+        if (user == null) return
+
+        val room = roomRepository.findById(roomId).orElse(null)
+        if (room == null) return
+
+        val userRoom = UserRoomEntity(UserRoomId(userId, roomId), user, room, RoomRole.MEMBER)
+        userRoomRepository.save(userRoom)
+    }
 }
