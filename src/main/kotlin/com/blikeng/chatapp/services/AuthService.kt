@@ -25,15 +25,10 @@ class AuthService(
     fun loginUser(username: String, password: String): UserEntity? {
         val user = authRepository.findByUsername(username)
         if (user.isEmpty) {
-            print("User not found")
             return null
         }
 
-        print("User found")
-
         val isValid = passwordService.checkPassword(password, user.get().password)
-
-        print("Password valid: $isValid")
 
         return if (isValid) user.get() else null
     }

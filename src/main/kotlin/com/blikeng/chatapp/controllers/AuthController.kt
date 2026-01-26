@@ -1,5 +1,6 @@
 package com.blikeng.chatapp.controllers
 
+import com.blikeng.chatapp.DTOs.LoginDto
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.security.JwtService
 import com.blikeng.chatapp.security.PasswordService
@@ -37,15 +38,13 @@ class AuthController(
         val username = loginDto.username
         val password = loginDto.password
 
-        val user = authService.registerUser(username, password)
-
-        if (user == null) return ResponseEntity.badRequest().body("Username already exists")
+        val user = authService.registerUser(username, password) ?: return ResponseEntity.status(409)
+            .body("Username already exists")
 
         val cookie = makeCookie(user)
-
         response.addCookie(cookie)
 
-        return ResponseEntity.ok("User registered successfully")
+        return ResponseEntity.status(201).body("User registered successfully")
     }
 
     @PostMapping("/login")
@@ -53,16 +52,12 @@ class AuthController(
         val username = loginDto.username
         val password = loginDto.password
 
-        val user = authService.loginUser(username, password)
-
-        if (user == null) return ResponseEntity.badRequest().body("Invalid credentials")
+        val user =
+            authService.loginUser(username, password) ?: return ResponseEntity.status(401).body("Invalid credentials")
 
         val cookie = makeCookie(user)
-
         response.addCookie(cookie)
 
         return ResponseEntity.ok("User logged in")
     }
 }
-
-data class LoginDto(val username: String, val password: String)

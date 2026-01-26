@@ -1,5 +1,6 @@
 package com.blikeng.chatapp.controllers
 
+import com.blikeng.chatapp.DTOs.RoomInfo
 import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.security.JwtService
 import com.blikeng.chatapp.services.ChatService
@@ -26,9 +27,11 @@ class RoomController(
     fun getRooms(
         @CookieValue("AUTH") authCookie: String?
     ): ResponseEntity<List<RoomEntity>> {
-        if (authCookie == null) return ResponseEntity.badRequest().body(emptyList())
+        if (authCookie == null) return ResponseEntity.status(401).body(emptyList())
 
-        val rooms = roomService.getAllUserRooms(authCookie) ?: return ResponseEntity.badRequest().body(emptyList())
+        val rooms = roomService.getAllUserRooms(authCookie)
+        if (rooms == null) return ResponseEntity.status(401).body(emptyList())
+
         return ResponseEntity.ok(rooms)
     }
 
@@ -37,12 +40,10 @@ class RoomController(
         @CookieValue("AUTH") authCookie: String?,
         @RequestBody roomInfo: RoomInfo): ResponseEntity<String>
     {
-        if (authCookie == null) return ResponseEntity.badRequest().body("No cookie found")
+        if (authCookie == null) return ResponseEntity.status(401).body("No cookie found")
 
         if (roomInfo.roomName == null) return ResponseEntity.badRequest().body("Invalid room name")
-        val room = roomService.makeNewRoom(roomInfo.roomName, authCookie)
-
-        if (room == null) return ResponseEntity.badRequest().body("Failed to create room")
+        roomService.makeNewRoom(roomInfo.roomName, authCookie)
 
         return ResponseEntity.ok("Room created successfully")
     }
@@ -52,14 +53,11 @@ class RoomController(
         @CookieValue("AUTH") authCookie: String?,
         @RequestBody roomInfo: RoomInfo
     ) : ResponseEntity<String> {
-        if (authCookie == null) return ResponseEntity.badRequest().body("No cookie found")
+        if (authCookie == null) return ResponseEntity.status(401).body("No cookie found")
 
         val roomId = roomInfo.roomId
-        if (roomId == null) return ResponseEntity.badRequest().body("Invalid room id")
 
-        val request = roomService.joinRoom(UUID.fromString(roomId), authCookie)
-
-        if (request == null) return ResponseEntity.badRequest().body("Failed to join room")
+        roomService.joinRoom(UUID.fromString(roomId), authCookie)
 
         return ResponseEntity.ok("Joined room successfully")
     }
@@ -69,8 +67,3 @@ class RoomController(
 
     }
 }
-
-data class RoomInfo (
-    val roomName: String?,
-    val roomId: String?
-)
