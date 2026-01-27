@@ -1,19 +1,31 @@
 package com.blikeng.chatapp.controllers
 
-import org.springframework.stereotype.Controller
+import com.blikeng.chatapp.DTOs.UserDTO
+import com.blikeng.chatapp.services.UserService
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.CookieValue
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("/api/user/")
-class UserController {
+@RequestMapping("/api/user")
+class UserController(@Autowired private val userService: UserService) {
 
-    @GetMapping("/me")
-    fun getInfo(){
+    @GetMapping("/")
+    fun getInfo(
+        @CookieValue("AUTH") authCookie: String?
+    ) : ResponseEntity<UserDTO>? {
+        if (authCookie == null) return ResponseEntity.status(401).body(null)
 
+        val user = userService.getSelf(authCookie)
+        if (user == null) return ResponseEntity.status(401).body(null)
+
+        return ResponseEntity.ok(user)
     }
 
     @PostMapping("/friend")
@@ -28,6 +40,11 @@ class UserController {
 
     @GetMapping("/friends")
     fun getFriends(){
+
+    }
+
+    @PutMapping("/info")
+    fun updateInfo(){
 
     }
 }
