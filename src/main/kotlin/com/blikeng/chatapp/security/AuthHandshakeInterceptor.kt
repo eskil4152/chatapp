@@ -22,10 +22,11 @@ class AuthHandshakeInterceptor(private val jwtService: JwtService) : HandshakeIn
         val token = servletRequest.cookies?.firstOrNull { it.name == "AUTH" }?.value
             ?: return false
 
-        val userId = jwtService.validateToken(token)
+        val (username, id) = jwtService.validateToken2(token)
             ?: return false
 
-        attributes["userId"] = userId
+        attributes["userId"] = id as Any
+        attributes["username"] = username
         return true
     }
 

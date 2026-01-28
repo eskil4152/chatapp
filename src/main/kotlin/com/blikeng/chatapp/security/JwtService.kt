@@ -4,6 +4,7 @@ import com.blikeng.chatapp.entities.UserEntity
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.security.Keys
+import jakarta.persistence.Tuple
 import org.springframework.stereotype.Service
 import java.util.Date
 import java.util.UUID
@@ -32,6 +33,23 @@ class JwtService {
                 .build()
                 .parseClaimsJws(token)
             UUID.fromString(claims.body.subject)
+        } catch (e: Exception){
+            print("Caught Exception: $e")
+            null
+        }
+    }
+
+    fun validateToken2(token: String): Pair<String, UUID?>? {
+        return try {
+            val claims = Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+
+            val username: String = claims.body["username"].toString()
+            val id: UUID? = UUID.fromString(claims.body.subject)
+
+            return Pair(username, id)
         } catch (e: Exception){
             print("Caught Exception: $e")
             null
