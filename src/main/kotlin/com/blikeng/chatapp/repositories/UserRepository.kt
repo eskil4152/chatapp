@@ -8,4 +8,6 @@ import java.util.UUID
 @Repository
 interface UserRepository: JpaRepository<UserEntity, UUID> {
     fun findByUsername(username: String): UserEntity?
+
+    //fun updateUser(user: UserEntity): UserEntity
 }

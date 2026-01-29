@@ -27,6 +27,7 @@ class SecurityConfig {
             .httpBasic { it.disable() }
             .formLogin { it.disable() }
             .cors {  }
+            .csrf { it.disable() }
 
         return http.build()
     }

@@ -1,5 +1,9 @@
 TODO:
 
-- [ ] get all rooms on login
+- [x] get all rooms on login
+- [x] view profile (see rooms and friends)
+- [x] edit profile
+- [ ] edit password
+- [ ] keep chat logs
 - [ ] allow for friends
-- [ ] view profile (see rooms and friends) 
+- [ ] allow for dm

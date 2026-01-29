@@ -11,29 +11,6 @@ import java.util.concurrent.CopyOnWriteArraySet
 
 @Service
 class ChatService (@Autowired private val roomService: RoomService) {
-    /*private val rooms = HashMap<Int, MutableSet<WebSocketSession>>()
-        .apply {
-            put(1, CopyOnWriteArraySet())
-            put(2, CopyOnWriteArraySet())
-            put(3, CopyOnWriteArraySet())
-        }
-
-    fun tempfoo(session: WebSocketSession){
-        for (room in rooms) {
-            room.value.add(session)
-        }
-    }
-
-    fun tempbar(session: WebSocketSession){
-        for (room in rooms) {
-            room.value.remove(session)
-        }
-    }
-
-    fun getUsersInRoom(roomId: Int): List<WebSocketSession>? {
-        return rooms[roomId]?.toList()
-    }*/
-
     val rooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
     val users = ConcurrentHashMap<UUID, WebSocketSession>()
 

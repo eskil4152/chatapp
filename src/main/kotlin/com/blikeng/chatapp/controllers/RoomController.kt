@@ -29,8 +29,7 @@ class RoomController(
     ): ResponseEntity<List<RoomEntity>> {
         if (authCookie == null) return ResponseEntity.status(401).body(emptyList())
 
-        val rooms = roomService.getAllUserRooms(authCookie)
-        if (rooms == null) return ResponseEntity.status(401).body(emptyList())
+        val rooms = roomService.getAllUserRooms(authCookie) ?: return ResponseEntity.status(401).body(emptyList())
 
         return ResponseEntity.ok(rooms)
     }

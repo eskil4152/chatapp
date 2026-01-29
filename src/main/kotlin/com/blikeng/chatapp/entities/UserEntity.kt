@@ -27,19 +27,19 @@ class UserEntity (
     val username: String,
 
     @Column(name = "password", nullable = false)
-    val password: String,
+    var password: String,
 
     @Column(name = "bio")
-    val bio: String? = null,
+    var bio: String? = null,
 
     @Column(name = "email")
-    val email: String? = null,
+    var email: String? = null,
 
     @Column(name = "full_name")
-    val fullName: String? = null,
+    var fullName: String? = null,
 
     @Column(name = "avatar_url")
-    val avatarUrl: String? = null,
+    var avatarUrl: String? = null,
 
     @Column(name = "birthday")
     val birthday: Date? = null,
