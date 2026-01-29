@@ -29,6 +29,13 @@ class ChatWebSocketHandler(private val chatService: ChatService, private val jso
             "JOIN" -> {
                 val roomId = UUID.fromString(json["roomId"].asString())
                 chatService.joinRoom(roomId, session)
+
+                val payload = jacksonObjectMapper().createObjectNode()
+                    .put(type, "MESSAGE")
+                    .put("username", user)
+                    .put("message", "$user entered the room")
+
+                chatService.broadcast(roomId, TextMessage(payload.toString()))
             }
             "MESSAGE" -> {
                 val roomId = UUID.fromString(json["roomId"].asString())
@@ -43,6 +50,13 @@ class ChatWebSocketHandler(private val chatService: ChatService, private val jso
             "LEAVE" -> {
                 val roomId = UUID.fromString(json["roomId"].asString())
                 chatService.leaveRoom(roomId, session)
+
+                val payload = jacksonObjectMapper().createObjectNode()
+                    .put(type, "MESSAGE")
+                    .put("username", user)
+                    .put("message", "$user left the room")
+
+                chatService.broadcast(roomId, TextMessage(payload.toString()))
             }
         }
     }
