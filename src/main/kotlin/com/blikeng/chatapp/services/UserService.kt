@@ -22,8 +22,8 @@ class UserService(
     }
 
     fun getSelf(token: String): UserDTO? {
-        val userId = jwtService.validateToken(token) ?: return null
-        val user = getUserById(userId) ?: return null
+        val ( username, userId ) = jwtService.validateToken(token) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
+        val user = getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found")
 
         return UserDTO(
             user.username,
@@ -39,13 +39,13 @@ class UserService(
     }
 
     fun editProfile(changeUserDTO: ChangeUserDTO, authCookie: String) {
-        val userId = jwtService.validateToken(authCookie) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
+        val ( username, userId ) = jwtService.validateToken(authCookie) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
         val user = getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid user")
 
-        changeUserDTO.bio?.let { user.bio = it }
-        changeUserDTO.email?.let { user.email = it }
-        changeUserDTO.fullName?.let { user.fullName = it }
-        changeUserDTO.avatarUrl?.let { user.avatarUrl = it }
+        changeUserDTO.bio.let { user.bio = it }
+        changeUserDTO.email.let { user.email = it }
+        changeUserDTO.fullName.let { user.fullName = it }
+        changeUserDTO.avatarUrl.let { user.avatarUrl = it }
 
         userRepository.save(user)
     }

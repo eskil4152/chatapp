@@ -23,18 +23,8 @@ class RoomService(
     @Autowired private val userService: UserService,
     @Autowired private val jwtService: JwtService
 ) {
-    val roomSessions = ConcurrentHashMap<Int, MutableSet<WebSocketSession>>()
-
-    fun addToRoom(session: WebSocketSession, roomId: Int) {
-        roomSessions[roomId]?.add(session)
-    }
-
-    fun removeFromRoom(session: WebSocketSession, roomId: Int) {
-        roomSessions[roomId]?.remove(session)
-    }
-
     fun makeNewRoom(roomName: String, token: String): RoomEntity? {
-        val userId =
+        val ( username, userId ) =
             jwtService.validateToken(token) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
 
         val user =
@@ -52,8 +42,8 @@ class RoomService(
     }
 
     fun getAllUserRooms(token: String): List<RoomEntity>? {
-        val userId = jwtService.validateToken(token)
-        if (userId == null) throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
+        val ( username, userId ) =
+            jwtService.validateToken(token) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
 
         val rooms = userRoomRepository.findAllRoomsByUserId(userId)
 
@@ -61,14 +51,16 @@ class RoomService(
     }
 
     fun joinRoom(roomId: UUID, token: String){
-        val userId = jwtService.validateToken(token)
-        if (userId == null) throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
+        val ( username, userId ) =
+            jwtService.validateToken(token) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
 
-        val user = userService.getUserById(userId)
-        if (user == null) throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid user")
+        val user =
+            userService.getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid user")
 
-        val room = roomRepository.findById(roomId).orElse(null)
-        if (room == null) throw ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found")
+        val room = roomRepository.findById(roomId).orElse(null) ?: throw ResponseStatusException(
+            HttpStatus.NOT_FOUND,
+            "Room not found"
+        )
 
         val userRoom = UserRoomEntity(UserRoomId(userId, roomId), user, room, RoomRole.MEMBER)
         userRoomRepository.save(userRoom)

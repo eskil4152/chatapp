@@ -12,7 +12,6 @@ import javax.crypto.SecretKey
 
 @Service
 class JwtService {
-
     private val k = "keykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykey"
     private val key: SecretKey = Keys.hmacShaKeyFor(k.encodeToByteArray())
 
@@ -26,20 +25,7 @@ class JwtService {
             .compact()
     }
 
-    fun validateToken(token: String): UUID? {
-        return try {
-            val claims = Jwts.parserBuilder()
-                .setSigningKey(key)
-                .build()
-                .parseClaimsJws(token)
-            UUID.fromString(claims.body.subject)
-        } catch (e: Exception){
-            print("Caught Exception: $e")
-            null
-        }
-    }
-
-    fun validateToken2(token: String): Pair<String, UUID?>? {
+    fun validateToken(token: String): Pair<String, UUID>? {
         return try {
             val claims = Jwts.parserBuilder()
                 .setSigningKey(key)
@@ -47,7 +33,7 @@ class JwtService {
                 .parseClaimsJws(token)
 
             val username: String = claims.body["username"].toString()
-            val id: UUID? = UUID.fromString(claims.body.subject)
+            val id = UUID.fromString(claims.body.subject)
 
             return Pair(username, id)
         } catch (e: Exception){

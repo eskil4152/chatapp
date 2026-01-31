@@ -17,31 +17,14 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api")
 class AuthController(
-    @Autowired private val jwtService: JwtService,
     @Autowired private val authService: AuthService
 ) {
-    fun makeCookie(user: UserEntity): Cookie {
-        val token = jwtService.generateToken(user)
-
-        val cookie = Cookie("AUTH", token).apply {
-            path = "/"
-            secure = false
-            isHttpOnly = true
-            maxAge = 24 * 60 * 60
-        }
-
-        return cookie
-    }
-
     @PostMapping("/register")
     fun register(@RequestBody loginDto: LoginDto, response: HttpServletResponse): ResponseEntity<String> {
         val username = loginDto.username
         val password = loginDto.password
 
-        val user = authService.registerUser(username, password) ?: return ResponseEntity.status(409)
-            .body("Username already exists")
-
-        val cookie = makeCookie(user)
+        val cookie = authService.registerUser(username, password)
         response.addCookie(cookie)
 
         return ResponseEntity.status(201).body("User registered successfully")
@@ -52,10 +35,7 @@ class AuthController(
         val username = loginDto.username
         val password = loginDto.password
 
-        val user =
-            authService.loginUser(username, password) ?: return ResponseEntity.status(401).body("Invalid credentials")
-
-        val cookie = makeCookie(user)
+        val cookie = authService.loginUser(username, password)
         response.addCookie(cookie)
 
         return ResponseEntity.ok("User logged in")

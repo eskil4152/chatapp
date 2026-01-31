@@ -1,16 +1,14 @@
 package com.blikeng.chatapp.services
 
-import org.aspectj.bridge.Message
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
-import java.util.UUID
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
 
 @Service
-class ChatService (@Autowired private val roomService: RoomService) {
+class ChatService {
     val rooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
     val users = ConcurrentHashMap<UUID, WebSocketSession>()
 
