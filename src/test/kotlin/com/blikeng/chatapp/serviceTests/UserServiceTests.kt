@@ -51,8 +51,7 @@ class UserServiceTests {
         every { jwtService.validateToken(any()) } returns Pair("", UUID.randomUUID())
         every { userRepository.findById(any()) } returns Optional.of(UserEntity(username = "u", password = ""))
 
-        val user = userService.getSelf("token")
-        assert(user != null)
+        userService.getSelf("token")
     }
 
     @Test

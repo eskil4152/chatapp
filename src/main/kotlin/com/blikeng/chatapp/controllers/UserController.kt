@@ -26,24 +26,8 @@ class UserController(@Autowired private val userService: UserService) {
         if (authCookie == null) return ResponseEntity.status(401).body(null)
 
         val user = userService.getSelf(authCookie)
-        if (user == null) return ResponseEntity.status(401).body(null)
 
         return ResponseEntity.ok(user)
-    }
-
-    @PostMapping("/friend")
-    fun addFriend(){
-
-    }
-
-    @DeleteMapping("/friend")
-    fun removeFriend(){
-
-    }
-
-    @GetMapping("/friends")
-    fun getFriends(){
-
     }
 
     @PutMapping("/edit")

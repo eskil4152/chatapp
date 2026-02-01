@@ -43,8 +43,7 @@ class RoomServiceTests {
         every { roomRepository.save(any()) } returns RoomEntity(id = UUID.randomUUID(), name = "r")
         every { userRoomRepository.save(any()) } answers { firstArg() }
 
-        val room = roomService.makeNewRoom("r", "token")
-        assertNotNull(room)
+        roomService.makeNewRoom("r", "token")
     }
 
     @Test

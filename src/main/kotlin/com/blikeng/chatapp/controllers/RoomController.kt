@@ -23,13 +23,13 @@ import java.util.UUID
 class RoomController(
     @Autowired private val roomService: RoomService,
 ) {
-    @GetMapping("/")
+    @GetMapping
     fun getRooms(
         @CookieValue("AUTH") authCookie: String?
     ): ResponseEntity<List<RoomEntity>> {
         if (authCookie == null) return ResponseEntity.status(401).body(emptyList())
 
-        val rooms = roomService.getAllUserRooms(authCookie) ?: return ResponseEntity.status(401).body(emptyList())
+        val rooms = roomService.getAllUserRooms(authCookie)
 
         return ResponseEntity.ok(rooms)
     }
@@ -41,10 +41,10 @@ class RoomController(
     {
         if (authCookie == null) return ResponseEntity.status(401).body("No cookie found")
 
-        if (roomInfo.roomName == null) return ResponseEntity.badRequest().body("Invalid room name")
+        if (roomInfo.roomName.isNullOrBlank()) return ResponseEntity.badRequest().body("Invalid room name")
         roomService.makeNewRoom(roomInfo.roomName, authCookie)
 
-        return ResponseEntity.ok("Room created successfully")
+        return ResponseEntity.status(201).body("Room created successfully")
     }
 
     @PostMapping("/join")
@@ -59,10 +59,5 @@ class RoomController(
         roomService.joinRoom(UUID.fromString(roomId), authCookie)
 
         return ResponseEntity.ok("Joined room successfully")
-    }
-
-    @DeleteMapping("/leave")
-    fun leaveRooms(){
-
     }
 }

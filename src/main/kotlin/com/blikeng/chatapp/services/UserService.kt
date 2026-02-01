@@ -21,7 +21,7 @@ class UserService(
         return userRepository.findById(id).orElse(null)
     }
 
-    fun getSelf(token: String): UserDTO? {
+    fun getSelf(token: String): UserDTO {
         val ( username, userId ) = jwtService.validateToken(token) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
         val user = getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found")
 
