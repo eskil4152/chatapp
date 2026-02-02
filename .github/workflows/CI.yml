@@ -20,6 +20,8 @@ jobs:
 
       - name: Build and run tests
         run: mvn clean test
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
