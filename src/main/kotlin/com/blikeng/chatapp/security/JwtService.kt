@@ -12,7 +12,7 @@ import javax.crypto.SecretKey
 @Service
 class JwtService {
     val dotEnv: Dotenv = Dotenv.load()
-    private val key: SecretKey = Keys.hmacShaKeyFor((dotEnv.get("JWT_SECRET") ?: "secret").encodeToByteArray())
+    private val key: SecretKey = Keys.hmacShaKeyFor((dotEnv["JWT_SECRET"] ?: "secret").encodeToByteArray())
 
     fun generateToken(user: UserEntity): String {
         return Jwts.builder()

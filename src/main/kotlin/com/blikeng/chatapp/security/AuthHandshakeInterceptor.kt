@@ -35,5 +35,7 @@ class AuthHandshakeInterceptor(private val jwtService: JwtService) : HandshakeIn
         response: ServerHttpResponse,
         wsHandler: WebSocketHandler,
         exception: Exception?
-    ) {}
+    ) {
+        if (exception != null) println(exception.message)
+    }
 }
