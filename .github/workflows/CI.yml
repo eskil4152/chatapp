@@ -6,26 +6,34 @@ on:
   pull_request:
 
 jobs:
-  build:
-    runs-on: self-hosted
+  build-mac:
+    runs-on: macos-latest
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
+      - uses: actions/checkout@v3
       - name: Set up JDK 21
         uses: actions/setup-java@v3
         with:
           java-version: 21
           distribution: temurin
-
-      - name: Build and run tests
+      - name: Run tests
         run: mvn clean test
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
+  sonar-linux:
+    runs-on: ubuntu-latest
+    needs: build-mac  # run after tests succeed
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: 21
+          distribution: temurin
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
         with:
           projectBaseDir: .
-          organization: eskil4152
-          token: ${{ secrets.SONAR_TOKEN }}
+          args: >
+            -Dsonar.organization=eskil4152
+            -Dsonar.projectKey=eskil4152_chatapp
