@@ -11,7 +11,7 @@ import javax.crypto.SecretKey
 
 @Service
 class JwtService {
-    val secret = System.getProperty("JWT_SECRET") ?: System.getenv("JWT_SECRET") ?: "secret"
+    private val secret = System.getProperty("JWT_SECRET") ?: System.getenv("JWT_SECRET") ?: Keys.secretKeyFor(SignatureAlgorithm.HS512).toString()
     private val key: SecretKey = Keys.hmacShaKeyFor(secret.encodeToByteArray())
 
     fun generateToken(user: UserEntity): String {
