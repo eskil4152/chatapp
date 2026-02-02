@@ -1,4 +1,4 @@
-package com.blikeng.chatapp.DTOs
+package com.blikeng.chatapp.dtos
 
 data class RoomInfo (
     val roomName: String?,

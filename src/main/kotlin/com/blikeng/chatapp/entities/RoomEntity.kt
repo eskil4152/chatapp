@@ -1,7 +1,7 @@
 package com.blikeng.chatapp.entities
 
 import jakarta.persistence.*
-import java.util.UUID
+import java.util.*
 
 @Entity
 @Table(name = "rooms")

@@ -3,9 +3,9 @@ package com.blikeng.chatapp.securityTests
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.security.JwtService
 import io.mockk.junit5.MockKExtension
-import kotlin.test.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import java.util.*
+import kotlin.test.Test
 
 @ExtendWith(MockKExtension::class)
 class JwtServiceTests {

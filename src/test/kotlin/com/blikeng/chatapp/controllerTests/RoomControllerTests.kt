@@ -1,6 +1,5 @@
 package com.blikeng.chatapp.controllerTests
 
-import com.blikeng.chatapp.DTOs.RoomInfo
 import com.blikeng.chatapp.controllers.RoomController
 import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.services.RoomService
@@ -13,7 +12,7 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
-import java.util.UUID
+import java.util.*
 import kotlin.test.Test
 
 @WebMvcTest(RoomController::class)

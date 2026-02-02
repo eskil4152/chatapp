@@ -1,10 +1,10 @@
-package com.blikeng.chatapp.DTOs
+package com.blikeng.chatapp.dtos
 
 import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.entities.UserFriendEntity
-import java.util.Date
+import java.util.*
 
-class UserDTO (
+data class UserDTO (
     val username: String,
     val bio: String?,
     val email: String?,

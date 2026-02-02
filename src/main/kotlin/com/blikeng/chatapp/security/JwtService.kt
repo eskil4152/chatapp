@@ -1,19 +1,18 @@
 package com.blikeng.chatapp.security
 
 import com.blikeng.chatapp.entities.UserEntity
+import io.github.cdimascio.dotenv.Dotenv
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.security.Keys
-import jakarta.persistence.Tuple
 import org.springframework.stereotype.Service
-import java.util.Date
-import java.util.UUID
+import java.util.*
 import javax.crypto.SecretKey
 
 @Service
 class JwtService {
-    private val k = "keykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykey"
-    private val key: SecretKey = Keys.hmacShaKeyFor(k.encodeToByteArray())
+    val dotEnv: Dotenv = Dotenv.load()
+    private val key: SecretKey = Keys.hmacShaKeyFor((dotEnv.get("JWT_SECRET") ?: "secret").encodeToByteArray())
 
     fun generateToken(user: UserEntity): String {
         return Jwts.builder()

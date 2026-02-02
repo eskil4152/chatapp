@@ -1,16 +1,15 @@
 package com.blikeng.chatapp.services
 
-import com.blikeng.chatapp.DTOs.ChangeUserDTO
-import com.blikeng.chatapp.DTOs.UserDTO
+import com.blikeng.chatapp.dtos.ChangeUserDTO
+import com.blikeng.chatapp.dtos.UserDTO
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.security.JwtService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
-import org.springframework.web.client.HttpStatusCodeException
 import org.springframework.web.server.ResponseStatusException
-import java.util.UUID
+import java.util.*
 
 @Service
 class UserService(
@@ -22,7 +21,7 @@ class UserService(
     }
 
     fun getSelf(token: String): UserDTO {
-        val ( username, userId ) = jwtService.validateToken(token) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
+        val (_, userId ) = jwtService.validateToken(token) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
         val user = getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found")
 
         return UserDTO(
@@ -39,7 +38,7 @@ class UserService(
     }
 
     fun editProfile(changeUserDTO: ChangeUserDTO, authCookie: String) {
-        val ( username, userId ) = jwtService.validateToken(authCookie) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
+        val (_, userId ) = jwtService.validateToken(authCookie) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
         val user = getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid user")
 
         changeUserDTO.bio.let { user.bio = it }

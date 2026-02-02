@@ -1,15 +1,8 @@
 package com.blikeng.chatapp.entities
 
-import jakarta.persistence.Embeddable
-import jakarta.persistence.EmbeddedId
-import jakarta.persistence.Entity
-import jakarta.persistence.EnumType
-import jakarta.persistence.Enumerated
-import jakarta.persistence.ManyToOne
-import jakarta.persistence.MapsId
-import jakarta.persistence.Table
+import jakarta.persistence.*
 import java.io.Serializable
-import java.util.UUID
+import java.util.*
 
 @Entity
 @Table(name = "user_rooms")
@@ -34,10 +27,6 @@ class UserRoomId(
     val userId: UUID,
     val roomId: UUID
 ) : Serializable
-
-enum class RoomType {
-    DIRECT, GROUP
-}
 
 enum class RoomRole {
     OWNER, MEMBER

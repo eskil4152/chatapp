@@ -1,7 +1,6 @@
 package com.blikeng.chatapp.controllerTests
 
-import com.blikeng.chatapp.DTOs.ChangeUserDTO
-import com.blikeng.chatapp.DTOs.UserDTO
+import com.blikeng.chatapp.dtos.UserDTO
 import com.blikeng.chatapp.controllers.UserController
 import com.blikeng.chatapp.services.UserService
 import com.ninjasquad.springmockk.MockkBean
@@ -10,13 +9,11 @@ import jakarta.servlet.http.Cookie
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
-import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
-import org.springframework.web.server.ResponseStatusException
 import java.sql.Date
 import kotlin.test.Test
 

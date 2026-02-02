@@ -22,18 +22,14 @@ class ChatService {
     }
 
     fun joinRoom(roomId: UUID, session: WebSocketSession){
-        if (rooms[roomId] == null) rooms[roomId] = CopyOnWriteArraySet()
-        rooms[roomId]!!.add(session)
+        rooms.computeIfAbsent(roomId) { CopyOnWriteArraySet() }.add(session)
     }
 
     fun leaveRoom(roomId: UUID, session: WebSocketSession){
-        rooms[roomId]!!.remove(session)
+        rooms[roomId]?.remove(session)
     }
 
     fun broadcast(roomId: UUID, message: TextMessage) {
-        val recipients = rooms[roomId] ?: return
-        for (recipient in recipients) {
-            recipient.sendMessage(message)
-        }
+        rooms[roomId]?.forEach { it.sendMessage(message) }
     }
 }

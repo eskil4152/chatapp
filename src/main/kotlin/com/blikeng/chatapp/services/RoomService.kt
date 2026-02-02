@@ -8,13 +8,10 @@ import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.JwtService
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.data.domain.Pageable
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.web.server.ResponseStatusException
-import org.springframework.web.socket.WebSocketSession
-import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
+import java.util.*
 
 @Service
 class RoomService(
@@ -26,7 +23,7 @@ class RoomService(
     fun makeNewRoom(roomName: String, token: String) {
         if (roomName.trim() == "") throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid name")
 
-        val ( username, userId ) =
+        val (_, userId ) =
             jwtService.validateToken(token) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
 
         val user =
@@ -41,7 +38,7 @@ class RoomService(
     }
 
     fun getAllUserRooms(token: String): List<RoomEntity> {
-        val ( username, userId ) =
+        val (_, userId ) =
             jwtService.validateToken(token) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
 
         val rooms = userRoomRepository.findAllRoomsByUserId(userId)
@@ -50,7 +47,7 @@ class RoomService(
     }
 
     fun joinRoom(roomId: UUID, token: String){
-        val ( username, userId ) =
+        val (_, userId ) =
             jwtService.validateToken(token) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
 
         val user =

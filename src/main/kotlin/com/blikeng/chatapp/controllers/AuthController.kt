@@ -1,11 +1,7 @@
 package com.blikeng.chatapp.controllers
 
-import com.blikeng.chatapp.DTOs.LoginDto
-import com.blikeng.chatapp.entities.UserEntity
-import com.blikeng.chatapp.security.JwtService
-import com.blikeng.chatapp.security.PasswordService
+import com.blikeng.chatapp.dtos.LoginDto
 import com.blikeng.chatapp.services.AuthService
-import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity

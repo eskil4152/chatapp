@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.serviceTests
 
-import com.blikeng.chatapp.DTOs.ChangeUserDTO
+import com.blikeng.chatapp.dtos.ChangeUserDTO
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.security.JwtService
@@ -14,8 +14,7 @@ import io.mockk.verify
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.http.HttpStatus
 import org.springframework.web.server.ResponseStatusException
-import java.util.Optional
-import java.util.UUID
+import java.util.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
