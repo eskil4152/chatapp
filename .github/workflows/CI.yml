@@ -22,13 +22,3 @@ jobs:
         run: mvn clean test
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
-
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v2
-        with:
-          projectBaseDir: .
-          args: >
-            -Dsonar.organization=eskil4152
-            -Dsonar.projectKey=eskil4152_chatapp
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
