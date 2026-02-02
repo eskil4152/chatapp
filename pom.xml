@@ -29,6 +29,10 @@
 	<properties>
 		<java.version>21</java.version>
 		<kotlin.version>2.2.21</kotlin.version>
+		<sonar.organization>eskil4152</sonar.organization>
+		<sonar.projectKey>eskil4152_chatapp</sonar.projectKey>
+		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
+		<sonar.coverage.jacoco.xmlReportPaths>target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -184,6 +188,12 @@
 						<goals>
 							<goal>report</goal>
 						</goals>
+						<configuration>
+							<formats>
+								<format>XML</format>
+								<format>HTML</format>
+							</formats>
+						</configuration>
 					</execution>
 				</executions>
 			</plugin>
