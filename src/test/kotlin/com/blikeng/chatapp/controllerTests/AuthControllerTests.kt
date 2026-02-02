@@ -53,7 +53,8 @@ class AuthControllerTests {
                     "\t\"password\":\"p\"\n" +
                     "}"
         }
-            .andExpect { ResponseStatusException(HttpStatus.CONFLICT, "Username already exists") }
+            .andExpect { status { isConflict()} }
+            .andExpect { content().string("Username already exists") }
     }
 
     @Test
@@ -88,6 +89,7 @@ class AuthControllerTests {
                     "\t\"password\":\"p\"\n" +
                     "}"
         }
-            .andExpect { ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials") }
+            .andExpect { status { isUnauthorized()} }
+            .andExpect { content().string("Invalid credentials") }
     }
 }

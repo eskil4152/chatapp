@@ -1,20 +1,21 @@
 package com.blikeng.chatapp.websocket
 
 import com.blikeng.chatapp.services.ChatService
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
+import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import org.springframework.web.socket.handler.TextWebSocketHandler
-import tools.jackson.databind.json.JsonMapper
 import tools.jackson.module.kotlin.jacksonObjectMapper
 import java.util.*
 
 @Component
-class ChatWebSocketHandler(private val chatService: ChatService, private val jsonMapper: JsonMapper) : TextWebSocketHandler() {
+class ChatWebSocketHandler(private val chatService: ChatService) : TextWebSocketHandler() {
     override fun afterConnectionEstablished(session: WebSocketSession) {
-        val id: UUID = (session.attributes["userId"] ?: return) as UUID
-        val user: String = (session.attributes["username"] ?: return) as String
+        val id: UUID = (session.attributes["userId"]
+            ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No userID found")) as UUID
 
         chatService.registerSession(id, session)
     }
@@ -23,7 +24,7 @@ class ChatWebSocketHandler(private val chatService: ChatService, private val jso
         val json = jacksonObjectMapper().readTree(message.payload)
 
         val type = json["type"].asString()
-        val user = session.attributes["username"] as String
+        val user = (session.attributes["username"] ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No username found")) as String
 
         when (type) {
             "JOIN" -> {
@@ -62,7 +63,8 @@ class ChatWebSocketHandler(private val chatService: ChatService, private val jso
     }
 
     override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
-        val id: UUID = (session.attributes["userId"] ?: return) as UUID
+        val id: UUID = (session.attributes["userId"] ?:
+            throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No userID found")) as UUID
         chatService.removeSession(id, session)
     }
 }
