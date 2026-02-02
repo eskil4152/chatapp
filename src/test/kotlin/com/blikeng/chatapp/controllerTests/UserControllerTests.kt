@@ -1,7 +1,7 @@
 package com.blikeng.chatapp.controllerTests
 
-import com.blikeng.chatapp.dtos.UserDTO
 import com.blikeng.chatapp.controllers.UserController
+import com.blikeng.chatapp.dtos.UserDTO
 import com.blikeng.chatapp.services.UserService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
