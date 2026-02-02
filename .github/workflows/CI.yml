@@ -19,6 +19,7 @@ jobs:
           distribution: temurin
 
       - name: Build and run tests
-        run: mvn clean verify -Pcoverage
+        run: mvn clean verify sonar:sonar
         env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
