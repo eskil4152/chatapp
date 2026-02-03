@@ -71,6 +71,17 @@ class RoomControllerTests {
         mockMvc.post("/api/rooms/make") {
             cookie(Cookie("AUTH", "token"))
             contentType = MediaType.APPLICATION_JSON
+            content = "{}"
+        }
+            .andExpect { status { isBadRequest() } }
+            .andExpect { content { string("Invalid room name") } }
+    }
+
+    @Test
+    fun shouldFailToMakeRoomWithBlankName(){
+        mockMvc.post("/api/rooms/make") {
+            cookie(Cookie("AUTH", "token"))
+            contentType = MediaType.APPLICATION_JSON
             content = "{\n" +
                     "\t\"roomName\":\"  \"\n" +
                     "}"

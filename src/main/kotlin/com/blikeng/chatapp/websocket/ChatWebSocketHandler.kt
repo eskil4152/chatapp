@@ -23,37 +23,43 @@ class ChatWebSocketHandler(private val chatService: ChatService) : TextWebSocket
     override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
         val json = jacksonObjectMapper().readTree(message.payload)
 
-        val type = json["type"].asString()
+        val typeString = json["type"].asString()
+        val type = try {
+            MessageType.valueOf(typeString)
+        } catch (e: IllegalArgumentException) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid message type")
+        }
+
         val user = (session.attributes["username"] ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No username found")) as String
 
         when (type) {
-            "JOIN" -> {
+            MessageType.JOIN -> {
                 val roomId = UUID.fromString(json["roomId"].asString())
                 chatService.joinRoom(roomId, session)
 
                 val payload = jacksonObjectMapper().createObjectNode()
-                    .put(type, "MESSAGE")
+                    .put("type", "MESSAGE")
                     .put("username", user)
                     .put("message", "$user entered the room")
 
                 chatService.broadcast(roomId, TextMessage(payload.toString()))
             }
-            "MESSAGE" -> {
+            MessageType.MESSAGE -> {
                 val roomId = UUID.fromString(json["roomId"].asString())
 
                 val payload = jacksonObjectMapper().createObjectNode()
-                    .put(type, "MESSAGE")
+                    .put("type", "MESSAGE")
                     .put("message", json["message"].asString())
                     .put("username", user)
 
                 chatService.broadcast(roomId, TextMessage(payload.toString()))
             }
-            "LEAVE" -> {
+            MessageType.LEAVE -> {
                 val roomId = UUID.fromString(json["roomId"].asString())
                 chatService.leaveRoom(roomId, session)
 
                 val payload = jacksonObjectMapper().createObjectNode()
-                    .put(type, "MESSAGE")
+                    .put("type", "MESSAGE")
                     .put("username", user)
                     .put("message", "$user left the room")
 
@@ -66,5 +72,9 @@ class ChatWebSocketHandler(private val chatService: ChatService) : TextWebSocket
         val id: UUID = (session.attributes["userId"] ?:
             throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No userID found")) as UUID
         chatService.removeSession(id, session)
+    }
+
+    enum class MessageType {
+        MESSAGE, JOIN, LEAVE
     }
 }

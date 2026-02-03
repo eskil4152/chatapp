@@ -201,4 +201,30 @@ class WebsocketTests {
         verify (exactly = 0) { chatService.broadcast(any(), any()) }
         verify (exactly = 0) { chatService.leaveRoom(any(), any()) }
     }
+
+    @Test
+    fun shouldFailToSendMessageWithInvalidType(){
+        val payload = TextMessage((jacksonObjectMapper().createObjectNode()
+            .put("type", "NONE")
+            .put("message", "m" )
+            .put("roomId", UUID.randomUUID().toString())).toString())
+
+        val attributes: MutableMap<String, Any> = mutableMapOf(
+            "username" to "u",
+            "userId" to UUID.randomUUID()
+        )
+
+        every { session.attributes } returns attributes
+
+        val exec = assertFailsWith<ResponseStatusException> {
+            handler.handleMessage(session, payload)
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exec.statusCode)
+        assertEquals(exec.reason, "Invalid message type")
+
+        verify (exactly = 0) { chatService.joinRoom(any(), any()) }
+        verify (exactly = 0) { chatService.broadcast(any(), any()) }
+        verify (exactly = 0) { chatService.leaveRoom(any(), any()) }
+    }
 }

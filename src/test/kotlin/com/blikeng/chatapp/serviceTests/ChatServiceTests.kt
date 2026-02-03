@@ -91,6 +91,16 @@ class ChatServiceTests {
     }
 
     @Test
+    fun shouldDoNothingWhenLeavingNonExistingRoom(){
+        val roomId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>()
+
+        assertNull(chatService.rooms[roomId])
+        chatService.leaveRoom(roomId, session)
+        assertTrue { chatService.rooms[roomId] == null }
+    }
+
+    @Test
     fun shouldBroadcastMessageToAllSessionsInRoom() {
         val roomId = UUID.randomUUID()
         val message = TextMessage("hello")
@@ -108,7 +118,7 @@ class ChatServiceTests {
     }
 
     @Test
-    fun shouldDoNothingWhenRoomDoesNotExist() {
+    fun shouldBroadcastNothingWhenRoomDoesNotExist() {
         val roomId = UUID.randomUUID()
         val message = TextMessage("hello")
 
