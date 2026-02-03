@@ -1,9 +1,11 @@
 package com.blikeng.chatapp.serviceTests
 
 import com.blikeng.chatapp.dtos.ChangeUserDTO
+import com.blikeng.chatapp.dtos.EditPasswordDTO
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.security.JwtService
+import com.blikeng.chatapp.security.PasswordService
 import com.blikeng.chatapp.services.UserService
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
@@ -23,6 +25,7 @@ import kotlin.test.assertFailsWith
 class UserServiceTests {
     @MockK private lateinit var userRepository: UserRepository
     @MockK private lateinit var jwtService: JwtService
+    @MockK private lateinit var passwordService: PasswordService
 
     @InjectMockKs
     lateinit var userService: UserService
@@ -139,5 +142,116 @@ class UserServiceTests {
         assertEquals("newAvatar", savedUser.avatarUrl)
 
         verify(exactly = 1) { userRepository.save(any()) }
+    }
+
+    @Test
+    fun shouldUpdateUserPassword() {
+        val userId = UUID.randomUUID()
+        val user = UserEntity(
+            id = userId,
+            username = "u",
+            password = "old p",
+        )
+
+        every { jwtService.validateToken(any()) } returns Pair("", userId)
+        every { userRepository.findById(userId) } returns Optional.of(user)
+        every { passwordService.checkPassword(any(), any()) } returns true
+        every { passwordService.encodePassword(any()) } returns "encoded"
+
+        val slot = slot<UserEntity>()
+        every { userRepository.save(capture(slot)) } answers { slot.captured }
+
+        userService.editPassword(
+            "token",
+            EditPasswordDTO(
+                oldPassword = "old p",
+                newPassword = "new p"
+            )
+        )
+
+        val savedUser = slot.captured
+
+        assertEquals("encoded", savedUser.password)
+
+        verify(exactly = 1) { userRepository.save(any()) }
+    }
+
+    @Test
+    fun shouldFailToUpdateUserPasswordWithInvalidToken() {
+        val userId = UUID.randomUUID()
+        val user = UserEntity(
+            id = userId,
+            username = "u",
+            password = "old p",
+        )
+
+        every { jwtService.validateToken(any()) } returns null
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            userService.editPassword(
+                "token",
+                EditPasswordDTO(
+                    oldPassword = "old p",
+                    newPassword = "new p"
+                )
+            )
+        }
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
+        assertEquals("Invalid token", exception.reason)
+
+        verify(exactly = 0) { userRepository.save(any()) }
+    }
+
+    @Test
+    fun shouldFailToUpdateUserPasswordWithInvalidUser() {
+        val id = UUID.randomUUID()
+
+        every { jwtService.validateToken(any()) } returns Pair("", id)
+        every { userRepository.findById(any()) } returns Optional.empty()
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            userService.editPassword(
+                "token",
+                EditPasswordDTO(
+                    oldPassword = "old p",
+                    newPassword = "new p"
+                )
+            )
+        }
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
+        assertEquals("Invalid user", exception.reason)
+
+        verify(exactly = 0) { userRepository.save(any()) }
+    }
+
+    @Test
+    fun shouldFailToUpdateUserPasswordWithWrongPassword() {
+        val userId = UUID.randomUUID()
+        val user = UserEntity(
+            id = userId,
+            username = "u",
+            password = "old p",
+        )
+
+        every { jwtService.validateToken(any()) } returns Pair("", userId)
+        every { userRepository.findById(userId) } returns Optional.of(user)
+        every { passwordService.checkPassword(any(), any()) } returns false
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            userService.editPassword(
+                "token",
+                EditPasswordDTO(
+                    oldPassword = "old p",
+                    newPassword = "new p"
+                )
+            )
+        }
+
+        assertEquals(exception.statusCode, HttpStatus.UNAUTHORIZED)
+        assertEquals(exception.reason, "Invalid password")
+
+        verify(exactly = 0) { userRepository.save(any()) }
     }
 }

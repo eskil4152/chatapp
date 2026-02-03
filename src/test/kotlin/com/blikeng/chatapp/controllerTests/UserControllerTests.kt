@@ -12,6 +12,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.patch
 import org.springframework.test.web.servlet.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import java.sql.Date
@@ -81,6 +82,35 @@ class UserControllerTests {
                     "\t\"email\":\"e\",\n" +
                     "\t\"fullName\":\"f\",\n" +
                     "\t\"avatarUrl\":\"a\"\n" +
+                    "}"
+        }
+            .andExpect { status { isUnauthorized() } }
+            .andExpect { content { string("No cookie found") } }
+    }
+
+    @Test
+    fun shouldUpdatePassword(){
+        every { userService.editPassword("token", any()) } returns Unit
+
+        mockMvc.patch("/api/user/edit/password") {
+            cookie(Cookie("AUTH", "token"))
+            contentType = MediaType.APPLICATION_JSON
+            content = "{\n" +
+                    "\t\"oldPassword\":\"old p\",\n" +
+                    "\t\"newPassword\":\"new p\"\n" +
+                    "}"
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { content { string("Password changed successfully") } }
+    }
+
+    @Test
+    fun shouldFailToUpdatePasswordWithoutCookie(){
+        mockMvc.patch("/api/user/edit/password") {
+            contentType = MediaType.APPLICATION_JSON
+            content = "{\n" +
+                    "\t\"oldPassword\":\"old p\",\n" +
+                    "\t\"newPassword\":\"new p\"\n" +
                     "}"
         }
             .andExpect { status { isUnauthorized() } }
