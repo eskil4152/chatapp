@@ -10,8 +10,12 @@ import javax.crypto.SecretKey
 
 @Service
 class JwtService {
-    private val secret = System.getProperty("JWT_SECRET") ?: System.getenv("JWT_SECRET") ?: "keykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykeykey"
-    private val key: SecretKey = Keys.hmacShaKeyFor(secret.encodeToByteArray())
+    fun key(): SecretKey {
+        val secret = System.getProperty("JWT_SECRET")
+            ?: error("JWT_SECRET not found")
+
+        return Keys.hmacShaKeyFor(secret.encodeToByteArray())
+    }
 
     fun generateToken(user: UserEntity): String {
         return Jwts.builder()
@@ -19,14 +23,14 @@ class JwtService {
             .claim("username", user.username)
             .setIssuedAt(Date())
             .setExpiration(Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
-            .signWith(key, SignatureAlgorithm.HS512)
+            .signWith(key(), SignatureAlgorithm.HS512)
             .compact()
     }
 
     fun validateToken(token: String): Pair<String, UUID>? {
         return try {
             val claims = Jwts.parserBuilder()
-                .setSigningKey(key)
+                .setSigningKey(key())
                 .build()
                 .parseClaimsJws(token)
 
