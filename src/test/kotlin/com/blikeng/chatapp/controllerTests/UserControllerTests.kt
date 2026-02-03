@@ -34,7 +34,6 @@ class UserControllerTests {
             birthday = null,
             createdAt = Date(System.currentTimeMillis()),
             rooms = mutableSetOf(),
-            friends = mutableSetOf()
         )
 
         every { userService.getSelf("token") } returns user

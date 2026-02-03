@@ -33,7 +33,6 @@ class UserService(
             birthday = user.birthday,
             createdAt = user.createdAt,
             rooms = user.rooms,
-            friends = user.friends
         )
     }
 

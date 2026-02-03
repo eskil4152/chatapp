@@ -43,6 +43,6 @@ class UserEntity (
     )
     val rooms: MutableSet<RoomEntity> = mutableSetOf(),
 
-    @OneToMany(mappedBy = "user", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
-    val friends: MutableSet<UserFriendEntity> = mutableSetOf()
+    //@OneToMany(mappedBy = "user", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
+    //val friends: MutableSet<UserFriendEntity> = mutableSetOf()
 )

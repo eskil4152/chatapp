@@ -1,7 +1,6 @@
 package com.blikeng.chatapp.dtos
 
 import com.blikeng.chatapp.entities.RoomEntity
-import com.blikeng.chatapp.entities.UserFriendEntity
 import java.util.*
 
 data class UserDTO (
@@ -13,5 +12,5 @@ data class UserDTO (
     val birthday: Date?,
     val createdAt: Date?,
     val rooms: MutableSet<RoomEntity>,
-    val friends: MutableSet<UserFriendEntity>
+    //val friends: MutableSet<UserFriendEntity>
 )
