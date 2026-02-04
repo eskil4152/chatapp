@@ -32,6 +32,13 @@
 		<sonar.organization>eskil4152</sonar.organization>
 		<sonar.projectKey>eskil4152_chatapp</sonar.projectKey>
 		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
+		<sonar.coverage.jacoco.xmlReportPaths>target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+		<sonar.coverage.exclusions>
+			**/ChatappApplication.kt,
+			**/*Entity*,
+			**/*Dto*,
+			**/*Config*
+		</sonar.coverage.exclusions>
 	</properties>
 	<dependencies>
 		<dependency>
