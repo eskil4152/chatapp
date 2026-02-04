@@ -1,6 +1,7 @@
 package com.blikeng.chatapp.security
 
 import com.blikeng.chatapp.entities.UserEntity
+import io.github.cdimascio.dotenv.dotenv
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.security.Keys
@@ -10,11 +11,21 @@ import javax.crypto.SecretKey
 
 @Service
 class JwtService {
-    fun key(): SecretKey {
-        val secret = System.getProperty("JWT_SECRET")
-            ?: error("JWT_SECRET not found")
+    fun getSystemVariable(): String? {
+        return System.getenv("JWT_SECRET")
+    }
 
-        return Keys.hmacShaKeyFor(secret.encodeToByteArray())
+    fun getDotenvVariable(): String? {
+        return dotenv(){ ignoreIfMissing = true }["JWT_SECRET"]
+    }
+
+    fun key(): SecretKey {
+        val secret: String? = getSystemVariable() ?: getDotenvVariable()
+        if (secret == null) {
+            throw RuntimeException("JWT_SECRET not found")
+        }
+
+        return Keys.hmacShaKeyFor(secret.toByteArray())
     }
 
     fun generateToken(user: UserEntity): String {

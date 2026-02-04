@@ -4,12 +4,18 @@ import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.security.JwtService
 import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.security.Keys
+import io.mockk.every
 import io.mockk.junit5.MockKExtension
+import io.mockk.mockk
+import io.mockk.spyk
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.ExtendWith
 import java.util.*
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotEquals
+
 
 @ExtendWith(MockKExtension::class)
 class JwtServiceTests {
@@ -46,12 +52,60 @@ class JwtServiceTests {
 
     @Test
     fun shouldFailWhenSecretNotProvided(){
-        System.clearProperty("JWT_SECRET")
+        val jwtService: JwtService = mockk()
         val user = UserEntity(username = "u", password = "p")
+
+        every { jwtService.getSystemVariable() } returns null
+        every { jwtService.getDotenvVariable() } returns null
 
         assertFailsWith<RuntimeException> {
             jwtService.generateToken(user)
         }
+    }
 
+    @Test
+    fun shouldGetSecretFromDotenv(){
+        val jwtService = spyk(JwtService())
+
+        every { jwtService.getSystemVariable() } returns null
+        every { jwtService.getDotenvVariable() } returns "superSecretKeyForDotenvWhichIsAbsolutelySecureEnoughAndFarEnoughBitsToBeAbleToBeMadeIntoASecureEnoughKey"
+
+        val key = jwtService.key()
+
+        assertEquals(
+            key.encoded.toString(Charsets.UTF_8),
+            "superSecretKeyForDotenvWhichIsAbsolutelySecureEnoughAndFarEnoughBitsToBeAbleToBeMadeIntoASecureEnoughKey")
+        assertNotEquals(
+            key.encoded.toString(Charsets.UTF_8),
+            "superSecretKeyForSysEnvWhichIsAbsolutelySecureEnoughAndFarEnoughBitsToBeAbleToBeMadeIntoASecureEnoughKey"
+        )
+    }
+
+    @Test
+    fun shouldGetSecretFromSystemProperty(){
+        val jwtService = spyk(JwtService())
+
+        every { jwtService.getSystemVariable() } returns "superSecretKeyForSysEnvWhichIsAbsolutelySecureEnoughAndFarEnoughBitsToBeAbleToBeMadeIntoASecureEnoughKey"
+        every { jwtService.getDotenvVariable() } returns null
+
+        val key = jwtService.key()
+
+        assertEquals(
+            key.encoded.toString(Charsets.UTF_8),
+            "superSecretKeyForSysEnvWhichIsAbsolutelySecureEnoughAndFarEnoughBitsToBeAbleToBeMadeIntoASecureEnoughKey")
+        assertNotEquals(
+            key.encoded.toString(Charsets.UTF_8),
+            "superSecretKeyForDotenvWhichIsAbsolutelySecureEnoughAndFarEnoughBitsToBeAbleToBeMadeIntoASecureEnoughKey"
+        )
+    }
+
+    @Test
+    fun shouldThrowIfNeitherEnvIsAvailable(){
+        val jwtService = spyk(JwtService())
+
+        every { jwtService.getSystemVariable() } returns null
+        every { jwtService.getDotenvVariable() } returns null
+
+        assertFailsWith<RuntimeException> { jwtService.key() }
     }
 }
