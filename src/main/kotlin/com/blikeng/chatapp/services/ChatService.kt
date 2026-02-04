@@ -64,7 +64,7 @@ class ChatService(
     }
 
     fun broadcast(roomId: UUID, message: ReceivedMessage, username: String) {
-        if (message.type == "MESSAGE") addMessage(message)
+        if (message.type == "MESSAGE" && rooms[roomId] != null) addMessage(message)
 
         val sendMessage = SendMessage(username, message.content)
         rooms[roomId]?.forEach { it.sendMessage(TextMessage(jacksonObjectMapper().writeValueAsString(sendMessage))) }
