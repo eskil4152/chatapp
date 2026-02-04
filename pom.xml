@@ -160,6 +160,8 @@
 							<excludes>
 								<exclude>**/*ApplicationKt.class</exclude>
 								<exclude>**/ChatappApplication*</exclude>
+								<exclude>**/dtos/</exclude>
+								<exclude>**/entities/</exclude>
 							</excludes>
 							<formats>
 								<format>XML</format>
