@@ -25,7 +25,7 @@ class ChatEntity (
     @JoinColumn(name = "user_id")
     val user: UserEntity,
 
-    val message: String?,
+    val message: String,
 
     val timestamp: Timestamp
 )

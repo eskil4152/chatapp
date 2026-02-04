@@ -84,6 +84,25 @@ class AuthHandshakeInterceptorTests {
     }
 
     @Test
+    fun shouldFailWithoutCorrectCookie() {
+        val cookiesList: Array<Cookie> = arrayOf(Cookie("AUT", "token"))
+        val servletRequest = mockk<HttpServletRequest> {
+            every { cookies } returns cookiesList
+        }
+
+        val request = ServletServerHttpRequest(servletRequest)
+
+        val result = interceptor.beforeHandshake(
+            request,
+            mockk(relaxed = true),
+            mockk(relaxed = true),
+            mutableMapOf()
+        )
+
+        assertFalse(result)
+    }
+
+    @Test
     fun shouldFailWithInvalidToken() {
         val cookiesList: Array<Cookie> = arrayOf(Cookie("AUTH", "fake_token"))
 

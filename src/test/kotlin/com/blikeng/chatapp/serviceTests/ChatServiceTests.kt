@@ -1,5 +1,6 @@
 package com.blikeng.chatapp.serviceTests
 
+import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.repositories.ChatRepository
@@ -14,12 +15,15 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import io.mockk.verify
+import org.hibernate.query.restriction.Restriction.any
+import org.hibernate.query.sqm.produce.function.StandardArgumentsValidators.exactly
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.assertNull
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import tools.jackson.module.kotlin.jacksonObjectMapper
+import java.sql.Timestamp
 import java.util.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -155,5 +159,45 @@ class ChatServiceTests {
         chatService.broadcast(UUID.randomUUID(), message, "u")
 
         verify { session wasNot Called }
+    }
+
+    @Test
+    fun shouldNotSaveMessageIfNotMessageType() {
+        every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
+        every { userRepository.findById(any()) } returns Optional.of(UserEntity(username = "u", password = ""))
+        every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r"))
+
+        val roomId = UUID.randomUUID()
+        val message = ReceivedMessage(roomId, UUID.randomUUID(), "join", "JOIN")
+
+        val session = mockk<WebSocketSession>(relaxed = true)
+
+        chatService.joinRoom(roomId, session)
+
+        chatService.broadcast(roomId, message, "u")
+
+        verify(exactly = 1) { session.sendMessage(any()) }
+        verify(exactly = 0) { chatRepository.save(any()) }
+    }
+
+    @Test
+    fun shouldFetchAllSavedMessages() {
+        val roomId = UUID.randomUUID()
+        val room = RoomEntity(roomId, "r")
+        val user = UserEntity(username = "u", password = "")
+
+        val chat1 = ChatEntity(room = room, user = user, message =  "Hello", timestamp =  Timestamp(System.currentTimeMillis()))
+        val chat2 = ChatEntity(room = room, user = user, message =  "Hello again", timestamp =  Timestamp(System.currentTimeMillis()))
+        val saved: List<ChatEntity> = listOf(chat1, chat2)
+
+        every { chatRepository.getAllChatsByRoomId(any()) } returns saved
+
+        val session = mockk<WebSocketSession>(relaxed = true)
+
+        chatService.joinRoom(roomId, session)
+
+        verify(exactly = 2) { session.sendMessage(any())}
+        verify(exactly = 1) { chatRepository.getAllChatsByRoomId(roomId) }
+        verify(exactly = 0) { chatRepository.save(any()) }
     }
 }
