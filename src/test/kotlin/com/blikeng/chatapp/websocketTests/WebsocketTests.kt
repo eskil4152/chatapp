@@ -186,6 +186,7 @@ class WebsocketTests {
             .put("roomId", UUID.randomUUID().toString())).toString())
 
         val attributes: MutableMap<String, Any> = mutableMapOf(
+            "userId" to UUID.randomUUID()
         )
 
         every { session.attributes } returns attributes
@@ -196,6 +197,31 @@ class WebsocketTests {
 
         assertEquals(HttpStatus.UNAUTHORIZED, ex.statusCode)
         assertEquals("No username found", ex.reason)
+
+        verify (exactly = 0) { chatService.joinRoom(any(), any()) }
+        verify (exactly = 0) { chatService.broadcast(any(), any()) }
+        verify (exactly = 0) { chatService.leaveRoom(any(), any()) }
+    }
+
+    @Test
+    fun shouldFailToSendMessageWithoutUserId(){
+        val payload = TextMessage((jacksonObjectMapper().createObjectNode()
+            .put("type", "JOIN")
+            .put("message", "m" )
+            .put("roomId", UUID.randomUUID().toString())).toString())
+
+        val attributes: MutableMap<String, Any> = mutableMapOf(
+            "username" to "u"
+        )
+
+        every { session.attributes } returns attributes
+
+        val ex = assertFailsWith<ResponseStatusException> {
+            handler.handleMessage(session, payload)
+        }
+
+        assertEquals(HttpStatus.UNAUTHORIZED, ex.statusCode)
+        assertEquals("No User ID found", ex.reason)
 
         verify (exactly = 0) { chatService.joinRoom(any(), any()) }
         verify (exactly = 0) { chatService.broadcast(any(), any()) }
