@@ -7,6 +7,7 @@ import com.blikeng.chatapp.entities.UserRoomId
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.JwtService
+import jakarta.persistence.Id
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
