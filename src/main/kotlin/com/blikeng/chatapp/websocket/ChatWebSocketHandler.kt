@@ -1,6 +1,7 @@
 package com.blikeng.chatapp.websocket
 
 import com.blikeng.chatapp.services.ChatService
+import com.blikeng.chatapp.services.ReceivedMessage
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
 import org.springframework.web.server.ResponseStatusException
@@ -30,40 +31,31 @@ class ChatWebSocketHandler(private val chatService: ChatService) : TextWebSocket
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid message type")
         }
 
-        val user = (session.attributes["username"] ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No username found")) as String
+        val username = (session.attributes["username"] ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No username found")) as String
+        val userId = (session.attributes["userId"] ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No User ID found")) as UUID
 
         when (type) {
             MessageType.JOIN -> {
                 val roomId = UUID.fromString(json["roomId"].asString())
                 chatService.joinRoom(roomId, session)
 
-                val payload = jacksonObjectMapper().createObjectNode()
-                    .put("type", "MESSAGE")
-                    .put("username", user)
-                    .put("message", "$user entered the room")
+                val message = ReceivedMessage(roomId, userId, "$username joined the room", "JOIN")
 
-                chatService.broadcast(roomId, TextMessage(payload.toString()))
+                chatService.broadcast(roomId, message, username)
             }
             MessageType.MESSAGE -> {
                 val roomId = UUID.fromString(json["roomId"].asString())
 
-                val payload = jacksonObjectMapper().createObjectNode()
-                    .put("type", "MESSAGE")
-                    .put("message", json["message"].asString())
-                    .put("username", user)
-
-                chatService.broadcast(roomId, TextMessage(payload.toString()))
+                val message = ReceivedMessage(roomId, userId, json["message"].asString(), "MESSAGE")
+                chatService.broadcast(roomId, message, username)
             }
             MessageType.LEAVE -> {
                 val roomId = UUID.fromString(json["roomId"].asString())
                 chatService.leaveRoom(roomId, session)
 
-                val payload = jacksonObjectMapper().createObjectNode()
-                    .put("type", "MESSAGE")
-                    .put("username", user)
-                    .put("message", "$user left the room")
+                val message = ReceivedMessage(roomId, userId, "$username left the room", "LEAVE")
 
-                chatService.broadcast(roomId, TextMessage(payload.toString()))
+                chatService.broadcast(roomId, message, username)
             }
         }
     }
