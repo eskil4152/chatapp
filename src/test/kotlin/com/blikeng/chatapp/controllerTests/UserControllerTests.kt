@@ -39,7 +39,7 @@ class UserControllerTests {
 
         every { userService.getSelf("token") } returns user
 
-        mockMvc.get("/api/user/") {
+        mockMvc.get("/api/user") {
             cookie(Cookie("AUTH", "token"))
         }
             .andExpect { status { isOk() } }
@@ -50,7 +50,7 @@ class UserControllerTests {
 
     @Test
     fun shouldFailToGetSelfWithoutCookie(){
-        mockMvc.get("/api/user/") {
+        mockMvc.get("/api/user") {
         }
             .andExpect { status { isUnauthorized() } }
     }
