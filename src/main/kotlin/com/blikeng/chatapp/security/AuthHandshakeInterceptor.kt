@@ -20,9 +20,10 @@ class AuthHandshakeInterceptor(private val jwtService: JwtService) : HandshakeIn
     ): Boolean {
         if (request !is ServletServerHttpRequest) return false
 
-        val token = request.servletRequest.getHeader("AUTH") ?: return false
+        val cookies = request.servletRequest.cookies ?: return false
+        val token = cookies.find { it.name == "AUTH" } ?: return false
 
-        val (username, id) = jwtService.validateToken(token) ?: return false
+        val (username, id) = jwtService.validateToken(token.value) ?: return false
 
         attributes["userId"] = id
         attributes["username"] = username

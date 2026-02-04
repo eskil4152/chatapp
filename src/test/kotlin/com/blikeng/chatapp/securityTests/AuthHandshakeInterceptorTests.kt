@@ -8,6 +8,7 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import io.mockk.verify
+import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletRequest
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.ExtendWith
@@ -35,12 +36,14 @@ class AuthHandshakeInterceptorTests {
 
     @Test
     fun shouldPerformHandshake() {
+        val cookiesList: Array<Cookie> = arrayOf(Cookie("AUTH", "token"))
+
         val userId = UUID.randomUUID()
 
-        every { jwtService.validateToken("token") } returns ("user" to userId)
+        every { jwtService.validateToken("token") } returns Pair("user", userId)
 
         val servletRequest = mockk<HttpServletRequest> {
-            every { getHeader(any()) } returns "token"
+            every { cookies } returns cookiesList
         }
 
         val request = ServletServerHttpRequest(servletRequest)
@@ -64,7 +67,7 @@ class AuthHandshakeInterceptorTests {
     @Test
     fun shouldFailWithoutToken() {
         val servletRequest = mockk<HttpServletRequest> {
-            every { getHeader(any()) } returns null
+            every { cookies } returns null
         }
 
         val request = ServletServerHttpRequest(servletRequest)
@@ -81,11 +84,32 @@ class AuthHandshakeInterceptorTests {
     }
 
     @Test
+    fun shouldFailWithoutCorrectCookie() {
+        val cookiesList: Array<Cookie> = arrayOf(Cookie("AUT", "token"))
+        val servletRequest = mockk<HttpServletRequest> {
+            every { cookies } returns cookiesList
+        }
+
+        val request = ServletServerHttpRequest(servletRequest)
+
+        val result = interceptor.beforeHandshake(
+            request,
+            mockk(relaxed = true),
+            mockk(relaxed = true),
+            mutableMapOf()
+        )
+
+        assertFalse(result)
+    }
+
+    @Test
     fun shouldFailWithInvalidToken() {
+        val cookiesList: Array<Cookie> = arrayOf(Cookie("AUTH", "fake_token"))
+
         every { jwtService.validateToken("fake_token") } returns null
 
         val servletRequest = mockk<HttpServletRequest> {
-            every { getHeader(any()) } returns "fake_token"
+            every { cookies } returns cookiesList
         }
 
         val request = ServletServerHttpRequest(servletRequest)

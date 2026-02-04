@@ -3,6 +3,7 @@ package com.blikeng.chatapp.websocketTests
 import com.blikeng.chatapp.services.ChatService
 import com.blikeng.chatapp.websocket.ChatWebSocketHandler
 import io.mockk.every
+import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.verify
@@ -22,11 +23,12 @@ import kotlin.test.assertFailsWith
 @ExtendWith(MockKExtension::class)
 class WebsocketTests {
     @MockK
-    lateinit var chatService: ChatService
+    private lateinit var chatService: ChatService
 
     @MockK
-    lateinit var session: WebSocketSession
+    private lateinit var session: WebSocketSession
 
+    @InjectMockKs
     private lateinit var handler: ChatWebSocketHandler
 
     @BeforeEach
@@ -124,12 +126,12 @@ class WebsocketTests {
 
         every { session.attributes } returns attributes
         every { chatService.joinRoom(any(), any()) } returns Unit
-        every { chatService.broadcast(any(), any()) } returns Unit
+        every { chatService.broadcast(any(), any(), any()) } returns Unit
 
         handler.handleMessage(session, payload)
 
         verify (exactly = 1) { chatService.joinRoom(any(), any()) }
-        verify (exactly = 1) { chatService.broadcast(any(), any()) }
+        verify (exactly = 1) { chatService.broadcast(any(), any(), any()) }
         verify (exactly = 0) { chatService.leaveRoom(any(), any()) }
     }
 
@@ -146,12 +148,12 @@ class WebsocketTests {
         )
 
         every { session.attributes } returns attributes
-        every { chatService.broadcast(any(), any()) } returns Unit
+        every { chatService.broadcast(any(), any(), any()) } returns Unit
 
         handler.handleMessage(session, payload)
 
         verify (exactly = 0) { chatService.joinRoom(any(), any()) }
-        verify (exactly = 1) { chatService.broadcast(any(), any()) }
+        verify (exactly = 1) { chatService.broadcast(any(), any(), any()) }
         verify (exactly = 0) { chatService.leaveRoom(any(), any()) }
     }
 
@@ -169,12 +171,12 @@ class WebsocketTests {
 
         every { session.attributes } returns attributes
         every { chatService.leaveRoom(any(), any()) } returns Unit
-        every { chatService.broadcast(any(), any()) } returns Unit
+        every { chatService.broadcast(any(), any(), any()) } returns Unit
 
         handler.handleMessage(session, payload)
 
         verify (exactly = 0) { chatService.joinRoom(any(), any()) }
-        verify (exactly = 1) { chatService.broadcast(any(), any()) }
+        verify (exactly = 1) { chatService.broadcast(any(), any(), any()) }
         verify (exactly = 1) { chatService.leaveRoom(any(), any()) }
     }
 
@@ -186,6 +188,7 @@ class WebsocketTests {
             .put("roomId", UUID.randomUUID().toString())).toString())
 
         val attributes: MutableMap<String, Any> = mutableMapOf(
+            "userId" to UUID.randomUUID()
         )
 
         every { session.attributes } returns attributes
@@ -198,7 +201,32 @@ class WebsocketTests {
         assertEquals("No username found", ex.reason)
 
         verify (exactly = 0) { chatService.joinRoom(any(), any()) }
-        verify (exactly = 0) { chatService.broadcast(any(), any()) }
+        verify (exactly = 0) { chatService.broadcast(any(), any(), any()) }
+        verify (exactly = 0) { chatService.leaveRoom(any(), any()) }
+    }
+
+    @Test
+    fun shouldFailToSendMessageWithoutUserId(){
+        val payload = TextMessage((jacksonObjectMapper().createObjectNode()
+            .put("type", "JOIN")
+            .put("message", "m" )
+            .put("roomId", UUID.randomUUID().toString())).toString())
+
+        val attributes: MutableMap<String, Any> = mutableMapOf(
+            "username" to "u"
+        )
+
+        every { session.attributes } returns attributes
+
+        val ex = assertFailsWith<ResponseStatusException> {
+            handler.handleMessage(session, payload)
+        }
+
+        assertEquals(HttpStatus.UNAUTHORIZED, ex.statusCode)
+        assertEquals("No User ID found", ex.reason)
+
+        verify (exactly = 0) { chatService.joinRoom(any(), any()) }
+        verify (exactly = 0) { chatService.broadcast(any(), any(), any()) }
         verify (exactly = 0) { chatService.leaveRoom(any(), any()) }
     }
 
@@ -224,7 +252,7 @@ class WebsocketTests {
         assertEquals(exec.reason, "Invalid message type")
 
         verify (exactly = 0) { chatService.joinRoom(any(), any()) }
-        verify (exactly = 0) { chatService.broadcast(any(), any()) }
+        verify (exactly = 0) { chatService.broadcast(any(), any(), any()) }
         verify (exactly = 0) { chatService.leaveRoom(any(), any()) }
     }
 }
