@@ -12,6 +12,7 @@ import io.mockk.junit5.MockKExtension
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.http.HttpStatus
 import org.springframework.web.server.ResponseStatusException
+import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -82,5 +83,24 @@ class AuthServiceTests {
 
         val res = authService.loginUser("u", "p")
         assert(res.name == "AUTH")
+    }
+
+    @Test
+    fun shouldValidateUser(){
+        every { jwtService.validateToken(any()) } returns Pair("foo", UUID.randomUUID())
+
+        authService.validateUser("token")
+    }
+
+    @Test
+    fun shouldFailToValidateUser(){
+        every { jwtService.validateToken(any()) } returns null
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            authService.validateUser("cookie")
+        }
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
+        assertEquals("Invalid token", exception.reason)
     }
 }

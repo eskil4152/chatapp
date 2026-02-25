@@ -5,6 +5,8 @@ import com.blikeng.chatapp.services.AuthService
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.CookieValue
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -35,5 +37,12 @@ class AuthController(
         response.addCookie(cookie)
 
         return ResponseEntity.ok("User logged in")
+    }
+
+    @GetMapping("/auth")
+    fun auth(@CookieValue("AUTH") authCookie: String?): ResponseEntity<String> {
+        authService.validateUser(authCookie)
+
+        return ResponseEntity.ok("Authorized")
     }
 }

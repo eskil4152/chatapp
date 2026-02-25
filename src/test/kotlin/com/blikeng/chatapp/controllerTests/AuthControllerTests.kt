@@ -10,6 +10,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie
@@ -91,5 +92,26 @@ class AuthControllerTests {
         }
             .andExpect { status { isUnauthorized()} }
             .andExpect { content().string("Invalid credentials") }
+    }
+
+    @Test
+    fun shouldAuthUser() {
+        every { authService.validateUser("cookie") } returns Unit
+
+        mockMvc.get("/api/auth") {
+            cookie(Cookie("AUTH", "cookie"))
+        }
+            .andExpect { status { isOk() } }
+    }
+
+    @Test
+    fun shouldFailToAuthUser() {
+        every { authService.validateUser(any()) } throws ResponseStatusException(HttpStatus.UNAUTHORIZED)
+
+        mockMvc.get("/api/auth") {
+            cookie(Cookie("AUTH", "cookie"))
+        }
+            .andExpect { status { isUnauthorized() } }
+            .andExpect { content().string("Invalid token") }
     }
 }
