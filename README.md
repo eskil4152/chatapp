@@ -52,13 +52,13 @@
   * Tests automatically executed
   * SonarQube analysis automatically updated
 
-### TODO:
-- [ ] allow for friends
-- [ ] allow for dm
+### Future additions:
+- [ ] Allow for friends
+- [ ] Allow for dm
 - [ ] Add login options
   - [ ] Google
   - [ ] Microsoft
-- [ ] Fix security vulnerabilities
+- [ ] Fix security vulnerabilities before deployment
   - [ ] Allowed origins
   - [ ] CSRF
   - [ ] Chat Encryption
