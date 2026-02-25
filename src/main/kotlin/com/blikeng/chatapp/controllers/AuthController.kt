@@ -4,6 +4,8 @@ import com.blikeng.chatapp.dtos.LoginDto
 import com.blikeng.chatapp.services.AuthService
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.HttpHeaders
+import org.springframework.http.ResponseCookie
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.CookieValue
 import org.springframework.web.bind.annotation.GetMapping
@@ -18,25 +20,44 @@ class AuthController(
     @Autowired private val authService: AuthService
 ) {
     @PostMapping("/register")
-    fun register(@RequestBody loginDto: LoginDto, response: HttpServletResponse): ResponseEntity<String> {
+    fun register(@RequestBody loginDto: LoginDto): ResponseEntity<String> {
         val username = loginDto.username
         val password = loginDto.password
 
-        val cookie = authService.registerUser(username, password)
-        response.addCookie(cookie)
+        val token = authService.registerUser(username, password)
+        val cookie = ResponseCookie.from("AUTH", token)
+            .httpOnly(true)
+            .secure(true)
+            .path("/")
+            .sameSite("None")
+            .maxAge(24 * 60 * 60)
+            .build()
 
-        return ResponseEntity.status(201).body("User registered successfully")
+        return ResponseEntity
+            .status(201)
+            .header(HttpHeaders.SET_COOKIE, cookie.toString())
+            .body("User registered successfully")
     }
 
     @PostMapping("/login")
-    fun login(@RequestBody loginDto: LoginDto, response: HttpServletResponse): ResponseEntity<String> {
+    fun login(@RequestBody loginDto: LoginDto): ResponseEntity<String> {
         val username = loginDto.username
         val password = loginDto.password
 
-        val cookie = authService.loginUser(username, password)
-        response.addCookie(cookie)
+        val token = authService.loginUser(username, password)
+        val cookie = ResponseCookie.from("AUTH", token)
+            .httpOnly(true)
+            .secure(true)
+            .path("/")
+            .sameSite("None")
+            .maxAge(24 * 60 * 60)
+            .build()
 
-        return ResponseEntity.ok("User logged in")
+
+        return ResponseEntity
+            .status(200)
+            .header(HttpHeaders.SET_COOKIE, cookie.toString())
+            .body("User logged in")
     }
 
     @GetMapping("/auth")

@@ -29,7 +29,7 @@ class AuthControllerTests {
             path = "/"
         }
 
-        every { authService.registerUser("u", "p") } returns cookie
+        every { authService.registerUser("u", "p") } returns "token"
 
         mockMvc.post("/api/register") {
                 contentType = MediaType.APPLICATION_JSON
@@ -65,7 +65,7 @@ class AuthControllerTests {
             path = "/"
         }
 
-        every { authService.loginUser("u", "p") } returns cookie
+        every { authService.loginUser("u", "p") } returns "token"
 
         mockMvc.post("/api/login") {
             contentType = MediaType.APPLICATION_JSON

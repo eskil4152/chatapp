@@ -34,7 +34,7 @@ class AuthServiceTests {
         every { jwtService.generateToken(any()) } returns "TOKEN"
 
         val cookie = authService.registerUser("u", "p")
-        assert(cookie.name == "AUTH")
+        assert(cookie == "TOKEN")
     }
 
     @Test
@@ -82,7 +82,7 @@ class AuthServiceTests {
         every { jwtService.generateToken(any()) } returns "TOKEN"
 
         val res = authService.loginUser("u", "p")
-        assert(res.name == "AUTH")
+        assert(res == "TOKEN")
     }
 
     @Test
