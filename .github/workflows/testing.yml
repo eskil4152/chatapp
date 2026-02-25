@@ -1,11 +1,11 @@
-name: CI
+name: Run tests and update SonarCloud
 
 on:
   pull_request:
     branches: [ "main" ]
 
 jobs:
-  build:
+  test-and-update-sonar:
     runs-on: self-hosted
     steps:
       - name: Checkout repo
