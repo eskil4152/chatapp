@@ -16,31 +16,19 @@ class AuthService(
     @Autowired private val jwtService: JwtService,
     @Autowired private val authRepository: AuthRepository,
 ) {
-    fun makeCookie(user: UserEntity): Cookie {
-        val token = jwtService.generateToken(user)
-
-        val cookie = Cookie("AUTH", token).apply {
-            path = "/"
-            secure = false
-            isHttpOnly = true
-            maxAge = 24 * 60 * 60
-        }
-
-        return cookie
-    }
-
-    fun registerUser(username: String, password: String): Cookie {
+    fun registerUser(username: String, password: String): String {
         if (authRepository.existsByUsername(username)) throw ResponseStatusException(HttpStatus.CONFLICT, "Username already exists")
 
         val user = authRepository.save(UserEntity(username = username, password = passwordService.encodePassword(password)))
-        return makeCookie(user)
+
+        return jwtService.generateToken(user)
     }
 
-    fun loginUser(username: String, password: String): Cookie {
+    fun loginUser(username: String, password: String): String {
         val user = authRepository.findByUsername(username) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials")
         if (!passwordService.checkPassword(password, user.password)) throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials")
 
-        return makeCookie(user)
+        return jwtService.generateToken(user)
     }
 
     fun validateUser(authCookie: String?){
