@@ -255,4 +255,25 @@ class WebsocketTests {
         verify (exactly = 0) { chatService.broadcast(any(), any(), any()) }
         verify (exactly = 0) { chatService.leaveRoom(any(), any()) }
     }
+
+    @Test
+    fun shouldReceivePing(){
+        val payload = TextMessage((jacksonObjectMapper().createObjectNode()
+            .put("type", "PING")
+            .put("message", "" ))
+            .toString())
+
+        val attributes: MutableMap<String, Any> = mutableMapOf(
+            "username" to "u",
+            "userId" to UUID.randomUUID()
+        )
+
+        every { session.attributes } returns attributes
+
+        handler.handleMessage(session, payload)
+
+        verify (exactly = 0) { chatService.joinRoom(any(), any()) }
+        verify (exactly = 0) { chatService.broadcast(any(), any(), any()) }
+        verify (exactly = 0) { chatService.leaveRoom(any(), any()) }
+    }
 }
