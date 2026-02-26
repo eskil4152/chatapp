@@ -47,10 +47,14 @@
   * Thread-safe storage with ConcurrentHashMap and CopyOnWriteArraySet
   * Active sessions per room are stored
   * Broadcasting only broadcats to active sockets in a room
-* CI
+* Testing
   * GitHub Actions runs on pull requests
   * Tests automatically executed
   * SonarQube analysis automatically updated
+* Hosting
+  * GitHub Actions builds Docker image
+  * Deploys to Azure Container Registry
+  * Updates Azure Web App, which looks for ACR image:latest
 
 ### Future additions:
 - [ ] Allow for friends
@@ -58,7 +62,6 @@
 - [ ] Add login options
   - [ ] Google
   - [ ] Microsoft
-- [ ] Fix security vulnerabilities before deployment
-  - [ ] Allowed origins
+- [ ] Add security improvements
   - [ ] CSRF
   - [ ] Chat Encryption
