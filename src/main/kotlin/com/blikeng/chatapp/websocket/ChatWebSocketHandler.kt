@@ -14,6 +14,7 @@ import java.util.*
 
 @Component
 class ChatWebSocketHandler(private val chatService: ChatService) : TextWebSocketHandler() {
+    val mapper = jacksonObjectMapper()
     override fun afterConnectionEstablished(session: WebSocketSession) {
         val id: UUID = (session.attributes["userId"]
             ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No userID found")) as UUID
@@ -22,7 +23,7 @@ class ChatWebSocketHandler(private val chatService: ChatService) : TextWebSocket
     }
 
     override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
-        val json = jacksonObjectMapper().readTree(message.payload)
+        val json = mapper.readTree(message.payload)
 
         val typeString = json["type"].asString()
         val type = try {
@@ -57,6 +58,8 @@ class ChatWebSocketHandler(private val chatService: ChatService) : TextWebSocket
 
                 chatService.broadcast(roomId, message, username)
             }
+
+            MessageType.PING -> {}
         }
     }
 
@@ -67,6 +70,6 @@ class ChatWebSocketHandler(private val chatService: ChatService) : TextWebSocket
     }
 
     enum class MessageType {
-        MESSAGE, JOIN, LEAVE
+        MESSAGE, JOIN, LEAVE, PING
     }
 }

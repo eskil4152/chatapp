@@ -4,7 +4,7 @@ on:
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@main
@@ -25,3 +25,7 @@ jobs:
           docker tag ${{ secrets.REGISTRY_LOGIN_SERVER }}/chatapp:${{ github.sha }} ${{ secrets.REGISTRY_LOGIN_SERVER }}/chatapp:latest
           docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/chatapp:${{ github.sha }}
           docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/chatapp:latest
+
+      - name: 'Update Web App'
+        run: |
+          az webapp restart --name ${{ secrets.WEBAPP_NAME }} --resource-group ${{ secrets.RESOURCE_GROUP }}
