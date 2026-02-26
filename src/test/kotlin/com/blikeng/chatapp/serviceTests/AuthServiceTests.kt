@@ -93,11 +93,21 @@ class AuthServiceTests {
     }
 
     @Test
-    fun shouldFailToValidateUser(){
+    fun shouldFailToValidateUserWithInvalidCookie(){
         every { jwtService.validateToken(any()) } returns null
 
         val exception = assertFailsWith<ResponseStatusException> {
             authService.validateUser("cookie")
+        }
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
+        assertEquals("Invalid token", exception.reason)
+    }
+
+    @Test
+    fun shouldFailToValidateUserWithoutToken(){
+        val exception = assertFailsWith<ResponseStatusException> {
+            authService.validateUser(null)
         }
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
