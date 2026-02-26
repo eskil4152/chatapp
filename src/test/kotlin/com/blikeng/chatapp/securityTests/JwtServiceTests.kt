@@ -2,6 +2,8 @@ package com.blikeng.chatapp.securityTests
 
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.security.JwtService
+import io.github.cdimascio.dotenv.Dotenv
+import io.github.cdimascio.dotenv.dotenv
 import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.security.Keys
 import io.mockk.every
@@ -68,7 +70,9 @@ class JwtServiceTests {
         val jwtService = spyk(JwtService())
 
         every { jwtService.getSystemVariable() } returns null
-        every { jwtService.getDotenvVariable() } returns "superSecretKeyForDotenvWhichIsAbsolutelySecureEnoughAndFarEnoughBitsToBeAbleToBeMadeIntoASecureEnoughKey"
+
+        System.setProperty("DOTENV_DIR", "src/test/resources/")
+        System.setProperty("DOTENV_FILE", "test.env")
 
         val key = jwtService.key()
 
@@ -79,6 +83,9 @@ class JwtServiceTests {
             key.encoded.toString(Charsets.UTF_8),
             "superSecretKeyForSysEnvWhichIsAbsolutelySecureEnoughAndFarEnoughBitsToBeAbleToBeMadeIntoASecureEnoughKey"
         )
+
+        System.clearProperty("DOTENV_DIR")
+        System.clearProperty("DOTENV_FILE")
     }
 
     @Test

@@ -16,7 +16,16 @@ class JwtService {
     }
 
     fun getDotenvVariable(): String? {
-        return dotenv(){ ignoreIfMissing = true }["JWT_SECRET"]
+        val dir = System.getProperty("DOTENV_DIR") ?: "."
+        val file = System.getProperty("DOTENV_FILE") ?: ".env"
+
+        val env = dotenv {
+            directory = dir
+            filename = file
+            ignoreIfMissing = true
+        }
+
+        return env["JWT_SECRET"]
     }
 
     fun key(): SecretKey {
