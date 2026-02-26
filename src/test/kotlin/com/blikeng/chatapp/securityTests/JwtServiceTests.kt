@@ -73,6 +73,7 @@ class JwtServiceTests {
 
         System.setProperty("DOTENV_DIR", "src/test/resources/")
         System.setProperty("DOTENV_FILE", "test.env")
+        System.setProperty("DOTENV_KEY", "JWT_SECRET_TEST")
 
         val key = jwtService.key()
 
@@ -86,6 +87,7 @@ class JwtServiceTests {
 
         System.clearProperty("DOTENV_DIR")
         System.clearProperty("DOTENV_FILE")
+        System.clearProperty("DOTENV_KEY")
     }
 
     @Test
