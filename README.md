@@ -46,7 +46,7 @@
 * Room sessions management
   * Thread-safe storage with ConcurrentHashMap and CopyOnWriteArraySet
   * Active sessions per room are stored
-  * Broadcasting only broadcats to active sockets in a room
+  * Broadcasting only broadcasts to active sockets in a room
 * Testing
   * GitHub Actions runs on pull requests
   * Tests automatically executed
@@ -65,3 +65,7 @@
 - [ ] Add security improvements
   - [ ] CSRF
   - [ ] Chat Encryption
+- [ ] Optimize database queries
+  - [ ] Compress messages before saving
+  - [ ] Save in batches
+  - [ ] Load unsaved messages on join

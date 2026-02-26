@@ -2,8 +2,6 @@ package com.blikeng.chatapp.securityTests
 
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.security.JwtService
-import io.github.cdimascio.dotenv.Dotenv
-import io.github.cdimascio.dotenv.dotenv
 import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.security.Keys
 import io.mockk.every
