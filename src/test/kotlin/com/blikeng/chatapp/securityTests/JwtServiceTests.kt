@@ -66,6 +66,22 @@ class JwtServiceTests {
     }
 
     @Test
+    fun shouldUseDefaultDotenvFallbackWhenNoPropertiesSet() {
+        System.clearProperty("DOTENV_DIR")
+        System.clearProperty("DOTENV_FILE")
+        System.clearProperty("DOTENV_KEY")
+
+        val jwtService = spyk(JwtService())
+
+        every { jwtService.getSystemVariable() } returns null
+        every { jwtService.getDotenvVariable() } returns null
+
+        assertFailsWith<RuntimeException> {
+            jwtService.key()
+        }
+    }
+
+    @Test
     fun shouldGetSecretFromDotenv(){
         val jwtService = spyk(JwtService())
 
