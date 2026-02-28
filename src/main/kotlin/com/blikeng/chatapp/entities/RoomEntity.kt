@@ -7,9 +7,11 @@ import java.util.*
 @Table(name = "rooms")
 class RoomEntity(
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    val id: UUID? = null,
+    val id: UUID = UUID.randomUUID(),
 
     @Column(unique = true, nullable = false)
     val name: String,
+
+    val encrypted: Boolean = false,
+    val keyVersion: Int = 1,
 )

@@ -14,8 +14,7 @@ import java.util.UUID
 @Table(name = "chats")
 class ChatEntity (
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    val id: UUID? = null,
+    val id: UUID = UUID.randomUUID(),
 
     @ManyToOne
     @JoinColumn(name = "room_id")
@@ -25,7 +24,10 @@ class ChatEntity (
     @JoinColumn(name = "user_id")
     val user: UserEntity,
 
-    val message: String,
+    val timestamp: Timestamp,
 
-    val timestamp: Timestamp
+    var message: String? = null,
+    var ciphertext: ByteArray? = null,
+    var nonce: ByteArray? = null,
+    var keyVersion: Int? = null,
 )
