@@ -4,6 +4,8 @@ import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
+import com.blikeng.chatapp.security.ChatEncrypt
+import com.blikeng.chatapp.security.aad
 import jakarta.annotation.PreDestroy
 import jakarta.transaction.Transactional
 import org.springframework.beans.factory.annotation.Autowired
@@ -28,6 +30,7 @@ class ChatService(
     @Autowired private val roomRepository: RoomRepository,
     @Autowired private val userRepository: UserRepository,
     private val chatFlushService: ChatFlushService,
+    private val encrypt: ChatEncrypt
 ) {
     val rooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
     val users = ConcurrentHashMap<UUID, WebSocketSession>()
@@ -60,14 +63,37 @@ class ChatService(
     }
 
     fun addMessage(message: ReceivedMessage){
-        val chatEntity = ChatEntity(
-            user = userRepository.findById(message.userId).orElseThrow(),
-            room = roomRepository.findById(message.roomId).orElseThrow(),
-            message = message.content,
-            timestamp = Timestamp(System.currentTimeMillis())
+        val user = userRepository.findById(message.userId).orElseThrow()
+        val room = roomRepository.findById(message.roomId).orElseThrow()
+
+        val ts = Timestamp(System.currentTimeMillis())
+
+        val entity = ChatEntity(
+            user = user,
+            room = room,
+            message = null,
+            timestamp = ts
         )
 
-        buffer.add(chatEntity)
+        if (!room.encrypted) {
+            entity.message = message.content
+            entity.ciphertext = null
+            entity.nonce = null
+            entity.keyVersion = null
+        } else {
+            val v = room.keyVersion
+            val enc = encrypt.encrypt(
+                plaintext = message.content,
+                aad = aad(room.id, entity.id, user.id),
+                keyVersion = v
+            )
+            entity.message = null
+            entity.ciphertext = enc.ciphertext
+            entity.nonce = enc.nonce
+            entity.keyVersion = v
+        }
+
+        buffer.add(entity)
     }
 
     fun registerSession(userId: UUID, session: WebSocketSession) {
@@ -91,12 +117,30 @@ class ChatService(
         val allMessages = (persisted + buffer)
             .sortedBy { it.timestamp }
 
+        println("Sending: ${allMessages.size} messages")
         fetchAllMessages(allMessages, session)
     }
 
     fun fetchAllMessages(messages: List<ChatEntity>, session: WebSocketSession){
-        for (message in messages) {
-            session.sendMessage(TextMessage(jacksonObjectMapper().writeValueAsString(SendMessage(message.user.username, message.message!!))))
+        for (m in messages) {
+            val content = if (m.ciphertext == null) {
+                m.message ?: ""
+            } else {
+                encrypt.decrypt(
+                    ciphertext = m.ciphertext!!,
+                    nonce = m.nonce!!,
+                    aad = aad(m.room.id, m.id, m.user.id),
+                    keyVersion = m.keyVersion!!
+                )
+            }
+
+            session.sendMessage(
+                TextMessage(
+                    jacksonObjectMapper().writeValueAsString(
+                        SendMessage(m.user.username, content)
+                    )
+                )
+            )
         }
     }
 

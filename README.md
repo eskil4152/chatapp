@@ -67,5 +67,3 @@
   - [ ] Chat Encryption
 - [ ] Optimize database queries
   - [ ] Compress messages before saving
-  - [ ] Save in batches
-  - [ ] Load unsaved messages on join
