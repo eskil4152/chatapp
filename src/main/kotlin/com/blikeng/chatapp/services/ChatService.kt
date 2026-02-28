@@ -85,7 +85,7 @@ class ChatService(
             val enc = encrypt.encrypt(
                 plaintext = message.content,
                 aad = aad(room.id, entity.id, user.id),
-                keyVersion = v
+                keyVersion = v!!
             )
             entity.message = null
             entity.ciphertext = enc.ciphertext

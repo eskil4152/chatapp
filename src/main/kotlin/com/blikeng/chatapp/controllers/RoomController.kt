@@ -32,7 +32,7 @@ class RoomController(
         if (authCookie == null) return ResponseEntity.status(401).body("No cookie found")
 
         if (roomInfo.roomName.isNullOrBlank()) return ResponseEntity.badRequest().body("Invalid room name")
-        roomService.makeNewRoom(roomInfo.roomName, authCookie)
+        roomService.makeNewRoom(roomInfo.roomName, roomInfo.encrypted, authCookie)
 
         return ResponseEntity.status(201).body("Room created successfully")
     }

@@ -21,20 +21,25 @@ class RoomService(
     @Autowired private val userService: UserService,
     @Autowired private val jwtService: JwtService
 ) {
-    fun makeNewRoom(roomName: String, token: String) {
-        if (roomName.trim() == "") throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid name")
+    fun makeNewRoom(roomName: String, encrypted: Boolean?, token: String) {
+        if (roomName.trim().isEmpty()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid name")
 
-        val (_, userId ) =
+        val (_, userId) =
             jwtService.validateToken(token) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
 
         val user =
             userService.getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid user")
 
-        val room = roomRepository.save(RoomEntity(name = roomName))
+        val room = roomRepository.save(
+            RoomEntity(
+                name = roomName,
+                encrypted = encrypted ?: false,
+                keyVersion = if (encrypted == true) 1 else null
+            ))
 
-        val id = UserRoomId(userId, room.id!!)
-
+        val id = UserRoomId(userId, room.id)
         val userRoom = UserRoomEntity(id, user, room, RoomRole.OWNER)
+
         userRoomRepository.save(userRoom)
     }
 
