@@ -12,7 +12,10 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.slot
 import io.mockk.verify
+import org.junit.jupiter.api.assertNotNull
+import org.junit.jupiter.api.assertNull
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.http.HttpStatus
 import org.springframework.web.server.ResponseStatusException
@@ -33,12 +36,52 @@ class RoomServiceTests {
 
     @Test
     fun shouldMakeNewRoom(){
+        val roomSlot = slot<RoomEntity>()
+
         every { jwtService.validateToken(any()) } returns Pair("u", UUID.randomUUID())
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
-        every { roomRepository.save(any()) } returns RoomEntity(id = UUID.randomUUID(), name = "r")
+        every { roomRepository.save(capture(roomSlot)) } answers {
+            val r = roomSlot.captured
+            RoomEntity(
+                id = UUID.randomUUID(),
+                name = r.name,
+                encrypted = r.encrypted,
+                keyVersion = r.keyVersion
+            )
+        }
         every { userRoomRepository.save(any()) } answers { firstArg() }
 
         roomService.makeNewRoom("r", false, "token")
+
+        val room = roomSlot.captured
+        assertEquals("r", room.name)
+        assertEquals(false, room.encrypted)
+        assertNull(room.keyVersion)
+    }
+
+    @Test
+    fun shouldMakeNewEncryptedRoom(){
+        val roomSlot = slot<RoomEntity>()
+
+        every { jwtService.validateToken(any()) } returns Pair("u", UUID.randomUUID())
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+        every { roomRepository.save(capture(roomSlot)) } answers {
+            val r = roomSlot.captured
+            RoomEntity(
+                id = UUID.randomUUID(),
+                name = r.name,
+                encrypted = r.encrypted,
+                keyVersion = r.keyVersion
+            )
+        }
+        every { userRoomRepository.save(any()) } answers { firstArg() }
+
+        roomService.makeNewRoom("r", true, "token")
+
+        val room = roomSlot.captured
+        assertEquals("r", room.name)
+        assertEquals(true, room.encrypted)
+        assertNotNull(room.keyVersion)
     }
 
     @Test

@@ -33,7 +33,7 @@ class RoomService(
         val room = roomRepository.save(
             RoomEntity(
                 name = roomName,
-                encrypted = encrypted ?: false,
+                encrypted = encrypted == true,
                 keyVersion = if (encrypted == true) 1 else null
             ))
 

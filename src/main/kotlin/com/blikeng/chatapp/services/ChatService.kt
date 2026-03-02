@@ -7,8 +7,6 @@ import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.security.ChatEncrypt
 import com.blikeng.chatapp.security.aad
 import jakarta.annotation.PreDestroy
-import jakarta.transaction.Transactional
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
@@ -21,7 +19,6 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
 
 @Service
 @EnableScheduling
