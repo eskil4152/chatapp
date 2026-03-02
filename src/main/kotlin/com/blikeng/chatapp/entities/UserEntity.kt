@@ -41,7 +41,4 @@ class UserEntity (
         inverseJoinColumns = [JoinColumn(name = "room_id")]
     )
     val rooms: MutableSet<RoomEntity> = mutableSetOf(),
-
-    //@OneToMany(mappedBy = "user", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
-    //val friends: MutableSet<UserFriendEntity> = mutableSetOf()
 )

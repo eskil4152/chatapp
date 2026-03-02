@@ -1,5 +1,9 @@
 package com.blikeng.chatapp.services
 
+import com.blikeng.chatapp.ErrorMessages.INVALID_ROOM_NAME
+import com.blikeng.chatapp.ErrorMessages.INVALID_TOKEN
+import com.blikeng.chatapp.ErrorMessages.INVALID_USER
+import com.blikeng.chatapp.ErrorMessages.ROOM_NOT_FOUND
 import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.entities.RoomRole
 import com.blikeng.chatapp.entities.UserRoomEntity
@@ -21,13 +25,13 @@ class RoomService(
     @Autowired private val jwtService: JwtService
 ) {
     fun makeNewRoom(roomName: String, encrypted: Boolean?, token: String) {
-        if (roomName.trim().isEmpty()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid name")
+        if (roomName.trim().isEmpty()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, INVALID_ROOM_NAME)
 
         val (_, userId) =
-            jwtService.validateToken(token) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
+            jwtService.validateToken(token) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_TOKEN)
 
         val user =
-            userService.getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid user")
+            userService.getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
 
         val room = roomRepository.save(
             RoomEntity(
@@ -44,7 +48,7 @@ class RoomService(
 
     fun getAllUserRooms(token: String): List<RoomEntity> {
         val (_, userId ) =
-            jwtService.validateToken(token) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
+            jwtService.validateToken(token) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_TOKEN)
 
         val rooms = userRoomRepository.findAllRoomsByUserId(userId)
 
@@ -53,14 +57,14 @@ class RoomService(
 
     fun joinRoom(roomId: UUID, token: String){
         val (_, userId ) =
-            jwtService.validateToken(token) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
+            jwtService.validateToken(token) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_TOKEN)
 
         val user =
-            userService.getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid user")
+            userService.getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
 
         val room = roomRepository.findById(roomId).orElse(null) ?: throw ResponseStatusException(
             HttpStatus.NOT_FOUND,
-            "Room not found"
+            ROOM_NOT_FOUND
         )
 
         val userRoom = UserRoomEntity(UserRoomId(userId, roomId), user, room, RoomRole.MEMBER)

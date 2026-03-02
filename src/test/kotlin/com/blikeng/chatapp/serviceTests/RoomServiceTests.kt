@@ -116,7 +116,7 @@ class RoomServiceTests {
         }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
-        assertEquals("Invalid name", exception.reason)
+        assertEquals("Invalid room name", exception.reason)
     }
 
     @Test

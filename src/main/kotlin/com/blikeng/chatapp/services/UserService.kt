@@ -1,5 +1,9 @@
 package com.blikeng.chatapp.services
 
+import com.blikeng.chatapp.ErrorMessages.INVALID_PASSWORD
+import com.blikeng.chatapp.ErrorMessages.INVALID_TOKEN
+import com.blikeng.chatapp.ErrorMessages.INVALID_USER
+import com.blikeng.chatapp.ErrorMessages.USER_NOT_FOUND
 import com.blikeng.chatapp.dtos.ChangeUserDTO
 import com.blikeng.chatapp.dtos.EditPasswordDTO
 import com.blikeng.chatapp.dtos.UserDTO
@@ -24,8 +28,8 @@ class UserService(
     }
 
     fun getSelf(token: String): UserDTO {
-        val (_, userId ) = jwtService.validateToken(token) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
-        val user = getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found")
+        val (_, userId ) = jwtService.validateToken(token) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_TOKEN)
+        val user = getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, USER_NOT_FOUND)
 
         return UserDTO(
             user.username,
@@ -40,8 +44,8 @@ class UserService(
     }
 
     fun editProfile(changeUserDTO: ChangeUserDTO, authCookie: String) {
-        val (_, userId ) = jwtService.validateToken(authCookie) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
-        val user = getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid user")
+        val (_, userId ) = jwtService.validateToken(authCookie) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_TOKEN)
+        val user = getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
 
         changeUserDTO.bio.let { user.bio = it }
         changeUserDTO.email.let { user.email = it }
@@ -52,9 +56,9 @@ class UserService(
     }
 
     fun editPassword(authCookie: String, passwords: EditPasswordDTO) {
-        val (_, userId ) = jwtService.validateToken(authCookie) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
-        val user = getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid user")
-        if (!passwordService.checkPassword(passwords.oldPassword, user.password)) throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid password")
+        val (_, userId ) = jwtService.validateToken(authCookie) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_TOKEN)
+        val user = getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
+        if (!passwordService.checkPassword(passwords.oldPassword, user.password)) throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_PASSWORD)
 
         val encoded = passwordService.encodePassword(passwords.newPassword)
         user.password = encoded

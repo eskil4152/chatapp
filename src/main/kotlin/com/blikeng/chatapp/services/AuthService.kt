@@ -1,5 +1,8 @@
 package com.blikeng.chatapp.services
 
+import com.blikeng.chatapp.ErrorMessages.INVALID_CREDENTIALS
+import com.blikeng.chatapp.ErrorMessages.INVALID_TOKEN
+import com.blikeng.chatapp.ErrorMessages.USERNAME_ALREADY_EXISTS
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.repositories.AuthRepository
 import com.blikeng.chatapp.security.JwtService
@@ -16,7 +19,7 @@ class AuthService(
     @Autowired private val authRepository: AuthRepository,
 ) {
     fun registerUser(username: String, password: String): String {
-        if (authRepository.existsByUsername(username)) throw ResponseStatusException(HttpStatus.CONFLICT, "Username already exists")
+        if (authRepository.existsByUsername(username)) throw ResponseStatusException(HttpStatus.CONFLICT, USERNAME_ALREADY_EXISTS)
 
         val user = authRepository.save(UserEntity(username = username, password = passwordService.encodePassword(password)))
 
@@ -24,15 +27,15 @@ class AuthService(
     }
 
     fun loginUser(username: String, password: String): String {
-        val user = authRepository.findByUsername(username) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials")
-        if (!passwordService.checkPassword(password, user.password)) throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials")
+        val user = authRepository.findByUsername(username) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_CREDENTIALS)
+        if (!passwordService.checkPassword(password, user.password)) throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_CREDENTIALS)
 
         return jwtService.generateToken(user)
     }
 
     fun validateUser(authCookie: String?){
-        if (authCookie == null) throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
+        if (authCookie == null) throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_TOKEN)
 
-        if (jwtService.validateToken(authCookie) == null) throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token")
+        if (jwtService.validateToken(authCookie) == null) throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_TOKEN)
     }
 }
