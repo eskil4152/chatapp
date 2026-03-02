@@ -16,3 +16,9 @@ spring:
 
 server:
   port: '5050'
+
+app:
+  crypto:
+    messageKeyV1B64: ${APP_MESSAGE_KEY_V1_B64}
+  jwt:
+    secret: ${JWT_SECRET}

@@ -1,43 +1,21 @@
 package com.blikeng.chatapp.security
 
 import com.blikeng.chatapp.entities.UserEntity
-import io.github.cdimascio.dotenv.dotenv
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.security.Keys
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.util.*
 import javax.crypto.SecretKey
 
 @Service
-class JwtService {
-    fun getSystemVariable(): String? {
-        return System.getenv("JWT_SECRET")
-    }
-
-    fun getDotenvVariable(): String? {
-        val dir = System.getProperty("DOTENV_DIR") ?: "."
-        val file = System.getProperty("DOTENV_FILE") ?: ".env"
-        val key = System.getProperty("DOTENV_KEY") ?: "JWT_SECRET"
-
-
-        val env = dotenv {
-            directory = dir
-            filename = file
-            ignoreIfMissing = true
-        }
-
-        return env[key]
-    }
-
-    fun key(): SecretKey {
-        val secret: String? = getSystemVariable() ?: getDotenvVariable()
-        if (secret == null) {
-            throw RuntimeException("JWT_SECRET not found")
-        }
-
-        return Keys.hmacShaKeyFor(secret.toByteArray())
-    }
+class JwtService(
+    @Value("\${app.jwt.secret}")
+    private val secret: String
+) {
+    private fun key(): SecretKey =
+        Keys.hmacShaKeyFor(secret.toByteArray())
 
     fun generateToken(user: UserEntity): String {
         return Jwts.builder()

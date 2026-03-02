@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.security
 
-import io.github.cdimascio.dotenv.dotenv
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.security.SecureRandom
 import java.util.UUID
@@ -11,28 +11,15 @@ import javax.crypto.spec.SecretKeySpec
 import java.util.Base64
 
 @Component
-class ChatEncrypt {
+class ChatEncrypt(
+    @Value("\${app.crypto.messageKeyV1B64}")
+    keyB64: String
+) {
     private val rng = SecureRandom()
-    private val keyV1: SecretKey = loadAesKeyB64("APP_MESSAGE_KEY_V1_B64")
-
-    private fun getSystemVariable(key: String): String? = System.getenv(key)
-
-    private fun getDotenvVariable(key: String): String? {
-        val env = dotenv {
-            directory = System.getProperty("DOTENV_DIR") ?: "."
-            filename = System.getProperty("DOTENV_FILE") ?: ".env"
-            ignoreIfMissing = true
-        }
-        return env[key]
-    }
-
-    private fun loadAesKeyB64(keyName: String): SecretKey {
-        val b64 = getSystemVariable(keyName) ?: getDotenvVariable(keyName)
-        ?: throw RuntimeException("$keyName not found (env or .env)")
-
-        val raw = Base64.getDecoder().decode(b64.trim().trim('"'))
-        require(raw.size == 32) { "$keyName must decode to 32 bytes (got ${raw.size})" }
-        return SecretKeySpec(raw, "AES")
+    private val keyV1: SecretKey = run {
+        val raw = Base64.getDecoder().decode(keyB64.trim())
+        require(raw.size == 32)
+        SecretKeySpec(raw, "AES")
     }
 
     fun encrypt(plaintext: String, aad: ByteArray, keyVersion: Int): Encrypted {
