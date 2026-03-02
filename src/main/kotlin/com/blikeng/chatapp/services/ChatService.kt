@@ -1,11 +1,11 @@
 package com.blikeng.chatapp.services
 
+import com.blikeng.chatapp.config.configureAad
 import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.security.ChatEncrypt
-import com.blikeng.chatapp.security.aad
 import jakarta.annotation.PreDestroy
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.scheduling.annotation.Scheduled
@@ -81,7 +81,7 @@ class ChatService(
             val v = room.keyVersion
             val enc = encrypt.encrypt(
                 plaintext = message.content,
-                aad = aad(room.id, entity.id, user.id),
+                aad = configureAad(room.id, entity.id, user.id),
                 keyVersion = v!!
             )
             entity.message = null
@@ -126,7 +126,7 @@ class ChatService(
                 encrypt.decrypt(
                     ciphertext = m.ciphertext!!,
                     nonce = m.nonce!!,
-                    aad = aad(m.room.id, m.id, m.user.id),
+                    aad = configureAad(m.room.id, m.id, m.user.id),
                     keyVersion = m.keyVersion!!
                 )
             }

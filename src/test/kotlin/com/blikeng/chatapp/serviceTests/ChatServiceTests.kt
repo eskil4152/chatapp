@@ -8,11 +8,9 @@ import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.security.ChatEncrypt
 import com.blikeng.chatapp.security.Encrypted
-import com.blikeng.chatapp.security.aad
 import com.blikeng.chatapp.services.ChatFlushService
 import com.blikeng.chatapp.services.ChatService
 import com.blikeng.chatapp.services.ReceivedMessage
-import io.mockk.Called
 import io.mockk.Runs
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
@@ -204,7 +202,7 @@ class ChatServiceTests {
         val room = RoomEntity(name = "r", encrypted = true, keyVersion = 1)
         val user = UserEntity(username = "u", password = "")
 
-        val chat1 = ChatEntity(
+        val chat = ChatEntity(
             room = room,
             user = user,
             message = null,
@@ -214,7 +212,7 @@ class ChatServiceTests {
             timestamp = Timestamp(System.currentTimeMillis())
         )
 
-        val saved: List<ChatEntity> = listOf(chat1)
+        val saved: List<ChatEntity> = listOf(chat)
 
         every { chatRepository.getAllChatsByRoomId(any()) } returns saved
         every { encrypt.decrypt(any(), any(), any(), any()) } returns "message"

@@ -3,7 +3,6 @@ package com.blikeng.chatapp.security
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.security.SecureRandom
-import java.util.UUID
 import javax.crypto.Cipher
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
@@ -40,6 +39,3 @@ class ChatEncrypt(
 }
 
 data class Encrypted(val ciphertext: ByteArray, val nonce: ByteArray)
-
-fun aad(roomId: UUID, chatId: UUID, userId: UUID): ByteArray =
-    "$roomId|$chatId|$userId".toByteArray(Charsets.UTF_8)
