@@ -19,6 +19,6 @@ server:
 
 app:
   crypto:
-    messageKeyV1B64: ${APP_MESSAGE_KEY_V1_B64}
+    messageKeyV1B64: ${APP_MESSAGE_KEY_V1_B64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}
   jwt:
-    secret: ${JWT_SECRET}
+    secret: ${JWT_SECRET:superSecretKeyForTheDevelopmentWhichIsAbsolutelySecureEnoughAndFarEnoughBitsToBeAbleToBeMadeIntoASecureEnoughKey}

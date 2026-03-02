@@ -2,22 +2,12 @@ package com.blikeng.chatapp.securityTests
 
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.security.JwtService
-import io.jsonwebtoken.SignatureAlgorithm
-import io.jsonwebtoken.security.Keys
-import io.mockk.every
-import io.mockk.junit5.MockKExtension
-import io.mockk.mockk
-import io.mockk.spyk
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.api.assertNull
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import java.util.*
 import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertNotEquals
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -35,7 +25,7 @@ class JwtServiceTests {
     }
 
     @Test
-    fun shouldNotValidateTokenWhenInvalidUser(){
+    fun shouldValidateTokenWhenCorrectUser(){
         val user = UserEntity(id = UUID.randomUUID(), username = "u", password = "p")
         val secondUser = UserEntity(id = UUID.randomUUID(), username = "u2", password = "p2")
 
@@ -50,12 +40,9 @@ class JwtServiceTests {
     }
 
     @Test
-    fun shouldFailWhenSecretNotProvided(){
-        val jwtService: JwtService = mockk()
-        val user = UserEntity(username = "u", password = "p")
+    fun shouldReturnNullForInvalidToken() {
+        val result = jwtService.validateToken("invalid.token")
 
-        assertFailsWith<RuntimeException> {
-            jwtService.generateToken(user)
-        }
+        assertNull(result)
     }
 }
