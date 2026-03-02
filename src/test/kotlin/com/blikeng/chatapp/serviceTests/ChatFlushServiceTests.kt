@@ -1,7 +1,9 @@
 import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.services.ChatFlushService
-import io.mockk.*
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
 import kotlin.test.Test
 
 class ChatFlushServiceTests {

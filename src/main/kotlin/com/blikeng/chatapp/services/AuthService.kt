@@ -4,7 +4,6 @@ import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.repositories.AuthRepository
 import com.blikeng.chatapp.security.JwtService
 import com.blikeng.chatapp.security.PasswordService
-import jakarta.servlet.http.Cookie
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
