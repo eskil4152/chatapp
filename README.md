@@ -64,6 +64,5 @@
   - [ ] Microsoft
 - [ ] Add security improvements
   - [ ] CSRF
-  - [ ] Chat Encryption
 - [ ] Optimize database queries
   - [ ] Compress messages before saving

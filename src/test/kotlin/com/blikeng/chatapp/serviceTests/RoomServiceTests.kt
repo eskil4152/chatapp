@@ -38,7 +38,7 @@ class RoomServiceTests {
         every { roomRepository.save(any()) } returns RoomEntity(id = UUID.randomUUID(), name = "r")
         every { userRoomRepository.save(any()) } answers { firstArg() }
 
-        roomService.makeNewRoom("r", "token")
+        roomService.makeNewRoom("r", false, "token")
     }
 
     @Test
@@ -46,7 +46,7 @@ class RoomServiceTests {
         every { jwtService.validateToken(any()) } returns null
 
         val exception = assertFailsWith<ResponseStatusException> {
-            roomService.makeNewRoom("r", "token")
+            roomService.makeNewRoom("r", false, "token")
         }
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
@@ -59,7 +59,7 @@ class RoomServiceTests {
         every { userService.getUserById(any()) } returns null
 
         val exception = assertFailsWith<ResponseStatusException> {
-            roomService.makeNewRoom("r", "token")
+            roomService.makeNewRoom("r", false, "token")
         }
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
@@ -69,7 +69,7 @@ class RoomServiceTests {
     @Test
     fun shouldFailToMakeRoomWithInvalidRoomName(){
         val exception = assertFailsWith<ResponseStatusException> {
-            roomService.makeNewRoom("", "token")
+            roomService.makeNewRoom("", false, "token")
         }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)

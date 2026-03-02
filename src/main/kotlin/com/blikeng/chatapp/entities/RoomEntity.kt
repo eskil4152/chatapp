@@ -13,5 +13,5 @@ class RoomEntity(
     val name: String,
 
     val encrypted: Boolean = false,
-    val keyVersion: Int?
+    val keyVersion: Int? = null
 )

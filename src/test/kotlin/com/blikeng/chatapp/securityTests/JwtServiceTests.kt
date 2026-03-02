@@ -32,7 +32,7 @@ class JwtServiceTests {
         val token = jwtService.generateToken(user)
 
         assert(token.isNotBlank())
-        assert(jwtService.validateToken(token) == user.id)
+        assert(jwtService.validateToken(token) == Pair("u", user.id))
     }
 
     @Test

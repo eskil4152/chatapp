@@ -41,13 +41,14 @@ class RoomControllerTests {
 
     @Test
     fun shouldMakeNewRoom(){
-        every { roomService.makeNewRoom("room", "token") } returns Unit
+        every { roomService.makeNewRoom("room", false, "token") } returns Unit
 
         mockMvc.post("/api/rooms/make") {
             cookie(Cookie("AUTH", "token"))
             contentType = MediaType.APPLICATION_JSON
             content = "{\n" +
-                    "\t\"roomName\":\"room\"\n" +
+                    "\t\"roomName\":\"room\",\n" +
+                    "\t\"encrypted\":false\n" +
                     "}"
         }
             .andExpect { status { isCreated() } }
@@ -59,7 +60,8 @@ class RoomControllerTests {
         mockMvc.post("/api/rooms/make") {
             contentType = MediaType.APPLICATION_JSON
             content = "{\n" +
-                    "\t\"roomName\":\"room\"\n" +
+                    "\t\"roomName\":\"room\",\n" +
+                    "\t\"encrypted\":false\n" +
                     "}"
         }
             .andExpect { status { isUnauthorized() } }
@@ -83,7 +85,8 @@ class RoomControllerTests {
             cookie(Cookie("AUTH", "token"))
             contentType = MediaType.APPLICATION_JSON
             content = "{\n" +
-                    "\t\"roomName\":\"  \"\n" +
+                    "\t\"roomName\":\"\",\n" +
+                    "\t\"encrypted\":false\n" +
                     "}"
         }
             .andExpect { status { isBadRequest() } }

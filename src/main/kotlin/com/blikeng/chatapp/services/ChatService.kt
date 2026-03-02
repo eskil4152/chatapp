@@ -26,9 +26,9 @@ import java.util.concurrent.atomic.AtomicInteger
 @Service
 @EnableScheduling
 class ChatService(
-    @Autowired private val chatRepository: ChatRepository,
-    @Autowired private val roomRepository: RoomRepository,
-    @Autowired private val userRepository: UserRepository,
+    private val chatRepository: ChatRepository,
+    private val roomRepository: RoomRepository,
+    private val userRepository: UserRepository,
     private val chatFlushService: ChatFlushService,
     private val encrypt: ChatEncrypt
 ) {

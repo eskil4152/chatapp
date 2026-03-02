@@ -6,6 +6,8 @@ import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
+import com.blikeng.chatapp.security.ChatEncrypt
+import com.blikeng.chatapp.services.ChatFlushService
 import com.blikeng.chatapp.services.ChatService
 import com.blikeng.chatapp.services.ReceivedMessage
 import io.mockk.Called
@@ -40,6 +42,12 @@ class ChatServiceTests {
 
     @MockK
     lateinit var userRepository: UserRepository
+
+    @MockK
+    lateinit var encrypt: ChatEncrypt
+
+    @MockK
+    lateinit var chatFlushService: ChatFlushService
 
     @InjectMockKs
     private lateinit var chatService: ChatService
