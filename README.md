@@ -13,14 +13,20 @@
 * Database
   * All tables are version-controlled and created via Flyway
   * Relational modeling with foreign keys
+  * Saves in batches to reduce database load
+    * Batches depend on time since last batch, or number of messages in batch
+* Encryption
+  * Optional per-room message encryption using AES-256-GCM
+  * Stores `ciphertext`, `nonce`, and `keyVersion` per message
+  * Uses AAD to bind messages to room/user/message identifiers
 * JWT-based Authentication
   * Register and login issues a signed JWT-token stored as a Cookie with 24h expiration
   * Token contains userID as subject and username as claim, for easy fetching after validation
   * Every protected operation validates the token and extracts identification data
-  * After token validation, user data is validated in database, to prevent valid token, but invalid user. I.e. if token is valid, but user has been deleted
+  * After token validation, user existence is validated in database, to prevent valid token, but invalid user. I.e. if token is valid, but user has been deleted
 * Password Handling
   * Passwords are hashed using BCrypt
-  * Password changes work by checking current password hash with 'old password' from user hash
+  * Password changes work by checking the current password hash with 'old password' from the user hash
 * DTO
   * Data is transferred via DTOs to hide entity structure, and limit info sent to client to minimum
   * Separation between API entities and DB entities
@@ -34,7 +40,7 @@
   * Room creators are given OWNER role
   * Room joiners are given MEMBER role
   * User rooms are stored in user_rooms
-  * Fetching all rooms gets all rooms for user from user_rooms (no need exhaust database)
+  * Rooms are fetched via user_rooms join table (indexed lookup)
 * Chat Storage
   * All chats are stored in database, with room, user and message
   * Chat history is fetched from database upon join
