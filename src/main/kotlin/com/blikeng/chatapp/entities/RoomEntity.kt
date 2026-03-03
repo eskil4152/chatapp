@@ -1,15 +1,20 @@
 package com.blikeng.chatapp.entities
 
-import jakarta.persistence.*
+import jakarta.persistence.Column
+import jakarta.persistence.Entity
+import jakarta.persistence.Id
+import jakarta.persistence.Table
 import java.util.*
 
 @Entity
 @Table(name = "rooms")
 class RoomEntity(
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    val id: UUID? = null,
+    val id: UUID = UUID.randomUUID(),
 
     @Column(unique = true, nullable = false)
     val name: String,
+
+    val encrypted: Boolean = false,
+    val keyVersion: Int? = null
 )

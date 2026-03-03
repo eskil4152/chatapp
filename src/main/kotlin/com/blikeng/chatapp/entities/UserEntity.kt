@@ -8,8 +8,7 @@ import java.util.*
 @Table(name = "users")
 class UserEntity (
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    val id: UUID? = null,
+    val id: UUID = UUID.randomUUID(),
 
     @Column(unique = true, nullable = false)
     val username: String,
@@ -42,7 +41,4 @@ class UserEntity (
         inverseJoinColumns = [JoinColumn(name = "room_id")]
     )
     val rooms: MutableSet<RoomEntity> = mutableSetOf(),
-
-    //@OneToMany(mappedBy = "user", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
-    //val friends: MutableSet<UserFriendEntity> = mutableSetOf()
 )

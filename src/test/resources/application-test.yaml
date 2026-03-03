@@ -8,5 +8,11 @@ spring:
     hibernate:
       ddl-auto: create-drop
     database-platform: org.hibernate.dialect.H2Dialect
-flyway:
-  enabled: false
+  flyway:
+    enabled: false
+
+app:
+  crypto:
+    messageKeyV1B64: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+  jwt:
+    secret: "superSecretKeyForTheTestsWhichIsAbsolutelySecureEnoughAndFarEnoughBitsToBeAbleToBeMadeIntoASecureEnoughKey"

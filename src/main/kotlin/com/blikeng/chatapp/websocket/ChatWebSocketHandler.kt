@@ -59,7 +59,7 @@ class ChatWebSocketHandler(private val chatService: ChatService) : TextWebSocket
                 chatService.broadcast(roomId, message, username)
             }
 
-            MessageType.PING -> {}
+            MessageType.PING -> Unit
         }
     }
 

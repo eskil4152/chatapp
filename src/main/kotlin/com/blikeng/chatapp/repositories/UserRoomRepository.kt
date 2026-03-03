@@ -13,7 +13,7 @@ import java.util.*
 interface UserRoomRepository: JpaRepository<UserRoomEntity, UserRoomId> {
     fun save(userRoom: UserRoomEntity): UserRoomEntity
 
-    //TODO: Maybe fix
+    // Custom query to directly fetch RoomEntity instead of UserRoomEntity
     @Query("SELECT ur.room FROM UserRoomEntity ur WHERE ur.user.id = :userId")
     fun findAllRoomsByUserId(@Param("userId") userId: UUID): List<RoomEntity>
 }
