@@ -13,6 +13,10 @@
 A real-time chat application built with Java and Spring Boot. Features a REST API, websockets, optional encryption, persistent storage and user authentication.
 Hosted on Azure and connected to GitHub Pages frontend.
 
+
+### Access via frontend: 
+[GitHub Pages](https://eskil4152.github.io/chatapp-client)
+
 ### Features:
 * Database
   * All tables are version-controlled and created via Flyway
