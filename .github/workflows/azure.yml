@@ -1,6 +1,9 @@
 on:
   push:
     branches: [ "main" ]
+    paths-ignore:
+      - "README.md"
+      - "docs/**"
 
 jobs:
   build-and-deploy:
@@ -22,12 +25,5 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - run: |
           docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/chatapp:${{ github.sha }}
-          docker tag ${{ secrets.REGISTRY_LOGIN_SERVER }}/chatapp:${{ github.sha }} ${{ secrets.REGISTRY_LOGIN_SERVER }}/chatapp:latest
+          docker tag ${{ secrets.REGISTRY_LOGIN_SERVER }}/chatapp:${{ github.sha }}
           docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/chatapp:${{ github.sha }}
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/chatapp:latest
-
-      - name: Update Azure Web App
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
-          images: ${{ secrets.REGISTRY_LOGIN_SERVER }}/chatapp:latest
