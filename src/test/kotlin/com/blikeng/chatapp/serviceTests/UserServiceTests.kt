@@ -3,6 +3,7 @@ package com.blikeng.chatapp.serviceTests
 import com.blikeng.chatapp.dtos.ChangeUserDTO
 import com.blikeng.chatapp.dtos.EditPasswordDTO
 import com.blikeng.chatapp.entities.UserEntity
+import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.security.JwtService
 import com.blikeng.chatapp.security.PasswordService
@@ -24,6 +25,7 @@ import kotlin.test.assertFailsWith
 @ExtendWith(MockKExtension::class)
 class UserServiceTests {
     @MockK private lateinit var userRepository: UserRepository
+    @MockK private lateinit var roomRepository: RoomRepository
     @MockK private lateinit var jwtService: JwtService
     @MockK private lateinit var passwordService: PasswordService
 
@@ -51,6 +53,7 @@ class UserServiceTests {
     @Test
     fun shouldGetSelf(){
         every { jwtService.validateToken(any()) } returns Pair("", UUID.randomUUID())
+        every { roomRepository.findRoomsForUser(any()) } returns emptyList()
         every { userRepository.findById(any()) } returns Optional.of(UserEntity(username = "u", password = ""))
 
         userService.getSelf("token")

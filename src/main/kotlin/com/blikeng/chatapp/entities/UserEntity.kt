@@ -33,12 +33,4 @@ class UserEntity (
 
     @Column(name = "created_at", updatable = false)
     val createdAt: Timestamp = Timestamp(System.currentTimeMillis()),
-
-    @ManyToMany
-    @JoinTable(
-        name = "user_rooms",
-        joinColumns = [JoinColumn(name = "user_id")],
-        inverseJoinColumns = [JoinColumn(name = "room_id")]
-    )
-    val rooms: MutableSet<RoomEntity> = mutableSetOf(),
 )

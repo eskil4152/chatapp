@@ -8,7 +8,9 @@ import com.blikeng.chatapp.dtos.ChangeUserDTO
 import com.blikeng.chatapp.dtos.EditPasswordDTO
 import com.blikeng.chatapp.dtos.UserDTO
 import com.blikeng.chatapp.entities.UserEntity
+import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
+import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.JwtService
 import com.blikeng.chatapp.security.PasswordService
 import org.springframework.beans.factory.annotation.Autowired
@@ -21,7 +23,8 @@ import java.util.*
 class UserService(
     @Autowired private val userRepository: UserRepository,
     @Autowired private val jwtService: JwtService,
-    @Autowired private val passwordService: PasswordService
+    @Autowired private val passwordService: PasswordService,
+    @Autowired private val roomRepository: RoomRepository,
 ) {
     fun getUserById(id: UUID): UserEntity? {
         return userRepository.findById(id).orElse(null)
@@ -39,7 +42,7 @@ class UserService(
             avatarUrl = user.avatarUrl,
             birthday = user.birthday,
             createdAt = user.createdAt,
-            rooms = user.rooms,
+            rooms = roomRepository.findRoomsForUser(userId)
         )
     }
 

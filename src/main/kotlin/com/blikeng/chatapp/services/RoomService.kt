@@ -30,8 +30,7 @@ class RoomService(
         val (_, userId) =
             jwtService.validateToken(token) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_TOKEN)
 
-        val user =
-            userService.getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
+        userService.getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
 
         val room = roomRepository.save(
             RoomEntity(
@@ -40,9 +39,7 @@ class RoomService(
                 keyVersion = if (encrypted == true) 1 else null
             ))
 
-        val id = UserRoomId(userId, room.id)
-        val userRoom = UserRoomEntity(id, user, room, RoomRole.OWNER)
-
+        val userRoom = UserRoomEntity(UserRoomId(userId, room.id), RoomRole.OWNER)
         userRoomRepository.save(userRoom)
     }
 
@@ -50,7 +47,7 @@ class RoomService(
         val (_, userId ) =
             jwtService.validateToken(token) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_TOKEN)
 
-        val rooms = userRoomRepository.findAllRoomsByUserId(userId)
+        val rooms = roomRepository.findRoomsForUser(userId)
 
         return rooms
     }
@@ -59,15 +56,14 @@ class RoomService(
         val (_, userId ) =
             jwtService.validateToken(token) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_TOKEN)
 
-        val user =
-            userService.getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
+        userService.getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
 
-        val room = roomRepository.findById(roomId).orElse(null) ?: throw ResponseStatusException(
+        roomRepository.findById(roomId).orElse(null) ?: throw ResponseStatusException(
             HttpStatus.NOT_FOUND,
             ROOM_NOT_FOUND
         )
 
-        val userRoom = UserRoomEntity(UserRoomId(userId, roomId), user, room, RoomRole.MEMBER)
+        val userRoom = UserRoomEntity(UserRoomId(userId, roomId), RoomRole.MEMBER)
         userRoomRepository.save(userRoom)
     }
 }

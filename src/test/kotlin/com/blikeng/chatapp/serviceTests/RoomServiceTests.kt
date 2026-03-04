@@ -125,7 +125,7 @@ class RoomServiceTests {
         val roomEntity = RoomEntity(id = roomId, name = "r")
 
         every { jwtService.validateToken(any()) } returns Pair("u", UUID.randomUUID())
-        every { userRoomRepository.findAllRoomsByUserId(any()) } returns listOf(roomEntity)
+        every { roomRepository.findRoomsForUser(any()) } returns listOf(roomEntity)
 
         val rooms = roomService.getAllUserRooms("token")
         assertEquals(
@@ -217,20 +217,5 @@ class RoomServiceTests {
 
         assertEquals(HttpStatus.NOT_FOUND, exception.statusCode)
         assertEquals("Room not found", exception.reason)
-    }
-
-    @Test
-    fun shouldLeaveRoom(){
-        // TODO
-    }
-
-    @Test
-    fun shouldFailToLeaveRoomWithInvalidCredentials(){
-        // TODO
-    }
-
-    @Test
-    fun shouldFailToLeaveRoomWithInvalidRoomId(){
-        // TODO
     }
 }

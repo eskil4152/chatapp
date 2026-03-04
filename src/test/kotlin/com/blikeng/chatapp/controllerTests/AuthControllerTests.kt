@@ -37,11 +37,6 @@ class AuthControllerTests {
 
     @Test
     fun shouldRegisterUserAndSetCookie() {
-        val cookie = Cookie("AUTH", "token").apply {
-            isHttpOnly = true
-            path = "/"
-        }
-
         every { authService.registerUser("u", "p") } returns "token"
 
         mockMvc.post("/api/register") {
@@ -73,11 +68,6 @@ class AuthControllerTests {
 
     @Test
     fun shouldLoginUserAndSetCookie() {
-        val cookie = Cookie("AUTH", "token").apply {
-            isHttpOnly = true
-            path = "/"
-        }
-
         every { authService.loginUser("u", "p") } returns "token"
 
         mockMvc.post("/api/login") {

@@ -14,7 +14,6 @@ import org.springframework.http.HttpStatus
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
-import org.springframework.web.client.HttpStatusCodeException
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
@@ -32,9 +31,9 @@ class ChatService(
     private val chatRepository: ChatRepository,
     private val roomRepository: RoomRepository,
     private val userRepository: UserRepository,
+    private val userRoomRepository: UserRoomRepository,
     private val chatFlushService: ChatFlushService,
-    private val encrypt: ChatEncrypt,
-    private val userRoomRepository: UserRoomRepository
+    private val encrypt: ChatEncrypt
 ) {
     val rooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
     val users = ConcurrentHashMap<UUID, WebSocketSession>()
@@ -113,7 +112,7 @@ class ChatService(
         val userId = session.attributes["userId"] as? UUID
             ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_TOKEN)
 
-        if (!userRoomRepository.existsByUserIdAndRoomId(userId, roomId)) {
+        if (!userRoomRepository.existsByIdUserIdAndIdRoomId(userId, roomId)) {
             throw ResponseStatusException(HttpStatus.FORBIDDEN, NOT_PERMITTED)
         }
 

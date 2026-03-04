@@ -6,6 +6,7 @@ import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
+import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.ChatEncrypt
 import com.blikeng.chatapp.security.Encrypted
 import com.blikeng.chatapp.services.ChatFlushService
@@ -34,6 +35,7 @@ class ChatServiceTests {
     @MockK lateinit var chatRepository: ChatRepository
     @MockK lateinit var roomRepository: RoomRepository
     @MockK lateinit var userRepository: UserRepository
+    @MockK lateinit var userRoomRepository: UserRoomRepository
     @MockK lateinit var encrypt: ChatEncrypt
     @MockK lateinit var chatFlushService: ChatFlushService
 
@@ -63,11 +65,17 @@ class ChatServiceTests {
     @Test
     fun shouldRemoveSessionForEveryRoom(){
         every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
 
         val userId = UUID.randomUUID()
         val session = mockk<WebSocketSession>()
         val roomId = UUID.randomUUID()
         val roomId2 = UUID.randomUUID()
+
+        val attrs: MutableMap<String, Any> = hashMapOf("userId" to userId)
+
+        every { session.attributes } returns attrs
+        every { session.sendMessage(any()) } just Runs
 
         chatService.registerSession(userId, session)
         chatService.joinRoom(roomId, session)
@@ -87,9 +95,14 @@ class ChatServiceTests {
     @Test
     fun shouldJoinRoom(){
         every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
 
         val roomId = UUID.randomUUID()
         val session = mockk<WebSocketSession>()
+
+
+        val attrs: MutableMap<String, Any> = hashMapOf("userId" to UUID.randomUUID())
+        every { session.attributes } returns attrs
 
         chatService.joinRoom(roomId, session)
 
@@ -99,9 +112,13 @@ class ChatServiceTests {
     @Test
     fun shouldLeaveRoom(){
         every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
 
         val roomId = UUID.randomUUID()
         val session = mockk<WebSocketSession>()
+        val attrs: MutableMap<String, Any> = hashMapOf("userId" to UUID.randomUUID())
+
+        every { session.attributes } returns attrs
 
         chatService.joinRoom(roomId, session)
         assertEquals(session, chatService.rooms[roomId]?.first())
@@ -125,12 +142,18 @@ class ChatServiceTests {
         every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
         every { userRepository.findById(any()) } returns Optional.of(UserEntity(username = "u", password = ""))
         every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r"))
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
 
         val roomId = UUID.randomUUID()
         val message = ReceivedMessage(roomId, UUID.randomUUID(), "hello", "MESSAGE")
 
         val session1 = mockk<WebSocketSession>(relaxed = true)
         val session2 = mockk<WebSocketSession>(relaxed = true)
+
+        val attrs: MutableMap<String, Any> = hashMapOf("userId" to UUID.randomUUID())
+
+        every { session1.attributes } returns attrs
+        every { session2.attributes } returns attrs
 
         chatService.joinRoom(roomId, session1)
         chatService.joinRoom(roomId, session2)
@@ -158,11 +181,15 @@ class ChatServiceTests {
         every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
         every { userRepository.findById(any()) } returns Optional.of(UserEntity(username = "u", password = ""))
         every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r"))
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
 
         val roomId = UUID.randomUUID()
         val message = ReceivedMessage(roomId, UUID.randomUUID(), "join", "JOIN")
 
         val session = mockk<WebSocketSession>(relaxed = true)
+        val attrs: MutableMap<String, Any> = hashMapOf("userId" to UUID.randomUUID())
+
+        every { session.attributes } returns attrs
 
         chatService.joinRoom(roomId, session)
 
@@ -182,8 +209,12 @@ class ChatServiceTests {
         val saved: List<ChatEntity> = listOf(chat1, chat2)
 
         every { chatRepository.getAllChatsByRoomId(any()) } returns saved
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
 
+        val attrs: MutableMap<String, Any> = hashMapOf("userId" to user.id)
         val session = mockk<WebSocketSession>(relaxed = true)
+
+        every { session.attributes } returns attrs
 
         chatService.joinRoom(room.id, session)
 
@@ -211,8 +242,12 @@ class ChatServiceTests {
 
         every { chatRepository.getAllChatsByRoomId(any()) } returns saved
         every { encrypt.decrypt(any(), any(), any(), any()) } returns "message"
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
 
         val session = mockk<WebSocketSession>(relaxed = true)
+        val attrs: MutableMap<String, Any> = hashMapOf("userId" to user.id)
+
+        every { session.attributes } returns attrs
 
         chatService.joinRoom(room.id, session)
 
@@ -231,11 +266,17 @@ class ChatServiceTests {
 
         every { userRepository.findById(user.id) } returns Optional.of(user)
         every { roomRepository.findById(room.id) } returns Optional.of(room)
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(user.id, room.id) } returns true
 
         val batchSlot = slot<List<ChatEntity>>()
         every { chatFlushService.saveBatch(capture(batchSlot)) } just Runs
 
-        val session = mockk<WebSocketSession>(relaxed = true)
+        val attrs: MutableMap<String, Any> = hashMapOf("userId" to user.id)
+
+        val session = mockk<WebSocketSession>()
+        every { session.attributes } returns attrs
+        every { session.sendMessage(any()) } just Runs
+
         chatService.joinRoom(room.id, session)
 
         chatService.broadcast(room.id, ReceivedMessage(room.id, user.id, "hello", "MESSAGE"), "u")
@@ -254,6 +295,7 @@ class ChatServiceTests {
     @Test
     fun shouldBufferAndFlushEncryptedMessage() {
         every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
 
         val nonce = "nonce".toByteArray()
         val ciphertext = "ciphertext".toByteArray()
@@ -270,6 +312,10 @@ class ChatServiceTests {
         every { chatFlushService.saveBatch(capture(batchSlot)) } just Runs
 
         val session = mockk<WebSocketSession>(relaxed = true)
+        val attrs: MutableMap<String, Any> = hashMapOf("userId" to user.id)
+
+        every { session.attributes } returns attrs
+
         chatService.joinRoom(room.id, session)
 
         chatService.broadcast(room.id, ReceivedMessage(room.id, user.id, "secret", "MESSAGE"), "u")
@@ -323,6 +369,7 @@ class ChatServiceTests {
     @Test
     fun shouldOnlySendBufferedMessagesForJoinedRoom() {
         every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
 
         val room1 = RoomEntity(name = "r1", encrypted = false, keyVersion = null)
         val room2 = RoomEntity(name = "r2", encrypted = false, keyVersion = null)
@@ -337,6 +384,10 @@ class ChatServiceTests {
         chatService.addMessage(ReceivedMessage(room2.id, user.id, "two", "MESSAGE"))
 
         val session = mockk<WebSocketSession>(relaxed = true)
+        val attrs: MutableMap<String, Any> = hashMapOf("userId" to user.id)
+
+        every { session.attributes } returns attrs
+
         val msgSlot = slot<TextMessage>()
         every { session.sendMessage(capture(msgSlot)) } just Runs
 
