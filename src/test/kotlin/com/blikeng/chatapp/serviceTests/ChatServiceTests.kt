@@ -18,6 +18,8 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import org.junit.jupiter.api.assertNull
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.http.HttpStatus
+import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import java.sql.Timestamp
@@ -27,6 +29,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
@@ -100,13 +103,43 @@ class ChatServiceTests {
         val roomId = UUID.randomUUID()
         val session = mockk<WebSocketSession>()
 
-
         val attrs: MutableMap<String, Any> = hashMapOf("userId" to UUID.randomUUID())
         every { session.attributes } returns attrs
 
         chatService.joinRoom(roomId, session)
 
         assertEquals(session, chatService.rooms[roomId]?.first())
+    }
+
+    @Test
+    fun shouldFailToJoinRoomIfNoUsernameInSessionAttributes(){
+        val session = mockk<WebSocketSession>()
+        every { session.attributes } returns emptyMap()
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            chatService.joinRoom(UUID.randomUUID(), session)
+        }
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
+        assertEquals("Invalid token", exception.reason)
+    }
+
+    @Test
+    fun shouldFailToJoinRoomIfNotAMember(){
+        every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns false
+
+        val session = mockk<WebSocketSession>()
+
+        val attrs: MutableMap<String, Any> = hashMapOf("userId" to UUID.randomUUID())
+        every { session.attributes } returns attrs
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            chatService.joinRoom(UUID.randomUUID(), session)
+        }
+
+        assertEquals(HttpStatus.FORBIDDEN, exception.statusCode)
+        assertEquals("Not permitted", exception.reason)
     }
 
     @Test
