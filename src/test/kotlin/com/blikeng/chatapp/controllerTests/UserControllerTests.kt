@@ -2,6 +2,7 @@ package com.blikeng.chatapp.controllerTests
 
 import com.blikeng.chatapp.controllers.UserController
 import com.blikeng.chatapp.dtos.UserDTO
+import com.blikeng.chatapp.security.JwtAuthFilter
 import com.blikeng.chatapp.services.UserService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
@@ -9,7 +10,10 @@ import jakarta.servlet.http.Cookie
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
+import org.springframework.context.annotation.ComponentScan
+import org.springframework.context.annotation.FilterType
 import org.springframework.http.MediaType
+import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.patch
@@ -18,7 +22,15 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import java.sql.Date
 import kotlin.test.Test
 
-@WebMvcTest(UserController::class)
+@WebMvcTest(
+    controllers = [UserController::class],
+    excludeFilters = [
+        ComponentScan.Filter(
+            type = FilterType.ASSIGNABLE_TYPE,
+            classes = [JwtAuthFilter::class]
+        )
+    ]
+)
 @AutoConfigureMockMvc(addFilters = false)
 class UserControllerTests {
     @MockkBean private lateinit var userService: UserService
@@ -34,7 +46,7 @@ class UserControllerTests {
             avatarUrl = "a",
             birthday = null,
             createdAt = Date(System.currentTimeMillis()),
-            rooms = mutableSetOf(),
+            rooms = listOf(),
         )
 
         every { userService.getSelf("token") } returns user

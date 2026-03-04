@@ -2,20 +2,34 @@ package com.blikeng.chatapp.controllerTests
 
 import com.blikeng.chatapp.controllers.RoomController
 import com.blikeng.chatapp.entities.RoomEntity
+import com.blikeng.chatapp.security.JwtAuthFilter
 import com.blikeng.chatapp.services.RoomService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
 import jakarta.servlet.http.Cookie
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
+import org.springframework.context.annotation.ComponentScan
+import org.springframework.context.annotation.FilterType
 import org.springframework.http.MediaType
+import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import java.util.*
 import kotlin.test.Test
 
-@WebMvcTest(RoomController::class)
+@WebMvcTest(
+    controllers = [RoomController::class],
+    excludeFilters = [
+        ComponentScan.Filter(
+            type = FilterType.ASSIGNABLE_TYPE,
+            classes = [JwtAuthFilter::class]
+        )
+    ]
+)
+@AutoConfigureMockMvc(addFilters = false)
 class RoomControllerTests {
     @MockkBean private lateinit var roomService: RoomService
     @Autowired private lateinit var mockMvc: MockMvc

@@ -1,12 +1,16 @@
 package com.blikeng.chatapp.controllerTests
 
 import com.blikeng.chatapp.controllers.AuthController
+import com.blikeng.chatapp.security.JwtAuthFilter
 import com.blikeng.chatapp.services.AuthService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
 import jakarta.servlet.http.Cookie
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
+import org.springframework.context.annotation.ComponentScan
+import org.springframework.context.annotation.FilterType
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
@@ -17,7 +21,16 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie
 import org.springframework.web.server.ResponseStatusException
 import kotlin.test.Test
 
-@WebMvcTest(AuthController::class)
+@WebMvcTest(
+    controllers = [AuthController::class],
+    excludeFilters = [
+        ComponentScan.Filter(
+            type = FilterType.ASSIGNABLE_TYPE,
+            classes = [JwtAuthFilter::class]
+        )
+    ]
+)
+@AutoConfigureMockMvc(addFilters = false)
 class AuthControllerTests {
     @MockkBean private lateinit var authService: AuthService
     @Autowired private lateinit var mockMvc: MockMvc
