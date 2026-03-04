@@ -1,15 +1,21 @@
 package com.blikeng.chatapp.services
 
+import com.blikeng.chatapp.ErrorMessages.INVALID_TOKEN
+import com.blikeng.chatapp.ErrorMessages.NOT_PERMITTED
 import com.blikeng.chatapp.config.configureAad
 import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
+import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.ChatEncrypt
 import jakarta.annotation.PreDestroy
+import org.springframework.http.HttpStatus
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
+import org.springframework.web.client.HttpStatusCodeException
+import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import tools.jackson.module.kotlin.jacksonObjectMapper
@@ -27,7 +33,8 @@ class ChatService(
     private val roomRepository: RoomRepository,
     private val userRepository: UserRepository,
     private val chatFlushService: ChatFlushService,
-    private val encrypt: ChatEncrypt
+    private val encrypt: ChatEncrypt,
+    private val userRoomRepository: UserRoomRepository
 ) {
     val rooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
     val users = ConcurrentHashMap<UUID, WebSocketSession>()
@@ -103,6 +110,13 @@ class ChatService(
     }
 
     fun joinRoom(roomId: UUID, session: WebSocketSession){
+        val userId = session.attributes["userId"] as? UUID
+            ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_TOKEN)
+
+        if (!userRoomRepository.existsByUserIdAndRoomId(userId, roomId)) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, NOT_PERMITTED)
+        }
+
         rooms.computeIfAbsent(roomId) { CopyOnWriteArraySet() }.add(session)
 
         val persisted = chatRepository.getAllChatsByRoomId(roomId)

@@ -16,4 +16,7 @@ interface UserRoomRepository: JpaRepository<UserRoomEntity, UserRoomId> {
     // Custom query to directly fetch RoomEntity instead of UserRoomEntity
     @Query("SELECT ur.room FROM UserRoomEntity ur WHERE ur.user.id = :userId")
     fun findAllRoomsByUserId(@Param("userId") userId: UUID): List<RoomEntity>
+
+    @Query("SELECT EXISTS (SELECT 1 FROM UserRoomEntity ur WHERE ur.user.id = :userId AND ur.room.id = :roomId)")
+    fun existsByUserIdAndRoomId(userId: UUID, roomId: UUID): Boolean
 }

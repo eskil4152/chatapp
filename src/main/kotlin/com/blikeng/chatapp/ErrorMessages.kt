@@ -9,4 +9,5 @@ object ErrorMessages {
     const val INVALID_USER = "Invalid user"
     const val INVALID_ROOM_NAME = "Invalid room name"
     const val ROOM_NOT_FOUND = "Room not found"
+    const val NOT_PERMITTED = "Not permitted"
 }
