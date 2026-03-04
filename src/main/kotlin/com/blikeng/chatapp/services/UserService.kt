@@ -10,7 +10,6 @@ import com.blikeng.chatapp.dtos.UserDTO
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
-import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.JwtService
 import com.blikeng.chatapp.security.PasswordService
 import org.springframework.beans.factory.annotation.Autowired

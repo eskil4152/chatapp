@@ -1,6 +1,5 @@
 package com.blikeng.chatapp.repositories
 
-import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.entities.UserRoomEntity
 import com.blikeng.chatapp.entities.UserRoomId
 import org.springframework.data.jpa.repository.JpaRepository
