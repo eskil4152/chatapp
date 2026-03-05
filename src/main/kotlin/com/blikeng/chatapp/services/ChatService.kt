@@ -3,6 +3,8 @@ package com.blikeng.chatapp.services
 import com.blikeng.chatapp.ErrorMessages.INVALID_TOKEN
 import com.blikeng.chatapp.ErrorMessages.NOT_PERMITTED
 import com.blikeng.chatapp.config.configureAad
+import com.blikeng.chatapp.dtos.WsChat
+import com.blikeng.chatapp.dtos.WsJoined
 import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
@@ -108,7 +110,7 @@ class ChatService(
         rooms.values.forEach { it.remove(session) }
     }
 
-    fun joinRoom(roomId: UUID, session: WebSocketSession){
+    fun joinRoom(roomId: UUID, session: WebSocketSession) {
         val userId = session.attributes["userId"] as? UUID
             ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_TOKEN)
 
@@ -118,16 +120,23 @@ class ChatService(
 
         rooms.computeIfAbsent(roomId) { CopyOnWriteArraySet() }.add(session)
 
+        val room = roomRepository.findById(roomId).orElseThrow()
+        session.sendMessage(
+            TextMessage(
+                jacksonObjectMapper().writeValueAsString(
+                    WsJoined(
+                        roomId = roomId,
+                        roomName = room.name,
+                        encrypted = room.encrypted
+                    )
+                )
+            )
+        )
+
         val persisted = chatRepository.getAllChatsByRoomId(roomId)
-        val buffer = buffer
-            .asSequence()
-            .filter { it.room.id == roomId }
-            .toList()
+        val buffered = buffer.asSequence().filter { it.room.id == roomId }.toList()
 
-        val allMessages = (persisted + buffer)
-            .sortedBy { it.timestamp }
-
-        println("Sending: ${allMessages.size} messages")
+        val allMessages = (persisted + buffered).sortedBy { it.timestamp }
         fetchAllMessages(allMessages, session)
     }
 
@@ -147,7 +156,7 @@ class ChatService(
             session.sendMessage(
                 TextMessage(
                     jacksonObjectMapper().writeValueAsString(
-                        SendMessage(m.user.username, content)
+                        WsChat(content = content, username = m.user.username)
                     )
                 )
             )
@@ -161,10 +170,12 @@ class ChatService(
     fun broadcast(roomId: UUID, message: ReceivedMessage, username: String) {
         if (message.type == "MESSAGE" && rooms[roomId] != null) addMessage(message)
 
-        val sendMessage = SendMessage(username, message.content)
-        rooms[roomId]?.forEach { it.sendMessage(TextMessage(jacksonObjectMapper().writeValueAsString(sendMessage))) }
+        if (!userRoomRepository.existsByIdUserIdAndIdRoomId(message.userId, roomId)) throw ResponseStatusException(HttpStatus.FORBIDDEN, NOT_PERMITTED)
+
+        val sendMessage = WsChat(content = message.content, username = username, type = message.type)
+        val json = jacksonObjectMapper().writeValueAsString(sendMessage)
+        rooms[roomId]?.forEach { it.sendMessage(TextMessage(json)) }
     }
 }
 
 data class ReceivedMessage(val roomId: UUID, val userId: UUID, val content: String, val type: String)
-data class SendMessage(val username: String, val content: String)
