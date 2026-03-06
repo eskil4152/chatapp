@@ -56,10 +56,12 @@ class RoomControllerTests {
 
         mockMvc.post("/api/rooms/make") {
             contentType = MediaType.APPLICATION_JSON
-            content = "{\n" +
-                    "\t\"roomName\":\"room\",\n" +
-                    "\t\"encrypted\":false\n" +
-                    "}"
+            content = """
+                {
+                    "roomName":"room",
+                    "encrypted":false
+                }
+            """.trimIndent()
         }
             .andExpect { status { isCreated() } }
             .andExpect { content { string("Room created successfully") } }
@@ -79,10 +81,12 @@ class RoomControllerTests {
     fun shouldFailToMakeRoomWithBlankName(){
         mockMvc.post("/api/rooms/make") {
             contentType = MediaType.APPLICATION_JSON
-            content = "{\n" +
-                    "\t\"roomName\":\"\",\n" +
-                    "\t\"encrypted\":false\n" +
-                    "}"
+            content = """
+                {
+                    "roomName":"",
+                    "encrypted":false
+                }
+            """.trimIndent()
         }
             .andExpect { status { isBadRequest() } }
             .andExpect { content { string("Invalid room name") } }
@@ -96,9 +100,11 @@ class RoomControllerTests {
 
         mockMvc.post("/api/rooms/join") {
             contentType = MediaType.APPLICATION_JSON
-            content = "{\n" +
-                    "\t\"roomId\":\"$roomId\"\n" +
-                    "}"
+            content = """
+                {
+                    "roomId":"$roomId"
+                }
+            """.trimIndent()
         }
             .andExpect { status { isOk() } }
             .andExpect { content { string("Joined room successfully") } }
@@ -110,10 +116,12 @@ class RoomControllerTests {
 
         mockMvc.post("/api/rooms/make") {
             contentType = MediaType.APPLICATION_JSON
-            content = "{\n" +
-                    "\t\"roomName\":\"foo\",\n" +
-                    "\t\"encrypted\":false\n" +
-                    "}"
+            content = """
+                {
+                    "roomName":"room",
+                    "encrypted":false
+                }
+            """.trimIndent()
         }.andExpect {
             status { isUnauthorized() }
             content { content().string("Invalid token") }
@@ -126,10 +134,12 @@ class RoomControllerTests {
 
         mockMvc.post("/api/rooms/make") {
             contentType = MediaType.APPLICATION_JSON
-            content = "{\n" +
-                    "\t\"roomName\":\"\",\n" +
-                    "\t\"encrypted\":false\n" +
-                    "}"
+            content = """
+                {
+                    "roomName":"",
+                    "encrypted":false
+                }
+            """.trimIndent()
         }.andExpect {
             status { isBadRequest() }
             content { content().string("Invalid room name") }
@@ -142,9 +152,11 @@ class RoomControllerTests {
 
         mockMvc.post("/api/rooms/join") {
             contentType = MediaType.APPLICATION_JSON
-            content = "{\n" +
-                    "\t\"roomId\":\"${UUID.randomUUID()}\"\n" +
-                    "}"
+            content = """
+                {
+                    "roomId":"${UUID.randomUUID()}"
+                }
+            """.trimIndent()
         }.andExpect {
             status { isNotFound() }
             content { content().string(ROOM_NOT_FOUND) }

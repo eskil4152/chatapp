@@ -40,10 +40,12 @@ class AuthControllerTests {
 
         mockMvc.post("/api/register") {
                 contentType = MediaType.APPLICATION_JSON
-            content = "{\n" +
-                    "\t\"username\":\"u\",\n" +
-                    "\t\"password\":\"p\"\n" +
-                    "}"
+            content = """
+                {
+                    "username":"u",
+                    "password":"p"
+                }
+            """.trimIndent()
             }
             .andExpect { status { isCreated()} }
             .andExpect { content().string("User registered successfully") }
@@ -56,10 +58,12 @@ class AuthControllerTests {
 
         mockMvc.post("/api/login") {
             contentType = MediaType.APPLICATION_JSON
-            content = "{\n" +
-                    "\t\"username\":\"u\",\n" +
-                    "\t\"password\":\"p\"\n" +
-                    "}"
+            content = """
+                {
+                    "username":"u",
+                    "password":"p"
+                }
+            """.trimIndent()
         }
             .andExpect { status { isOk()} }
             .andExpect { content().string("User logged in") }
@@ -72,10 +76,12 @@ class AuthControllerTests {
 
         mockMvc.post("/api/login") {
             contentType = MediaType.APPLICATION_JSON
-            content = "{\n" +
-                    "\t\"username\":\"u\",\n" +
-                    "\t\"password\":\"p\"\n" +
-                    "}"
+            content = """
+                {
+                    "username":"u",
+                    "password":"p"
+                }
+            """.trimIndent()
         }
             .andExpect { status { isUnauthorized()} }
             .andExpect { content().string("Invalid credentials") }
@@ -87,10 +93,12 @@ class AuthControllerTests {
 
         mockMvc.post("/api/register") {
             contentType = MediaType.APPLICATION_JSON
-            content = "{\n" +
-                    "\t\"username\":\"u\",\n" +
-                    "\t\"password\":\"p\"\n" +
-                    "}"
+            content = """
+                {
+                    "username":"u",
+                    "password":"p"
+                }
+            """.trimIndent()
         }
             .andExpect { status { isConflict() } }
             .andExpect { content().string("Username already exists") }

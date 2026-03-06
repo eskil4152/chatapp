@@ -67,12 +67,14 @@ class UserControllerTests {
 
         mockMvc.put("/api/user/edit") {
             contentType = MediaType.APPLICATION_JSON
-            content = "{\n" +
-                    "\t\"bio\":\"b\",\n" +
-                    "\t\"email\":\"e\",\n" +
-                    "\t\"fullName\":\"f\",\n" +
-                    "\t\"avatarUrl\":\"a\"\n" +
-                    "}"
+            content = """
+                {
+                    "bio":"b",
+                    "email":"e",
+                    "fullName":"f",
+                    "avatarUrl":"a"
+                }
+            """.trimIndent()
         }
             .andExpect { status { isOk() } }
             .andExpect { content { string("Updated successfully") } }
@@ -84,10 +86,12 @@ class UserControllerTests {
 
         mockMvc.patch("/api/user/edit/password") {
             contentType = MediaType.APPLICATION_JSON
-            content = "{\n" +
-                    "\t\"oldPassword\":\"old p\",\n" +
-                    "\t\"newPassword\":\"new p\"\n" +
-                    "}"
+            content = """
+                {
+                    "oldPassword":"old p",
+                    "newPassword":"new p"
+                }
+            """.trimIndent()
         }
             .andExpect { status { isOk() } }
             .andExpect { content { string("Password changed successfully") } }
@@ -99,10 +103,12 @@ class UserControllerTests {
 
         mockMvc.patch("/api/user/edit/password") {
             contentType = MediaType.APPLICATION_JSON
-            content = "{\n" +
-                    "\t\"oldPassword\":\"old p\",\n" +
-                    "\t\"newPassword\":\"new p\"\n" +
-                    "}"
+            content = """
+                {
+                    "oldPassword":"old p",
+                    "newPassword":"new p"
+                }
+            """.trimIndent()
         }
             .andExpect { status { isBadRequest() } }
             .andExpect { status { reason(INVALID_PASSWORD) } }
