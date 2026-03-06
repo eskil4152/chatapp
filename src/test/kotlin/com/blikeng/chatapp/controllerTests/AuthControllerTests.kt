@@ -36,14 +36,14 @@ class AuthControllerTests {
 
     @Test
     fun shouldRegisterUserAndSetCookie() {
-        every { authService.registerUser("u", "p") } returns "token"
+        every { authService.registerUser("username", "password") } returns "token"
 
         mockMvc.post("/api/register") {
                 contentType = MediaType.APPLICATION_JSON
             content = """
                 {
-                    "username":"u",
-                    "password":"p"
+                    "username":"username",
+                    "password":"password"
                 }
             """.trimIndent()
             }
@@ -54,14 +54,14 @@ class AuthControllerTests {
 
     @Test
     fun shouldLoginUserAndSetCookie() {
-        every { authService.loginUser("u", "p") } returns "token"
+        every { authService.loginUser("username", "password") } returns "token"
 
         mockMvc.post("/api/login") {
             contentType = MediaType.APPLICATION_JSON
             content = """
                 {
-                    "username":"u",
-                    "password":"p"
+                    "username":"username",
+                    "password":"password"
                 }
             """.trimIndent()
         }
@@ -72,14 +72,14 @@ class AuthControllerTests {
 
     @Test
     fun shouldFailLoginWithWrongCredentials() {
-        every { authService.loginUser("u", "p") } throws ResponseStatusException(HttpStatus.UNAUTHORIZED)
+        every { authService.loginUser("username", "password") } throws ResponseStatusException(HttpStatus.UNAUTHORIZED)
 
         mockMvc.post("/api/login") {
             contentType = MediaType.APPLICATION_JSON
             content = """
                 {
-                    "username":"u",
-                    "password":"p"
+                    "username":"username",
+                    "password":"password"
                 }
             """.trimIndent()
         }
@@ -89,14 +89,14 @@ class AuthControllerTests {
 
     @Test
     fun shouldGetConflict() {
-        every { authService.registerUser("u", "p") } throws ResponseStatusException(HttpStatus.CONFLICT)
+        every { authService.registerUser("username", "password") } throws ResponseStatusException(HttpStatus.CONFLICT)
 
         mockMvc.post("/api/register") {
             contentType = MediaType.APPLICATION_JSON
             content = """
                 {
-                    "username":"u",
-                    "password":"p"
+                    "username":"username",
+                    "password":"password"
                 }
             """.trimIndent()
         }

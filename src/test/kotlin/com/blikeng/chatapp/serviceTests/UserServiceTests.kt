@@ -1,6 +1,7 @@
 package com.blikeng.chatapp.serviceTests
 
 import com.blikeng.chatapp.ErrorMessages.INVALID_PASSWORD
+import com.blikeng.chatapp.ErrorMessages.SHORT_PASSWORD
 import com.blikeng.chatapp.dtos.ChangeUserDTO
 import com.blikeng.chatapp.dtos.EditPasswordDTO
 import com.blikeng.chatapp.entities.UserEntity
@@ -110,7 +111,7 @@ class UserServiceTests {
 
         val user = UserEntity(
             id = userId,
-            username = "u",
+            username = "username",
             password = "",
             bio = "oldBio",
             email = "oldEmail",
@@ -146,8 +147,8 @@ class UserServiceTests {
         val userId = UUID.randomUUID()
         val user = UserEntity(
             id = userId,
-            username = "u",
-            password = "old p",
+            username = "username",
+            password = "old password",
         )
 
         SecurityContextHolder.getContext().authentication =
@@ -162,8 +163,8 @@ class UserServiceTests {
 
         userService.editPassword(
             EditPasswordDTO(
-                oldPassword = "old p",
-                newPassword = "new p"
+                oldPassword = "old password",
+                newPassword = "new password"
             )
         )
 
@@ -184,8 +185,8 @@ class UserServiceTests {
         val exception = assertFailsWith<ResponseStatusException> {
             userService.editPassword(
                 EditPasswordDTO(
-                    oldPassword = "old p",
-                    newPassword = "new p"
+                    oldPassword = "old password",
+                    newPassword = "new password"
                 )
             )
         }
@@ -201,8 +202,8 @@ class UserServiceTests {
         val userId = UUID.randomUUID()
         val user = UserEntity(
             id = userId,
-            username = "u",
-            password = "old p",
+            username = "username",
+            password = "old password",
         )
 
         SecurityContextHolder.getContext().authentication =
@@ -214,14 +215,44 @@ class UserServiceTests {
         val exception = assertFailsWith<ResponseStatusException> {
             userService.editPassword(
                 EditPasswordDTO(
-                    oldPassword = "old p",
-                    newPassword = "new p"
+                    oldPassword = "old passworded",
+                    newPassword = "new password"
                 )
             )
         }
 
         assertEquals(exception.statusCode, HttpStatus.BAD_REQUEST)
         assertEquals(exception.reason, INVALID_PASSWORD)
+
+        verify(exactly = 0) { userRepository.save(any()) }
+    }
+
+    @Test
+    fun shouldFailToUpdateUserPasswordWithTooShortPassword() {
+        val userId = UUID.randomUUID()
+        val user = UserEntity(
+            id = userId,
+            username = "username",
+            password = "oldPassword",
+        )
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userRepository.findById(userId) } returns Optional.of(user)
+        every { passwordService.checkPassword(any(), any()) } returns true
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            userService.editPassword(
+                EditPasswordDTO(
+                    oldPassword = "oldPassword",
+                    newPassword = "new"
+                )
+            )
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
+        assertEquals(SHORT_PASSWORD, exception.reason)
 
         verify(exactly = 0) { userRepository.save(any()) }
     }
@@ -249,7 +280,7 @@ class UserServiceTests {
     @Test
     fun shouldFailToEditPasswordWithoutAuthentication() {
         val exception = assertFailsWith<ResponseStatusException> {
-            userService.editPassword(EditPasswordDTO("", ""))
+            userService.editPassword(EditPasswordDTO("oldPassword", "newPassword"))
         }
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)

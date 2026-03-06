@@ -1,5 +1,7 @@
 package com.blikeng.chatapp.e2e
 
+import com.blikeng.chatapp.ErrorMessages.INVALID_PASSWORD
+import com.blikeng.chatapp.ErrorMessages.SHORT_PASSWORD
 import jakarta.servlet.http.Cookie
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -86,14 +88,13 @@ class E2ETests : PostgresContainerBase() {
 
     @Test
     @Order(4)
-    @Disabled
     fun shouldFailToRegisterUserWithEmptyUsernameOrEmptyPassword(){
         mockMvc.post("/api/register") {
             contentType = MediaType.APPLICATION_JSON
             content = """
                 {
                     "username":"",
-                    "password":"pass"
+                    "password":"password"
                 }
             """.trimIndent()
         }
@@ -103,7 +104,7 @@ class E2ETests : PostgresContainerBase() {
             contentType = MediaType.APPLICATION_JSON
             content = """
                 {
-                    "username":"user",
+                    "username":"username",
                     "password":""
                 }
             """.trimIndent()
@@ -118,8 +119,8 @@ class E2ETests : PostgresContainerBase() {
             contentType = MediaType.APPLICATION_JSON
             content = """
                 {
-                    "username":"user",
-                    "password":"pass"
+                    "username":"username",
+                    "password":"password"
                 }
             """.trimIndent()
         }
@@ -137,8 +138,8 @@ class E2ETests : PostgresContainerBase() {
             contentType = MediaType.APPLICATION_JSON
             content = """
                 {
-                    "username":"user",
-                    "password":"pass"
+                    "username":"username",
+                    "password":"password"
                 }
             """.trimIndent()
         }
@@ -162,7 +163,7 @@ class E2ETests : PostgresContainerBase() {
         }
             .andExpect {
                 jsonPath("$.username") {
-                    value("user")
+                    value("username")
                 }
             }
             .andExpect { status { isOk() } }
@@ -284,24 +285,42 @@ class E2ETests : PostgresContainerBase() {
             contentType = MediaType.APPLICATION_JSON
             content = """
                 {
-                    "oldPassword":"wrongPass",
-                    "newPassword":"newPass" 
+                    "oldPassword":"wrongPassword",
+                    "newPassword":"newPassword" 
                 }
             """.trimIndent()
         }
             .andExpect { status { isBadRequest() } }
+            .andExpect { status { reason(INVALID_PASSWORD) } }
     }
 
     @Test
     @Order(16)
+    fun shouldFailToEditPasswordWithTooShortPassword(){
+        mockMvc.patch("/api/user/edit/password"){
+            user1Cookie?.let { cookie(it) }
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                    "oldPassword":"password",
+                    "newPassword":"new" 
+                }
+            """.trimIndent()
+        }
+            .andExpect { status { isBadRequest() } }
+            .andExpect { status { reason(SHORT_PASSWORD) } }
+    }
+
+    @Test
+    @Order(17)
     fun shouldEditPassword(){
         mockMvc.patch("/api/user/edit/password"){
             user1Cookie?.let { cookie(it) }
             contentType = MediaType.APPLICATION_JSON
             content = """
                 {
-                    "oldPassword":"pass",
-                    "newPassword":"newPass" 
+                    "oldPassword":"password",
+                    "newPassword":"newPassword" 
                 }
             """.trimIndent()
         }
@@ -310,14 +329,14 @@ class E2ETests : PostgresContainerBase() {
     }
 
     @Test
-    @Order(17)
+    @Order(18)
     fun shouldFailLoginWithOldPassword(){
         mockMvc.post("/api/login") {
             contentType = MediaType.APPLICATION_JSON
             content = """
                 {
-                    "username":"user",
-                    "password":"pass"
+                    "username":"username",
+                    "password":"password"
                 }
             """.trimIndent()
         }
@@ -325,14 +344,14 @@ class E2ETests : PostgresContainerBase() {
     }
 
     @Test
-    @Order(18)
+    @Order(19)
     fun shouldLogInWithNewPassword(){
         val result = mockMvc.post("/api/login") {
             contentType = MediaType.APPLICATION_JSON
             content = """
                 {
-                    "username":"user",
-                    "password":"newPass"
+                    "username":"username",
+                    "password":"newPassword"
                 }
             """.trimIndent()
         }
@@ -344,14 +363,14 @@ class E2ETests : PostgresContainerBase() {
 
     // Section: Second user
     @Test
-    @Order(19)
+    @Order(20)
     fun shouldRegisterSecondUser(){
         val result = mockMvc.post("/api/register") {
             contentType = MediaType.APPLICATION_JSON
             content = """
                 {
-                    "username":"user2",
-                    "password":"pass"
+                    "username":"username2",
+                    "password":"password"
                 }
             """.trimIndent()
         }
@@ -362,7 +381,7 @@ class E2ETests : PostgresContainerBase() {
     }
 
     @Test
-    @Order(20)
+    @Order(21)
     fun shouldAccessAuthAsSecondUser(){
         mockMvc.get("/api/auth"){
             user2Cookie?.let { cookie(it) }
@@ -371,7 +390,7 @@ class E2ETests : PostgresContainerBase() {
     }
 
     @Test
-    @Order(21)
+    @Order(22)
     fun shouldGetEmptyListForSecondUserRooms(){
         val result = mockMvc.get("/api/rooms"){
             user2Cookie?.let { cookie(it) }
@@ -383,7 +402,7 @@ class E2ETests : PostgresContainerBase() {
     }
 
     @Test
-    @Order(22)
+    @Order(23)
     fun shouldJoinRoom(){
         mockMvc.post("/api/rooms/join") {
             contentType = MediaType.APPLICATION_JSON
@@ -398,7 +417,7 @@ class E2ETests : PostgresContainerBase() {
     }
 
     @Test
-    @Order(23)
+    @Order(24)
     fun shouldGetAllRoomsForSecondUser(){
         mockMvc.get("/api/rooms"){
             user2Cookie?.let { cookie(it) }
@@ -411,21 +430,21 @@ class E2ETests : PostgresContainerBase() {
     }
 
     @Test
-    @Order(24)
+    @Order(25)
     fun shouldGetSecondUserInfo(){
         mockMvc.get("/api/user"){
             user2Cookie?.let { cookie(it) }
         }
             .andExpect {
                 jsonPath("$.username") {
-                    value("user2")
+                    value("username2")
                 }
             }
             .andExpect { status { isOk() } }
     }
 
     @Test
-    @Order(25)
+    @Order(26)
     fun shouldEnterRoomAndSendMessage() {
         val received = CopyOnWriteArrayList<String>()
         val latch = CountDownLatch(2)
@@ -477,7 +496,7 @@ class E2ETests : PostgresContainerBase() {
     }
 
     @Test
-    @Order(26)
+    @Order(27)
     fun shouldEnterRoomAndGetMessages() {
         val received = CopyOnWriteArrayList<String>()
         val latch = CountDownLatch(2)

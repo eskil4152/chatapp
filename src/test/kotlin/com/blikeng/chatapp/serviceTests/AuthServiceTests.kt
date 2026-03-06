@@ -1,5 +1,7 @@
 package com.blikeng.chatapp.serviceTests
 
+import com.blikeng.chatapp.ErrorMessages.SHORT_PASSWORD
+import com.blikeng.chatapp.ErrorMessages.SHORT_USERNAME
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.repositories.AuthRepository
 import com.blikeng.chatapp.security.JwtService
@@ -29,11 +31,11 @@ class AuthServiceTests {
     @Test
     fun shouldRegisterUser() {
         every { authRepository.existsByUsername(any()) } returns false
-        every { passwordService.encodePassword("p") } returns "ENC"
+        every { passwordService.encodePassword("password") } returns "ENC"
         every { authRepository.save(any()) } answers { firstArg() }
         every { jwtService.generateToken(any()) } returns "TOKEN"
 
-        val cookie = authService.registerUser("u", "p")
+        val cookie = authService.registerUser("username", "password")
         assert(cookie == "TOKEN")
     }
 
@@ -48,6 +50,30 @@ class AuthServiceTests {
 
         assertEquals(HttpStatus.CONFLICT, exception.statusCode)
         assertEquals("Username already exists", exception.reason)
+    }
+
+    @Test
+    fun shouldNotRegisterUserWithTooShortUsername() {
+        every { authRepository.existsByUsername(any()) } returns false
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            authService.registerUser("u", "password")
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
+        assertEquals(SHORT_USERNAME, exception.reason)
+    }
+
+    @Test
+    fun shouldNotRegisterUserWithTooShortPassword() {
+        every { authRepository.existsByUsername(any()) } returns false
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            authService.registerUser("username", "p")
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
+        assertEquals(SHORT_PASSWORD, exception.reason)
     }
 
     @Test
