@@ -1,5 +1,6 @@
 package com.blikeng.chatapp.websocket
 
+import com.blikeng.chatapp.dtos.WsError
 import com.blikeng.chatapp.services.ChatService
 import com.blikeng.chatapp.services.ReceivedMessage
 import org.springframework.http.HttpStatus
@@ -23,43 +24,48 @@ class ChatWebSocketHandler(private val chatService: ChatService) : TextWebSocket
     }
 
     override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
-        val json = mapper.readTree(message.payload)
+        try {
+            val json = mapper.readTree(message.payload)
 
-        val typeString = json["type"].asString()
-        val type = try {
-            MessageType.valueOf(typeString)
-        } catch (e: IllegalArgumentException) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid message type")
-        }
-
-        val username = (session.attributes["username"] ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No username found")) as String
-        val userId = (session.attributes["userId"] ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No User ID found")) as UUID
-
-        when (type) {
-            MessageType.JOIN -> {
-                val roomId = UUID.fromString(json["roomId"].asString())
-                chatService.joinRoom(roomId, session)
-
-                val message = ReceivedMessage(roomId, userId, "$username joined the room", "JOIN")
-
-                chatService.broadcast(roomId, message, username)
-            }
-            MessageType.MESSAGE -> {
-                val roomId = UUID.fromString(json["roomId"].asString())
-
-                val message = ReceivedMessage(roomId, userId, json["message"].asString(), "MESSAGE")
-                chatService.broadcast(roomId, message, username)
-            }
-            MessageType.LEAVE -> {
-                val roomId = UUID.fromString(json["roomId"].asString())
-                chatService.leaveRoom(roomId, session)
-
-                val message = ReceivedMessage(roomId, userId, "$username left the room", "LEAVE")
-
-                chatService.broadcast(roomId, message, username)
+            val typeString = json["type"].asString()
+            val type = try {
+                MessageType.valueOf(typeString)
+            } catch (e: IllegalArgumentException) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid message type")
             }
 
-            MessageType.PING -> Unit
+            val username = (session.attributes["username"] ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No username found")) as String
+            val userId = (session.attributes["userId"] ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No User ID found")) as UUID
+
+            when (type) {
+                MessageType.JOIN -> {
+                    val roomId = UUID.fromString(json["roomId"].asString())
+                    chatService.joinRoom(roomId, session)
+
+                    val msg = ReceivedMessage(roomId, userId, "$username joined the room", "JOIN")
+                    chatService.broadcast(roomId, msg, username)
+                }
+
+                MessageType.MESSAGE -> {
+                    val roomId = UUID.fromString(json["roomId"].asString())
+
+                    val message = ReceivedMessage(roomId, userId, json["message"].asString(), "MESSAGE")
+                    chatService.broadcast(roomId, message, username)
+                }
+
+                MessageType.LEAVE -> {
+                    val roomId = UUID.fromString(json["roomId"].asString())
+                    chatService.leaveRoom(roomId, session)
+
+                    val message = ReceivedMessage(roomId, userId, "$username left the room", "LEAVE")
+
+                    chatService.broadcast(roomId, message, username)
+                }
+
+                MessageType.PING -> Unit
+            }
+        } catch (e: Exception) {
+            sendWsError(session, e)
         }
     }
 
@@ -71,5 +77,21 @@ class ChatWebSocketHandler(private val chatService: ChatService) : TextWebSocket
 
     enum class MessageType {
         MESSAGE, JOIN, LEAVE, PING
+    }
+
+    private fun sendWsError(session: WebSocketSession, e: Exception) {
+        val (code, msg) = when (e) {
+            is ResponseStatusException -> e.statusCode.value() to (e.reason ?: e.message ?: "Request failed")
+            is IllegalArgumentException -> 400 to (e.message ?: "Bad request")
+            else -> 500 to "Internal error"
+        }
+
+        val payload = mapper.writeValueAsString(
+            WsError(code = code, message = msg)
+        )
+
+        synchronized(session) {
+            if (session.isOpen) session.sendMessage(TextMessage(payload))
+        }
     }
 }

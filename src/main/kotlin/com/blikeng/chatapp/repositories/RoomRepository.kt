@@ -2,6 +2,8 @@ package com.blikeng.chatapp.repositories
 
 import com.blikeng.chatapp.entities.RoomEntity
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import java.util.*
 
@@ -10,4 +12,12 @@ interface RoomRepository: JpaRepository<RoomEntity, UUID> {
     fun save(room: RoomEntity): RoomEntity
 
     override fun findById(roomId: UUID): Optional<RoomEntity>
+
+    @Query("""
+    select r
+    from RoomEntity r
+    join UserRoomEntity ur on ur.id.roomId = r.id
+    where ur.id.userId = :userId
+""")
+    fun findRoomsForUser(@Param("userId") userId: UUID): List<RoomEntity>
 }

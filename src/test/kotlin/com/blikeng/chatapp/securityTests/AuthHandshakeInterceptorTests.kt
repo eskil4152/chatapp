@@ -62,10 +62,12 @@ class AuthHandshakeInterceptorTests {
         assertTrue(result)
         assertEquals(userId, attributes["userId"])
         assertEquals("user", attributes["username"])
+
+        verify(exactly = 1) { jwtService.validateToken("token") }
     }
 
     @Test
-    fun shouldFailWithoutToken() {
+    fun shouldFailWithoutCookie() {
         val servletRequest = mockk<HttpServletRequest> {
             every { cookies } returns null
         }
@@ -80,6 +82,7 @@ class AuthHandshakeInterceptorTests {
         )
 
         assertFalse(result)
+
         verify { jwtService wasNot Called }
     }
 
@@ -100,6 +103,7 @@ class AuthHandshakeInterceptorTests {
         )
 
         assertFalse(result)
+        verify { jwtService wasNot Called }
     }
 
     @Test
@@ -121,6 +125,7 @@ class AuthHandshakeInterceptorTests {
             mutableMapOf()
         )
 
+        verify(exactly = 1) { jwtService.validateToken("fake_token") }
         assertFalse(result)
     }
 

@@ -1,12 +1,15 @@
 package com.blikeng.chatapp.controllerTests
 
 import com.blikeng.chatapp.controllers.AuthController
+import com.blikeng.chatapp.security.JwtAuthFilter
 import com.blikeng.chatapp.services.AuthService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
-import jakarta.servlet.http.Cookie
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
+import org.springframework.context.annotation.ComponentScan
+import org.springframework.context.annotation.FilterType
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
@@ -17,26 +20,32 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie
 import org.springframework.web.server.ResponseStatusException
 import kotlin.test.Test
 
-@WebMvcTest(AuthController::class)
+@WebMvcTest(
+    controllers = [AuthController::class],
+    excludeFilters = [
+        ComponentScan.Filter(
+            type = FilterType.ASSIGNABLE_TYPE,
+            classes = [JwtAuthFilter::class]
+        )
+    ]
+)
+@AutoConfigureMockMvc(addFilters = false)
 class AuthControllerTests {
     @MockkBean private lateinit var authService: AuthService
     @Autowired private lateinit var mockMvc: MockMvc
 
     @Test
     fun shouldRegisterUserAndSetCookie() {
-        val cookie = Cookie("AUTH", "token").apply {
-            isHttpOnly = true
-            path = "/"
-        }
-
-        every { authService.registerUser("u", "p") } returns "token"
+        every { authService.registerUser("username", "password") } returns "token"
 
         mockMvc.post("/api/register") {
                 contentType = MediaType.APPLICATION_JSON
-            content = "{\n" +
-                    "\t\"username\":\"u\",\n" +
-                    "\t\"password\":\"p\"\n" +
-                    "}"
+            content = """
+                {
+                    "username":"username",
+                    "password":"password"
+                }
+            """.trimIndent()
             }
             .andExpect { status { isCreated()} }
             .andExpect { content().string("User registered successfully") }
@@ -44,35 +53,17 @@ class AuthControllerTests {
     }
 
     @Test
-    fun shouldFailRegisteringExistingUser() {
-        every { authService.registerUser("u", "p") } throws ResponseStatusException(HttpStatus.CONFLICT)
-
-        mockMvc.post("/api/register") {
-            contentType = MediaType.APPLICATION_JSON
-            content = "{\n" +
-                    "\t\"username\":\"u\",\n" +
-                    "\t\"password\":\"p\"\n" +
-                    "}"
-        }
-            .andExpect { status { isConflict()} }
-            .andExpect { content().string("Username already exists") }
-    }
-
-    @Test
     fun shouldLoginUserAndSetCookie() {
-        val cookie = Cookie("AUTH", "token").apply {
-            isHttpOnly = true
-            path = "/"
-        }
-
-        every { authService.loginUser("u", "p") } returns "token"
+        every { authService.loginUser("username", "password") } returns "token"
 
         mockMvc.post("/api/login") {
             contentType = MediaType.APPLICATION_JSON
-            content = "{\n" +
-                    "\t\"username\":\"u\",\n" +
-                    "\t\"password\":\"p\"\n" +
-                    "}"
+            content = """
+                {
+                    "username":"username",
+                    "password":"password"
+                }
+            """.trimIndent()
         }
             .andExpect { status { isOk()} }
             .andExpect { content().string("User logged in") }
@@ -81,37 +72,42 @@ class AuthControllerTests {
 
     @Test
     fun shouldFailLoginWithWrongCredentials() {
-        every { authService.loginUser("u", "p") } throws ResponseStatusException(HttpStatus.UNAUTHORIZED)
+        every { authService.loginUser("username", "password") } throws ResponseStatusException(HttpStatus.UNAUTHORIZED)
 
         mockMvc.post("/api/login") {
             contentType = MediaType.APPLICATION_JSON
-            content = "{\n" +
-                    "\t\"username\":\"u\",\n" +
-                    "\t\"password\":\"p\"\n" +
-                    "}"
+            content = """
+                {
+                    "username":"username",
+                    "password":"password"
+                }
+            """.trimIndent()
         }
             .andExpect { status { isUnauthorized()} }
             .andExpect { content().string("Invalid credentials") }
     }
 
     @Test
-    fun shouldAuthUser() {
-        every { authService.validateUser("cookie") } returns Unit
+    fun shouldGetConflict() {
+        every { authService.registerUser("username", "password") } throws ResponseStatusException(HttpStatus.CONFLICT)
 
-        mockMvc.get("/api/auth") {
-            cookie(Cookie("AUTH", "cookie"))
+        mockMvc.post("/api/register") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                    "username":"username",
+                    "password":"password"
+                }
+            """.trimIndent()
         }
-            .andExpect { status { isOk() } }
+            .andExpect { status { isConflict() } }
+            .andExpect { content().string("Username already exists") }
     }
 
     @Test
-    fun shouldFailToAuthUser() {
-        every { authService.validateUser(any()) } throws ResponseStatusException(HttpStatus.UNAUTHORIZED)
-
+    fun shouldReturnOkForAuthEndpoint() {
         mockMvc.get("/api/auth") {
-            cookie(Cookie("AUTH", "cookie"))
         }
-            .andExpect { status { isUnauthorized() } }
-            .andExpect { content().string("Invalid token") }
+            .andExpect { status { isOk() } }
     }
 }

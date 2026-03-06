@@ -10,14 +10,6 @@ class UserRoomEntity (
     @EmbeddedId
     val id: UserRoomId,
 
-    @ManyToOne
-    @MapsId("userId")
-    val user: UserEntity,
-
-    @ManyToOne
-    @MapsId("roomId")
-    val room: RoomEntity,
-
     @Enumerated(EnumType.STRING)
     val role: RoomRole
 )

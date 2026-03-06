@@ -11,16 +11,12 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFails
 import kotlin.test.assertFailsWith
 
-@SpringBootTest
-@ActiveProfiles("test")
 class ChatEncryptTests {
-    @Autowired
-    lateinit var encrypt: ChatEncrypt
+    private var encrypt = ChatEncrypt("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
 
     @Test
     fun shouldEncryptAndDecrypt(){
         val stringToEncrypt = "Hello from unit testing!"
-        val nonce = "nonce"
         val keyVersion = 1
 
         val roomId = UUID.randomUUID()

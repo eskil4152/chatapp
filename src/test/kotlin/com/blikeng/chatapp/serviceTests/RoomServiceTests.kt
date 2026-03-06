@@ -5,7 +5,6 @@ import com.blikeng.chatapp.entities.RoomRole
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
-import com.blikeng.chatapp.security.JwtService
 import com.blikeng.chatapp.services.RoomService
 import com.blikeng.chatapp.services.UserService
 import io.mockk.every
@@ -14,10 +13,13 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.slot
 import io.mockk.verify
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.assertNotNull
 import org.junit.jupiter.api.assertNull
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.http.HttpStatus
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.server.ResponseStatusException
 import java.util.*
 import kotlin.test.Test
@@ -28,17 +30,23 @@ import kotlin.test.assertFailsWith
 class RoomServiceTests {
     @MockK private lateinit var roomRepository: RoomRepository
     @MockK private lateinit var userService: UserService
-    @MockK private lateinit var jwtService: JwtService
     @MockK private lateinit var userRoomRepository: UserRoomRepository
 
     @InjectMockKs
     lateinit var roomService: RoomService
 
+    @AfterEach
+    fun clearSecurity() {
+        SecurityContextHolder.clearContext()
+    }
+
     @Test
     fun shouldMakeNewRoom(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
         val roomSlot = slot<RoomEntity>()
 
-        every { jwtService.validateToken(any()) } returns Pair("u", UUID.randomUUID())
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
         every { roomRepository.save(capture(roomSlot)) } answers {
             val r = roomSlot.captured
@@ -51,7 +59,7 @@ class RoomServiceTests {
         }
         every { userRoomRepository.save(any()) } answers { firstArg() }
 
-        roomService.makeNewRoom("r", false, "token")
+        roomService.makeNewRoom("r", false)
 
         val room = roomSlot.captured
         assertEquals("r", room.name)
@@ -61,9 +69,11 @@ class RoomServiceTests {
 
     @Test
     fun shouldMakeNewEncryptedRoom(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
         val roomSlot = slot<RoomEntity>()
 
-        every { jwtService.validateToken(any()) } returns Pair("u", UUID.randomUUID())
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
         every { roomRepository.save(capture(roomSlot)) } answers {
             val r = roomSlot.captured
@@ -76,7 +86,7 @@ class RoomServiceTests {
         }
         every { userRoomRepository.save(any()) } answers { firstArg() }
 
-        roomService.makeNewRoom("r", true, "token")
+        roomService.makeNewRoom("r", true)
 
         val room = roomSlot.captured
         assertEquals("r", room.name)
@@ -85,24 +95,14 @@ class RoomServiceTests {
     }
 
     @Test
-    fun shouldFailToMakeRoomWithInvalidCredentials(){
-        every { jwtService.validateToken(any()) } returns null
-
-        val exception = assertFailsWith<ResponseStatusException> {
-            roomService.makeNewRoom("r", false, "token")
-        }
-
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
-        assertEquals("Invalid token", exception.reason)
-    }
-
-    @Test
     fun shouldFailToMakeRoomWithInvalidUser(){
-        every { jwtService.validateToken(any()) } returns Pair("u", UUID.randomUUID())
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
         every { userService.getUserById(any()) } returns null
 
         val exception = assertFailsWith<ResponseStatusException> {
-            roomService.makeNewRoom("r", false, "token")
+            roomService.makeNewRoom("r", false)
         }
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
@@ -111,8 +111,11 @@ class RoomServiceTests {
 
     @Test
     fun shouldFailToMakeRoomWithInvalidRoomName(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
         val exception = assertFailsWith<ResponseStatusException> {
-            roomService.makeNewRoom("", false, "token")
+            roomService.makeNewRoom("", false)
         }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
@@ -121,13 +124,15 @@ class RoomServiceTests {
 
     @Test
     fun shouldGetAllRooms(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
         val roomId = UUID.randomUUID()
         val roomEntity = RoomEntity(id = roomId, name = "r")
 
-        every { jwtService.validateToken(any()) } returns Pair("u", UUID.randomUUID())
-        every { userRoomRepository.findAllRoomsByUserId(any()) } returns listOf(roomEntity)
+        every { roomRepository.findRoomsForUser(any()) } returns listOf(roomEntity)
 
-        val rooms = roomService.getAllUserRooms("token")
+        val rooms = roomService.getAllUserRooms()
         assertEquals(
             rooms,
             listOf(roomEntity)
@@ -135,21 +140,12 @@ class RoomServiceTests {
     }
 
     @Test
-    fun shouldFailToGetAllRoomsWhenInvalidToken(){
-        every { jwtService.validateToken(any()) } returns null
-
-        val exception = assertFailsWith<ResponseStatusException> {
-            roomService.getAllUserRooms("token")
-        }
-
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
-        assertEquals("Invalid token", exception.reason)
-    }
-
-    @Test
     fun shouldJoinRoom() {
         val roomId = UUID.randomUUID()
         val userId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
 
         val user = UserEntity(
             id = userId,
@@ -162,12 +158,11 @@ class RoomServiceTests {
             name = "r"
         )
 
-        every { jwtService.validateToken("token") } returns ("u" to userId)
         every { userService.getUserById(userId) } returns user
         every { roomRepository.findById(roomId) } returns Optional.of(room)
         every { userRoomRepository.save(any()) } answers { firstArg() }
 
-        roomService.joinRoom(roomId, "token")
+        roomService.joinRoom(roomId)
 
         verify(exactly = 1) {
             userRoomRepository.save(
@@ -181,24 +176,14 @@ class RoomServiceTests {
     }
 
     @Test
-    fun shouldFailToJoinRoomWithInvalidCredentials(){
-        every { jwtService.validateToken(any()) } returns null
-
-        val exception = assertFailsWith<ResponseStatusException> {
-            roomService.joinRoom(UUID.randomUUID(), "token")
-        }
-
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
-        assertEquals("Invalid token", exception.reason)
-    }
-
-    @Test
     fun shouldFailToJoinRoomWithInvalidUser(){
-        every { jwtService.validateToken(any()) } returns Pair("u", UUID.randomUUID())
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
         every { userService.getUserById(any()) } returns null
 
         val exception = assertFailsWith<ResponseStatusException> {
-            roomService.joinRoom(UUID.randomUUID(), "token")
+            roomService.joinRoom(UUID.randomUUID())
         }
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
@@ -207,12 +192,14 @@ class RoomServiceTests {
 
     @Test
     fun shouldFailToJoinRoomWithInvalidRoomId(){
-        every { jwtService.validateToken(any()) } returns Pair("u", UUID.randomUUID())
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
         every { roomRepository.findById(any()) } returns Optional.empty()
 
         val exception = assertFailsWith<ResponseStatusException> {
-            roomService.joinRoom(UUID.randomUUID(), "token")
+            roomService.joinRoom(UUID.randomUUID())
         }
 
         assertEquals(HttpStatus.NOT_FOUND, exception.statusCode)
@@ -220,17 +207,32 @@ class RoomServiceTests {
     }
 
     @Test
-    fun shouldLeaveRoom(){
-        // TODO
+    fun shouldFailToGetRoomsWhenNoAuthentication() {
+        val exception = assertFailsWith<ResponseStatusException> {
+            roomService.getAllUserRooms()
+        }
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
+        assertEquals("Invalid token", exception.reason)
     }
 
     @Test
-    fun shouldFailToLeaveRoomWithInvalidCredentials(){
-        // TODO
+    fun shouldFailToMakeRoomWhenNoAuthentication() {
+        val exception = assertFailsWith<ResponseStatusException> {
+            roomService.makeNewRoom("roomName", false)
+        }
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
+        assertEquals("Invalid token", exception.reason)
     }
 
     @Test
-    fun shouldFailToLeaveRoomWithInvalidRoomId(){
-        // TODO
+    fun shouldFailToJoinRoomWhenNoAuthentication() {
+        val exception = assertFailsWith<ResponseStatusException> {
+            roomService.joinRoom(UUID.randomUUID())
+        }
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
+        assertEquals("Invalid token", exception.reason)
     }
 }

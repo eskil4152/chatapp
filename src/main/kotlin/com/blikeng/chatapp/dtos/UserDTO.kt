@@ -11,6 +11,6 @@ data class UserDTO (
     val avatarUrl: String?,
     val birthday: Date?,
     val createdAt: Date?,
-    val rooms: MutableSet<RoomEntity>,
+    val rooms: List<RoomEntity>,
     //val friends: MutableSet<UserFriendEntity>
 )

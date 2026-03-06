@@ -1,19 +1,12 @@
 package com.blikeng.chatapp.repositories
 
-import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.entities.UserRoomEntity
 import com.blikeng.chatapp.entities.UserRoomId
 import org.springframework.data.jpa.repository.JpaRepository
-import org.springframework.data.jpa.repository.Query
-import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import java.util.*
 
 @Repository
 interface UserRoomRepository: JpaRepository<UserRoomEntity, UserRoomId> {
-    fun save(userRoom: UserRoomEntity): UserRoomEntity
-
-    // Custom query to directly fetch RoomEntity instead of UserRoomEntity
-    @Query("SELECT ur.room FROM UserRoomEntity ur WHERE ur.user.id = :userId")
-    fun findAllRoomsByUserId(@Param("userId") userId: UUID): List<RoomEntity>
+    fun existsByIdUserIdAndIdRoomId(userId: UUID, roomId: UUID): Boolean
 }
