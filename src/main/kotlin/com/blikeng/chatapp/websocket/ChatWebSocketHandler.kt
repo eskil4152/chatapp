@@ -81,13 +81,13 @@ class ChatWebSocketHandler(private val chatService: ChatService) : TextWebSocket
 
     private fun sendWsError(session: WebSocketSession, e: Exception) {
         val (code, msg) = when (e) {
-            is ResponseStatusException -> e.statusCode.value() to (e.reason ?: e.message ?: "Request failed")
+            is ResponseStatusException -> e.statusCode.value() to (e.reason ?: e.message)
             is IllegalArgumentException -> 400 to (e.message ?: "Bad request")
             else -> 500 to "Internal error"
         }
 
         val payload = mapper.writeValueAsString(
-            WsError(code = code, message = msg)
+            WsError(code = code, message = msg.toString())
         )
 
         synchronized(session) {
