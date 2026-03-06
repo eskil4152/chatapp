@@ -78,4 +78,3 @@ Hosted on Azure and connected to GitHub Pages frontend.
   - [ ] Microsoft
 - [ ] CSRF
 - [ ] Compress messages before saving
-- [ ] Empty username or password check

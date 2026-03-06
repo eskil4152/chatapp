@@ -3,6 +3,7 @@ package com.blikeng.chatapp.services
 import com.blikeng.chatapp.ErrorMessages.INVALID_PASSWORD
 import com.blikeng.chatapp.ErrorMessages.INVALID_TOKEN
 import com.blikeng.chatapp.ErrorMessages.INVALID_USER
+import com.blikeng.chatapp.ErrorMessages.SHORT_PASSWORD
 import com.blikeng.chatapp.ErrorMessages.USER_NOT_FOUND
 import com.blikeng.chatapp.dtos.ChangeUserDTO
 import com.blikeng.chatapp.dtos.EditPasswordDTO
@@ -10,7 +11,6 @@ import com.blikeng.chatapp.dtos.UserDTO
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
-import com.blikeng.chatapp.security.JwtService
 import com.blikeng.chatapp.security.PasswordService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -60,7 +60,9 @@ class UserService(
     fun editPassword(passwords: EditPasswordDTO) {
         val id = SecurityContextHolder.getContext().authentication?.principal as? UUID ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_TOKEN)
         val user = getUserById(id) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
+
         if (!passwordService.checkPassword(passwords.oldPassword, user.password)) throw ResponseStatusException(HttpStatus.BAD_REQUEST, INVALID_PASSWORD)
+        if (passwords.newPassword.trim().length < 8) throw ResponseStatusException(HttpStatus.BAD_REQUEST, SHORT_PASSWORD)
 
         val encoded = passwordService.encodePassword(passwords.newPassword)
         user.password = encoded

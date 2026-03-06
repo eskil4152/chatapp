@@ -2,6 +2,8 @@ package com.blikeng.chatapp.services
 
 import com.blikeng.chatapp.ErrorMessages.INVALID_CREDENTIALS
 import com.blikeng.chatapp.ErrorMessages.INVALID_TOKEN
+import com.blikeng.chatapp.ErrorMessages.SHORT_PASSWORD
+import com.blikeng.chatapp.ErrorMessages.SHORT_USERNAME
 import com.blikeng.chatapp.ErrorMessages.USERNAME_ALREADY_EXISTS
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.repositories.AuthRepository
@@ -20,6 +22,8 @@ class AuthService(
 ) {
     fun registerUser(username: String, password: String): String {
         if (authRepository.existsByUsername(username)) throw ResponseStatusException(HttpStatus.CONFLICT, USERNAME_ALREADY_EXISTS)
+        if (password.trim().length < 8) throw ResponseStatusException(HttpStatus.BAD_REQUEST, SHORT_PASSWORD)
+        if (username.trim().length < 3) throw ResponseStatusException(HttpStatus.BAD_REQUEST, SHORT_USERNAME)
 
         val user = authRepository.save(UserEntity(username = username, password = passwordService.encodePassword(password)))
 
