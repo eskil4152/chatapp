@@ -7,7 +7,6 @@ import com.blikeng.chatapp.dtos.EditPasswordDTO
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
-import com.blikeng.chatapp.security.JwtService
 import com.blikeng.chatapp.security.PasswordService
 import com.blikeng.chatapp.services.UserService
 import io.mockk.every

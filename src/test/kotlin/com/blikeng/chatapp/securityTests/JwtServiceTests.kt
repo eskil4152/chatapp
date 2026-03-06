@@ -3,10 +3,7 @@ package com.blikeng.chatapp.securityTests
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.security.JwtService
 import org.junit.jupiter.api.assertNull
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.ActiveProfiles
-import java.util.UUID
+import java.util.*
 import kotlin.test.Test
 
 class JwtServiceTests {

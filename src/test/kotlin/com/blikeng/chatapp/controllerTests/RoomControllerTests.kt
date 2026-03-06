@@ -17,9 +17,7 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
-import org.springframework.web.client.HttpStatusCodeException
 import org.springframework.web.server.ResponseStatusException
 import java.util.*
 import kotlin.test.Test

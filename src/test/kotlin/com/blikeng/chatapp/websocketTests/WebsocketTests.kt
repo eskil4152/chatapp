@@ -2,14 +2,10 @@ package com.blikeng.chatapp.websocketTests
 
 import com.blikeng.chatapp.services.ChatService
 import com.blikeng.chatapp.websocket.ChatWebSocketHandler
-import io.mockk.Runs
-import io.mockk.every
+import io.mockk.*
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
-import io.mockk.just
-import io.mockk.slot
-import io.mockk.verify
 import junit.framework.TestCase.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.ExtendWith
