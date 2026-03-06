@@ -6,14 +6,11 @@ import org.junit.jupiter.api.assertNull
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
-import java.util.*
+import java.util.UUID
 import kotlin.test.Test
 
-@SpringBootTest
-@ActiveProfiles("test")
 class JwtServiceTests {
-    @Autowired
-    lateinit var jwtService: JwtService
+    private var jwtService = JwtService("superSecretKeyForTheTestsWhichIsAbsolutelySecureEnoughAndFarEnoughBitsToBeAbleToBeMadeIntoASecureEnoughKey")
 
     @Test
     fun shouldGenerateToken(){

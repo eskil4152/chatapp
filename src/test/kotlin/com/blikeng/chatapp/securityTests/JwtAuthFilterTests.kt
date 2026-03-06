@@ -2,8 +2,10 @@ package com.blikeng.chatapp.securityTests
 
 import com.blikeng.chatapp.security.JwtAuthFilter
 import com.blikeng.chatapp.security.JwtService
+import io.mockk.Called
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import jakarta.servlet.http.Cookie
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -98,6 +100,7 @@ class JwtAuthFilterTests {
         filter.doFilter(req, res, chain)
 
         assertEquals(existing, SecurityContextHolder.getContext().authentication)
+        verify { jwtService wasNot Called }
     }
 
     @Test
@@ -111,5 +114,19 @@ class JwtAuthFilterTests {
         filter.doFilter(req, res, chain)
 
         assertNull(SecurityContextHolder.getContext().authentication)
+    }
+
+    @Test
+    fun shouldBeNullWithWhitespaceCookie() {
+        val req = MockHttpServletRequest()
+        req.setCookies(Cookie("AUTH", "   "))
+
+        val res = MockHttpServletResponse()
+        val chain = MockFilterChain()
+
+        filter.doFilter(req, res, chain)
+
+        assertNull(SecurityContextHolder.getContext().authentication)
+        verify { jwtService wasNot Called }
     }
 }

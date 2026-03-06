@@ -1,6 +1,7 @@
 package com.blikeng.chatapp.config
 
 import com.blikeng.chatapp.security.JwtAuthFilter
+import jakarta.servlet.http.HttpServletResponse
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -20,7 +21,6 @@ class SecurityConfig(
     fun securityWebFilterChain(http: HttpSecurity): SecurityFilterChain {
         http
             .authorizeHttpRequests { authRequest ->
-                authRequest.requestMatchers("/api/auth").permitAll()
                 authRequest.requestMatchers("/api/login").permitAll()
                 authRequest.requestMatchers("/api/register").permitAll()
                 authRequest.requestMatchers("/ws/**").permitAll()
@@ -31,6 +31,11 @@ class SecurityConfig(
             .cors {  }
             .csrf { it.disable() }
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter::class.java)
+            .exceptionHandling {
+                it.authenticationEntryPoint { _, response, _ ->
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token")
+                }
+            }
 
         return http.build()
     }

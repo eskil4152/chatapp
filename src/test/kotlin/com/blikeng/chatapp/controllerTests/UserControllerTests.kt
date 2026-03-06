@@ -1,23 +1,26 @@
 package com.blikeng.chatapp.controllerTests
 
+import com.blikeng.chatapp.ErrorMessages.INVALID_PASSWORD
+import com.blikeng.chatapp.ErrorMessages.INVALID_TOKEN
 import com.blikeng.chatapp.controllers.UserController
 import com.blikeng.chatapp.dtos.UserDTO
 import com.blikeng.chatapp.security.JwtAuthFilter
 import com.blikeng.chatapp.services.UserService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
-import jakarta.servlet.http.Cookie
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.FilterType
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.patch
 import org.springframework.test.web.servlet.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
+import org.springframework.web.server.ResponseStatusException
 import java.sql.Date
 import kotlin.test.Test
 
@@ -48,10 +51,9 @@ class UserControllerTests {
             rooms = listOf(),
         )
 
-        every { userService.getSelf("token") } returns user
+        every { userService.getSelf() } returns user
 
         mockMvc.get("/api/user") {
-            cookie(Cookie("AUTH", "token"))
         }
             .andExpect { status { isOk() } }
             .andExpect { jsonPath("$.username", "u") }
@@ -60,18 +62,10 @@ class UserControllerTests {
     }
 
     @Test
-    fun shouldFailToGetSelfWithoutCookie(){
-        mockMvc.get("/api/user") {
-        }
-            .andExpect { status { isUnauthorized() } }
-    }
-
-    @Test
     fun shouldUpdateUser(){
-        every { userService.editProfile(any(), "token") } returns Unit
+        every { userService.editProfile(any()) } returns Unit
 
         mockMvc.put("/api/user/edit") {
-            cookie(Cookie("AUTH", "token"))
             contentType = MediaType.APPLICATION_JSON
             content = "{\n" +
                     "\t\"bio\":\"b\",\n" +
@@ -85,26 +79,10 @@ class UserControllerTests {
     }
 
     @Test
-    fun shouldFailToUpdateUserWithoutCookie(){
-        mockMvc.put("/api/user/edit") {
-            contentType = MediaType.APPLICATION_JSON
-            content = "{\n" +
-                    "\t\"bio\":\"b\",\n" +
-                    "\t\"email\":\"e\",\n" +
-                    "\t\"fullName\":\"f\",\n" +
-                    "\t\"avatarUrl\":\"a\"\n" +
-                    "}"
-        }
-            .andExpect { status { isUnauthorized() } }
-            .andExpect { content { string("No cookie found") } }
-    }
-
-    @Test
     fun shouldUpdatePassword(){
-        every { userService.editPassword("token", any()) } returns Unit
+        every { userService.editPassword(any()) } returns Unit
 
         mockMvc.patch("/api/user/edit/password") {
-            cookie(Cookie("AUTH", "token"))
             contentType = MediaType.APPLICATION_JSON
             content = "{\n" +
                     "\t\"oldPassword\":\"old p\",\n" +
@@ -116,7 +94,9 @@ class UserControllerTests {
     }
 
     @Test
-    fun shouldFailToUpdatePasswordWithoutCookie(){
+    fun shouldReturnABadRequest(){
+        every { userService.editPassword(any()) } throws ResponseStatusException(HttpStatus.BAD_REQUEST, INVALID_PASSWORD)
+
         mockMvc.patch("/api/user/edit/password") {
             contentType = MediaType.APPLICATION_JSON
             content = "{\n" +
@@ -124,7 +104,24 @@ class UserControllerTests {
                     "\t\"newPassword\":\"new p\"\n" +
                     "}"
         }
+            .andExpect { status { isBadRequest() } }
+            .andExpect { status { reason(INVALID_PASSWORD) } }
+    }
+
+    @Test
+    fun shouldReturnUnauthorized(){
+        every { userService.editPassword(any()) } throws ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_TOKEN)
+
+        mockMvc.patch("/api/user/edit/password") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                    "oldPassword": "old p",
+                    "newPassword": "new p"
+                }
+            """.trimIndent()
+        }
             .andExpect { status { isUnauthorized() } }
-            .andExpect { content { string("No cookie found") } }
+            .andExpect { status { reason(INVALID_TOKEN) } }
     }
 }

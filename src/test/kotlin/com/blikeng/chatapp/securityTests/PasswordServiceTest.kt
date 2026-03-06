@@ -6,7 +6,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import kotlin.test.Test
 
-@ExtendWith(MockKExtension::class)
 class PasswordServiceTest {
     private val passwordEncoder = BCryptPasswordEncoder()
     private val passwordService = PasswordService(passwordEncoder)
