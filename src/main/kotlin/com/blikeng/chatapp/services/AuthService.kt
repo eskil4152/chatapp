@@ -32,10 +32,4 @@ class AuthService(
 
         return jwtService.generateToken(user)
     }
-
-    fun validateUser(authCookie: String?){
-        if (authCookie == null) throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_TOKEN)
-
-        if (jwtService.validateToken(authCookie) == null) throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_TOKEN)
-    }
 }

@@ -6,7 +6,9 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseCookie
 import org.springframework.http.ResponseEntity
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
+import java.util.UUID
 
 @RestController
 @RequestMapping("/api")
@@ -55,9 +57,7 @@ class AuthController(
     }
 
     @GetMapping("/auth")
-    fun auth(@CookieValue("AUTH") authCookie: String?): ResponseEntity<String> {
-        authService.validateUser(authCookie)
-
+    fun auth(): ResponseEntity<String> {
         return ResponseEntity.ok("Authorized")
     }
 }
