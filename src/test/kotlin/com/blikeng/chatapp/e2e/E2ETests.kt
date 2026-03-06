@@ -48,6 +48,7 @@ class E2ETests : PostgresContainerBase() {
     var user1Cookie: Cookie? = null
     var user2Cookie: Cookie? = null
     var roomId: String? = null
+    var encryptedRoomId: String? = null
 
     @BeforeAll
     fun setup(@Autowired jdbcTemplate: JdbcTemplate) {
@@ -361,7 +362,6 @@ class E2ETests : PostgresContainerBase() {
         user1Cookie = result.response.cookies.find { it.name == "AUTH" }
     }
 
-    // Section: Second user
     @Test
     @Order(20)
     fun shouldRegisterSecondUser(){
@@ -532,6 +532,142 @@ class E2ETests : PostgresContainerBase() {
 
         assertTrue(received.any { it.contains("JOINED") })
         assertTrue(received.any { it.contains("hello from user1") })
+
+        session.close()
+    }
+
+    @Test
+    @Order(28)
+    fun shouldMakeEncryptedRoom(){
+        mockMvc.post("/api/rooms/make") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+            {
+                "roomName":"Encrypted room",
+                "encrypted":true
+            }
+        """.trimIndent()
+            user2Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isCreated() } }
+
+        val result = mockMvc.get("/api/rooms") {
+            user2Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+            .andReturn()
+
+        val json = jacksonObjectMapper()
+            .readTree(result.response.contentAsString)
+
+        encryptedRoomId = json
+            .first { it["encrypted"].asBoolean() }["id"].asString()
+    }
+
+    @Test
+    @Order(29)
+    fun shouldJoinEncryptedRoom(){
+        mockMvc.post("/api/rooms/join") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                    "roomId":"$encryptedRoomId"
+                }
+            """.trimIndent()
+            user1Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+    }
+
+    @Test
+    @Order(30)
+    fun shouldEnterEncryptedRoomAndSendMessage() {
+        val received = CopyOnWriteArrayList<String>()
+        val latch = CountDownLatch(2)
+
+        val handler = object : TextWebSocketHandler() {
+            override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
+                received += message.payload
+                latch.countDown()
+            }
+        }
+
+        val headers = WebSocketHttpHeaders().apply {
+            add(HttpHeaders.COOKIE, "AUTH=${user1Cookie!!.value}")
+        }
+
+        val session = StandardWebSocketClient()
+            .execute(handler, headers, URI("ws://localhost:$port/ws"))
+            .get(5, TimeUnit.SECONDS)
+
+        session.sendMessage(
+            TextMessage(
+                """
+            {
+                "type":"JOIN",
+                "roomId":"$encryptedRoomId",
+                "message":""
+            }
+            """.trimIndent()
+            )
+        )
+
+        session.sendMessage(
+            TextMessage(
+                """
+            {
+                "type":"MESSAGE",
+                "roomId":"$encryptedRoomId",
+                "message":"encrypted hello from user1"
+            }
+            """.trimIndent()
+            )
+        )
+
+        assertTrue(latch.await(5, TimeUnit.SECONDS))
+
+        assertTrue(received.any { it.contains("JOINED") })
+
+        session.close()
+    }
+
+    @Test
+    @Order(31)
+    fun shouldEnterEncryptedRoomAndGetMessages() {
+        val received = CopyOnWriteArrayList<String>()
+        val latch = CountDownLatch(2)
+
+        val handler = object : TextWebSocketHandler() {
+            override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
+                received += message.payload
+                latch.countDown()
+            }
+        }
+
+        val headers = WebSocketHttpHeaders().apply {
+            add(HttpHeaders.COOKIE, "AUTH=${user2Cookie!!.value}")
+        }
+
+        val session = StandardWebSocketClient()
+            .execute(handler, headers, URI("ws://localhost:$port/ws"))
+            .get(5, TimeUnit.SECONDS)
+
+        session.sendMessage(
+            TextMessage(
+                """
+            {
+                "type":"JOIN",
+                "roomId":"$encryptedRoomId",
+                "message":""
+            }
+            """.trimIndent()
+            )
+        )
+
+        assertTrue(latch.await(5, TimeUnit.SECONDS))
+
+        assertTrue(received.any { it.contains("JOINED") })
+        assertTrue(received.any { it.contains("encrypted hello from user1") })
 
         session.close()
     }
