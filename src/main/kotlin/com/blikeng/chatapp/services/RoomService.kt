@@ -144,7 +144,6 @@ class RoomService(
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot delete")
         }
 
-        chatRepository.deleteAllByRoom_Id(roomUUID)
         userRoomRepository.deleteAllByIdRoomId(roomUUID)
         roomRepository.deleteById(roomUUID)
     }

@@ -74,7 +74,7 @@ class ChatService(
 
         val entity = ChatEntity(
             user = user,
-            room = room,
+            roomId = room.id,
             message = null,
             timestamp = timestamp
         )
@@ -133,7 +133,7 @@ class ChatService(
         )
 
         val persisted = chatRepository.getAllChatsByRoomId(roomId)
-        val buffered = buffer.asSequence().filter { it.room.id == roomId }.toList()
+        val buffered = buffer.asSequence().filter { it.roomId == roomId }.toList()
 
         val allMessages = (persisted + buffered).sortedBy { it.timestamp }
         fetchAllMessages(allMessages, session)
@@ -147,7 +147,7 @@ class ChatService(
                 encrypt.decrypt(
                     ciphertext = m.ciphertext!!,
                     nonce = m.nonce!!,
-                    aad = configureAad(m.room.id, m.id, m.user.id),
+                    aad = configureAad(m.roomId, m.id, m.user.id),
                     keyVersion = m.keyVersion!!
                 )
             }

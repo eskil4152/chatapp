@@ -1,3 +1,0 @@
-ALTER TABLE rooms
-    ADD COLUMN encrypted BOOLEAN NOT NULL DEFAULT FALSE,
-    ADD COLUMN key_version INT;

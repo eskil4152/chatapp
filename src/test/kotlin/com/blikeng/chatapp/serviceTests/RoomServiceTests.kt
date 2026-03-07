@@ -569,7 +569,6 @@ class RoomServiceTests {
 
         every { roomRepository.deleteById(roomId) } just Runs
         every { userRoomRepository.deleteAllByIdRoomId(roomId) } just Runs
-        every { chatRepository.deleteAllByRoom_Id(roomId) } just Runs
 
         roomService.deleteRoom(roomId.toString())
 
