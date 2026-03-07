@@ -35,9 +35,9 @@ class RoomController(
     fun joinRoom(
         @RequestBody roomInfo: RoomInfo
     ) : ResponseEntity<String> {
-        val roomId = roomInfo.roomId
+        val roomId = roomInfo.roomId ?: return ResponseEntity.badRequest().body("Invalid room id")
 
-        roomService.joinRoom(UUID.fromString(roomId))
+        roomService.joinRoom(roomId)
 
         return ResponseEntity.ok("Joined room successfully")
     }

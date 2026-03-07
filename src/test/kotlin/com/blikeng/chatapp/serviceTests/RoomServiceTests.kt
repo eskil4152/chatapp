@@ -1,5 +1,6 @@
 package com.blikeng.chatapp.serviceTests
 
+import com.blikeng.chatapp.ErrorMessages.INVALID_ROOM_NAME
 import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.entities.RoomRole
 import com.blikeng.chatapp.entities.UserEntity
@@ -162,7 +163,7 @@ class RoomServiceTests {
         every { roomRepository.findById(roomId) } returns Optional.of(room)
         every { userRoomRepository.save(any()) } answers { firstArg() }
 
-        roomService.joinRoom(roomId)
+        roomService.joinRoom(roomId.toString())
 
         verify(exactly = 1) {
             userRoomRepository.save(
@@ -183,7 +184,7 @@ class RoomServiceTests {
         every { userService.getUserById(any()) } returns null
 
         val exception = assertFailsWith<ResponseStatusException> {
-            roomService.joinRoom(UUID.randomUUID())
+            roomService.joinRoom(UUID.randomUUID().toString())
         }
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
@@ -191,7 +192,7 @@ class RoomServiceTests {
     }
 
     @Test
-    fun shouldFailToJoinRoomWithInvalidRoomId(){
+    fun shouldFailToJoinNonExistingRoom(){
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
 
@@ -199,7 +200,7 @@ class RoomServiceTests {
         every { roomRepository.findById(any()) } returns Optional.empty()
 
         val exception = assertFailsWith<ResponseStatusException> {
-            roomService.joinRoom(UUID.randomUUID())
+            roomService.joinRoom(UUID.randomUUID().toString())
         }
 
         assertEquals(HttpStatus.NOT_FOUND, exception.statusCode)
@@ -229,10 +230,26 @@ class RoomServiceTests {
     @Test
     fun shouldFailToJoinRoomWhenNoAuthentication() {
         val exception = assertFailsWith<ResponseStatusException> {
-            roomService.joinRoom(UUID.randomUUID())
+            roomService.joinRoom(UUID.randomUUID().toString())
         }
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
         assertEquals("Invalid token", exception.reason)
+    }
+
+    @Test
+    fun shouldFailToJoinRoomWithInvalidId(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+        every { roomRepository.findById(any()) } returns Optional.empty()
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            roomService.joinRoom("not a real UUID")
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
+        assertEquals(INVALID_ROOM_NAME, exception.reason)
     }
 }
