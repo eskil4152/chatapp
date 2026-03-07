@@ -10,10 +10,12 @@ import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.services.RoomService
 import com.blikeng.chatapp.services.UserService
+import io.mockk.Runs
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.just
 import io.mockk.slot
 import io.mockk.verify
 import org.junit.jupiter.api.AfterEach
@@ -261,5 +263,60 @@ class RoomServiceTests {
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
         assertEquals(INVALID_ROOM_NAME, exception.reason)
+    }
+
+    @Test
+    fun shouldLeaveRoom(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
+        every { userRoomRepository.deleteByIdUserIdAndIdRoomId(any(), any()) } just Runs
+
+        roomService.leaveRoom(UUID.randomUUID().toString())
+    }
+
+    @Test
+    fun shouldFailToLeaveRoomWhenNotAuthenticated() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns null
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            roomService.leaveRoom(UUID.randomUUID().toString())
+        }
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
+    }
+
+    @Test
+    fun shouldFailToLeaveRoomWithInvalidId(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            roomService.leaveRoom("")
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
+    }
+
+    @Test
+    fun shouldFailToLeaveRoomWithoutBeingAMember(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns false
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            roomService.leaveRoom(UUID.randomUUID().toString())
+        }
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.statusCode)
     }
 }

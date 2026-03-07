@@ -3,6 +3,8 @@ package com.blikeng.chatapp.e2e
 import com.blikeng.chatapp.ErrorMessages.WRONG_PASSWORD
 import com.blikeng.chatapp.ErrorMessages.SHORT_PASSWORD
 import jakarta.servlet.http.Cookie
+import org.hamcrest.CoreMatchers.containsString
+import org.hamcrest.CoreMatchers.not
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -664,6 +666,38 @@ class E2ETests : PostgresContainerBase() {
 
     @Test
     @Order(32)
+    fun shouldLeaveRoom(){
+        mockMvc.delete("/api/rooms/leave") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                    "roomId":"$encryptedRoomId"
+                }
+            """.trimIndent()
+            user1Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { content { string("Left room successfully")} }
+
+        mockMvc.get("/api/rooms") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                    "roomId":"$roomId"
+                }
+            """.trimIndent()
+            user1Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+            .andExpect {
+                content {
+                    string(not(containsString(encryptedRoomId)))
+                }
+            }
+    }
+
+    @Test
+    @Order(33)
     fun shouldLogOut(){
         val result = mockMvc.post("/api/logout") {
             contentType = MediaType.APPLICATION_JSON

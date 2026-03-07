@@ -44,9 +44,7 @@ class RoomController(
     fun leaveRoom(
         @RequestBody roomDTO: RoomDTO
     ) : ResponseEntity<String> {
-        val roomId = roomDTO.roomId ?: return ResponseEntity.badRequest().body("Invalid room id")
-
-        roomService.leaveRoom(roomId)
+        roomService.leaveRoom(roomDTO.roomId)
 
         return ResponseEntity.ok("Left room successfully")
     }

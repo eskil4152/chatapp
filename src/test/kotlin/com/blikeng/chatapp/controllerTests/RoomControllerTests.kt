@@ -4,7 +4,6 @@ import com.blikeng.chatapp.ErrorMessages.INVALID_ROOM_NAME
 import com.blikeng.chatapp.ErrorMessages.ROOM_NOT_FOUND
 import com.blikeng.chatapp.controllers.RoomController
 import com.blikeng.chatapp.dtos.RoomDTO
-import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.entities.RoomRole
 import com.blikeng.chatapp.security.JwtAuthFilter
 import com.blikeng.chatapp.services.RoomService
@@ -18,6 +17,7 @@ import org.springframework.context.annotation.FilterType
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
@@ -175,6 +175,24 @@ class RoomControllerTests {
         }.andExpect {
             status { isBadRequest() }
             content { content().string(INVALID_ROOM_NAME) }
+        }
+    }
+
+    @Test
+    fun shouldLeaveRoom(){
+        every { roomService.leaveRoom(any()) } returns Unit
+
+        val roomId = UUID.randomUUID()
+
+        mockMvc.delete("/api/rooms/leave") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                    "roomId":"$roomId"
+                }
+            """.trimIndent()
+        }.andExpect {
+            status { isOk() }
         }
     }
 }

@@ -1,7 +1,6 @@
 package com.blikeng.chatapp.services
 
 import com.blikeng.chatapp.ErrorMessages.INVALID_ROOM_NAME
-import com.blikeng.chatapp.ErrorMessages.INVALID_TOKEN
 import com.blikeng.chatapp.ErrorMessages.INVALID_USER
 import com.blikeng.chatapp.ErrorMessages.ROOM_NOT_FOUND
 import com.blikeng.chatapp.getId
@@ -14,7 +13,6 @@ import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
-import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
@@ -74,7 +72,7 @@ class RoomService(
     }
 
     @Transactional
-    fun leaveRoom(roomId: String){
+    fun leaveRoom(roomId: String?){
         val id = getId()
         userService.getUserById(id) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
 
