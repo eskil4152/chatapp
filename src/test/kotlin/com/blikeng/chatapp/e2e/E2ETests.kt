@@ -227,14 +227,14 @@ class E2ETests : PostgresContainerBase() {
         }
             .andExpect { status { isOk() } }
             .andExpect {
-                jsonPath("$[0].name") { value("Brand new, nonencrypted room") }
+                jsonPath("$[0].roomName") { value("Brand new, nonencrypted room") }
             }
             .andReturn()
 
         val json = jacksonObjectMapper()
             .readTree(result.response.contentAsString)
 
-        roomId = json[0]["id"].asString()
+        roomId = json[0]["roomId"].asString()
     }
 
     @Test
@@ -414,7 +414,7 @@ class E2ETests : PostgresContainerBase() {
         }
             .andExpect { status { isOk() } }
             .andExpect {
-                jsonPath("$[0].name") { value("Brand new, nonencrypted room") }
+                jsonPath("$[0].roomName") { value("Brand new, nonencrypted room") }
             }
             .andReturn()
     }
@@ -551,7 +551,7 @@ class E2ETests : PostgresContainerBase() {
             .readTree(result.response.contentAsString)
 
         encryptedRoomId = json
-            .first { it["encrypted"].asBoolean() }["id"].asString()
+            .first { it["encrypted"].asBoolean() }["roomId"].asString()
     }
 
     @Test

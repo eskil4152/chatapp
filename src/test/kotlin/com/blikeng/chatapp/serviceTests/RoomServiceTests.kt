@@ -1,9 +1,11 @@
 package com.blikeng.chatapp.serviceTests
 
 import com.blikeng.chatapp.ErrorMessages.INVALID_ROOM_NAME
+import com.blikeng.chatapp.dtos.RoomDTO
 import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.entities.RoomRole
 import com.blikeng.chatapp.entities.UserEntity
+import com.blikeng.chatapp.repositories.JoinedRoom
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.services.RoomService
@@ -129,14 +131,22 @@ class RoomServiceTests {
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
 
         val roomId = UUID.randomUUID()
-        val roomEntity = RoomEntity(id = roomId, name = "r")
+        val room = RoomEntity(id = roomId, name = "r")
+        val joinedRoom = JoinedRoom(room, RoomRole.OWNER)
 
-        every { roomRepository.findRoomsForUser(any()) } returns listOf(roomEntity)
+        every { roomRepository.findRoomsForUser(any()) } returns listOf(joinedRoom)
 
         val rooms = roomService.getAllUserRooms()
         assertEquals(
-            rooms,
-            listOf(roomEntity)
+            listOf(
+                RoomDTO(
+                    roomId = roomId.toString(),
+                    roomName = "r",
+                    encrypted = room.encrypted,
+                    role = RoomRole.OWNER
+                )
+            ),
+            rooms
         )
     }
 

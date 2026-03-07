@@ -3,7 +3,9 @@ package com.blikeng.chatapp.controllerTests
 import com.blikeng.chatapp.ErrorMessages.INVALID_ROOM_NAME
 import com.blikeng.chatapp.ErrorMessages.ROOM_NOT_FOUND
 import com.blikeng.chatapp.controllers.RoomController
+import com.blikeng.chatapp.dtos.RoomDTO
 import com.blikeng.chatapp.entities.RoomEntity
+import com.blikeng.chatapp.entities.RoomRole
 import com.blikeng.chatapp.security.JwtAuthFilter
 import com.blikeng.chatapp.services.RoomService
 import com.ninjasquad.springmockk.MockkBean
@@ -39,14 +41,14 @@ class RoomControllerTests {
 
     @Test
     fun shouldGetAllRooms(){
-        val room = RoomEntity(id = UUID.randomUUID(), name = "r")
+        val room = RoomDTO(roomId = UUID.randomUUID().toString(), encrypted = false, roomName = "r", role = RoomRole.OWNER)
         every { roomService.getAllUserRooms() } returns listOf(room)
 
         val rooms = mockMvc.get("/api/rooms") {
             contentType = MediaType.APPLICATION_JSON
         }.andExpect { status { isOk() } }.andReturn().response.contentAsString
 
-        assert(rooms.contains(room.name))
+        assert(rooms.contains(room.roomName.toString()))
     }
 
     @Test
