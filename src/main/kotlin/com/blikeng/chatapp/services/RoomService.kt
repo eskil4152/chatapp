@@ -10,6 +10,7 @@ import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.entities.RoomRole
 import com.blikeng.chatapp.entities.UserRoomEntity
 import com.blikeng.chatapp.entities.UserRoomId
+import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import org.springframework.beans.factory.annotation.Autowired
@@ -25,6 +26,9 @@ class RoomService(
     @Autowired private val userRoomRepository: UserRoomRepository,
     @Autowired private val userService: UserService,
 ) {
+    @Autowired
+    private lateinit var chatRepository: ChatRepository
+
     fun makeNewRoom(roomName: String?, encrypted: Boolean?) {
         val userId = getId()
         userService.getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
@@ -140,6 +144,7 @@ class RoomService(
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot delete")
         }
 
+        chatRepository.deleteAllByRoom_Id(roomUUID)
         userRoomRepository.deleteAllByIdRoomId(roomUUID)
         roomRepository.deleteById(roomUUID)
     }

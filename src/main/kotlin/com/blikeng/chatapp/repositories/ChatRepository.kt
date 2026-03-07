@@ -8,4 +8,6 @@ import java.util.*
 @Repository
 interface ChatRepository: JpaRepository<ChatEntity, Long> {
     fun getAllChatsByRoomId(roomId: UUID): List<ChatEntity>
+
+    fun deleteAllByRoom_Id(roomId: UUID)
 }
