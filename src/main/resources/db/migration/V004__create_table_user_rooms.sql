@@ -6,3 +6,5 @@ CREATE TABLE user_rooms
     role VARCHAR(16) NOT NULL
     CHECK (role IN ('OWNER', 'MEMBER'))
 );
+
+CREATE INDEX IF NOT EXISTS ix_user_rooms_room_id ON user_rooms(room_id);
