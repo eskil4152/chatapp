@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.services
 
-import com.blikeng.chatapp.ErrorMessages.INVALID_PASSWORD
+import com.blikeng.chatapp.ErrorMessages.WRONG_PASSWORD
 import com.blikeng.chatapp.ErrorMessages.INVALID_TOKEN
 import com.blikeng.chatapp.ErrorMessages.INVALID_USER
 import com.blikeng.chatapp.ErrorMessages.SHORT_PASSWORD
@@ -9,6 +9,7 @@ import com.blikeng.chatapp.dtos.ChangeUserDTO
 import com.blikeng.chatapp.dtos.EditPasswordDTO
 import com.blikeng.chatapp.dtos.UserDTO
 import com.blikeng.chatapp.entities.UserEntity
+import com.blikeng.chatapp.getId
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.security.PasswordService
@@ -30,7 +31,7 @@ class UserService(
     }
 
     fun getSelf(): UserDTO {
-        val id = SecurityContextHolder.getContext().authentication?.principal as? UUID ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_TOKEN)
+        val id = getId()
         val user = getUserById(id) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, USER_NOT_FOUND)
 
         return UserDTO(
@@ -46,7 +47,7 @@ class UserService(
     }
 
     fun editProfile(changeUserDTO: ChangeUserDTO) {
-        val id = SecurityContextHolder.getContext().authentication?.principal as? UUID ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_TOKEN)
+        val id = getId()
         val user = getUserById(id) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
 
         changeUserDTO.bio.let { user.bio = it }
@@ -58,10 +59,10 @@ class UserService(
     }
 
     fun editPassword(passwords: EditPasswordDTO) {
-        val id = SecurityContextHolder.getContext().authentication?.principal as? UUID ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_TOKEN)
+        val id = getId()
         val user = getUserById(id) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
 
-        if (!passwordService.checkPassword(passwords.oldPassword, user.password)) throw ResponseStatusException(HttpStatus.BAD_REQUEST, INVALID_PASSWORD)
+        if (!passwordService.checkPassword(passwords.oldPassword, user.password)) throw ResponseStatusException(HttpStatus.BAD_REQUEST, WRONG_PASSWORD)
         if (passwords.newPassword.trim().length < 8) throw ResponseStatusException(HttpStatus.BAD_REQUEST, SHORT_PASSWORD)
 
         val encoded = passwordService.encodePassword(passwords.newPassword)

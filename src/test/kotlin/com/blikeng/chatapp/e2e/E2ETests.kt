@@ -1,8 +1,10 @@
 package com.blikeng.chatapp.e2e
 
-import com.blikeng.chatapp.ErrorMessages.INVALID_PASSWORD
+import com.blikeng.chatapp.ErrorMessages.WRONG_PASSWORD
 import com.blikeng.chatapp.ErrorMessages.SHORT_PASSWORD
 import jakarta.servlet.http.Cookie
+import org.hamcrest.CoreMatchers.containsString
+import org.hamcrest.CoreMatchers.not
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -14,6 +16,7 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.*
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketHttpHeaders
 import org.springframework.web.socket.WebSocketSession
@@ -227,14 +230,14 @@ class E2ETests : PostgresContainerBase() {
         }
             .andExpect { status { isOk() } }
             .andExpect {
-                jsonPath("$[0].name") { value("Brand new, nonencrypted room") }
+                jsonPath("$[0].roomName") { value("Brand new, nonencrypted room") }
             }
             .andReturn()
 
         val json = jacksonObjectMapper()
             .readTree(result.response.contentAsString)
 
-        roomId = json[0]["id"].asString()
+        roomId = json[0]["roomId"].asString()
     }
 
     @Test
@@ -282,7 +285,7 @@ class E2ETests : PostgresContainerBase() {
             """.trimIndent()
         }
             .andExpect { status { isBadRequest() } }
-            .andExpect { status { reason(INVALID_PASSWORD) } }
+            .andExpect { status { reason(WRONG_PASSWORD) } }
     }
 
     @Test
@@ -414,7 +417,7 @@ class E2ETests : PostgresContainerBase() {
         }
             .andExpect { status { isOk() } }
             .andExpect {
-                jsonPath("$[0].name") { value("Brand new, nonencrypted room") }
+                jsonPath("$[0].roomName") { value("Brand new, nonencrypted room") }
             }
             .andReturn()
     }
@@ -551,7 +554,7 @@ class E2ETests : PostgresContainerBase() {
             .readTree(result.response.contentAsString)
 
         encryptedRoomId = json
-            .first { it["encrypted"].asBoolean() }["id"].asString()
+            .first { it["encrypted"].asBoolean() }["roomId"].asString()
     }
 
     @Test
@@ -660,5 +663,109 @@ class E2ETests : PostgresContainerBase() {
         assertTrue(received.any { it.contains("encrypted hello from user1") })
 
         session.close()
+    }
+
+    @Test
+    @Order(32)
+    fun shouldEditRoomName(){
+        mockMvc.put("/api/rooms/edit") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+            {
+                "roomName":"New Named Encrypted room",
+                "roomId":"$encryptedRoomId"
+            }
+        """.trimIndent()
+            user2Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+
+        mockMvc.get("/api/rooms") {
+            user2Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+            .andExpect {
+                jsonPath("$[?(@.roomId == '$encryptedRoomId')].roomName")
+                    .value("New Named Encrypted room")
+            }
+    }
+
+    @Test
+    @Order(33)
+    fun shouldLeaveRoom(){
+        mockMvc.delete("/api/rooms/leave") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                    "roomId":"$encryptedRoomId"
+                }
+            """.trimIndent()
+            user1Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { content { string("Left room successfully")} }
+
+        mockMvc.get("/api/rooms") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                    "roomId":"$roomId"
+                }
+            """.trimIndent()
+            user1Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+            .andExpect {
+                content {
+                    string(not(containsString(encryptedRoomId)))
+                }
+            }
+    }
+
+    @Test
+    @Order(34)
+    fun shouldDeleteRoom(){
+        mockMvc.delete("/api/rooms/delete") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                    "roomId":"$roomId"
+                }
+            """.trimIndent()
+            user1Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { content { string("Deleted room successfully")} }
+
+        mockMvc.get("/api/rooms") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                    "roomId":"$roomId"
+                }
+            """.trimIndent()
+            user1Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+            .andExpect {
+                content {
+                    string(not(containsString(roomId)))
+                }
+            }
+    }
+
+    @Test
+    @Order(35)
+    fun shouldLogOut(){
+        val result = mockMvc.post("/api/logout") {
+            contentType = MediaType.APPLICATION_JSON
+            user1Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { content { string("User logged out") } }
+            .andReturn()
+
+        assertNull(result.response.cookies.find { it.name == "AUTH" }?.value)
+        user1Cookie = result.response.cookies.find { it.name == "AUTH" }
     }
 }

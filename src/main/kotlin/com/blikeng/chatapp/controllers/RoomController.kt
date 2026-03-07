@@ -1,12 +1,10 @@
 package com.blikeng.chatapp.controllers
 
-import com.blikeng.chatapp.dtos.RoomInfo
-import com.blikeng.chatapp.entities.RoomEntity
+import com.blikeng.chatapp.dtos.RoomDTO
 import com.blikeng.chatapp.services.RoomService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
-import java.util.*
 
 @RestController
 @RequestMapping("/api/rooms")
@@ -15,7 +13,7 @@ class RoomController(
 ) {
     @GetMapping
     fun getRooms(
-    ): ResponseEntity<List<RoomEntity>> {
+    ): ResponseEntity<List<RoomDTO>> {
         val rooms = roomService.getAllUserRooms()
 
         return ResponseEntity.ok(rooms)
@@ -23,22 +21,46 @@ class RoomController(
 
     @PostMapping("/make")
     fun makeRoom(
-        @RequestBody roomInfo: RoomInfo): ResponseEntity<String>
+        @RequestBody roomDTO: RoomDTO): ResponseEntity<String>
     {
-        if (roomInfo.roomName.isNullOrBlank()) return ResponseEntity.badRequest().body("Invalid room name")
-        roomService.makeNewRoom(roomInfo.roomName, roomInfo.encrypted)
+        roomService.makeNewRoom(roomDTO.roomName, roomDTO.encrypted)
 
         return ResponseEntity.status(201).body("Room created successfully")
     }
 
     @PostMapping("/join")
     fun joinRoom(
-        @RequestBody roomInfo: RoomInfo
+        @RequestBody roomDTO: RoomDTO
     ) : ResponseEntity<String> {
-        val roomId = roomInfo.roomId ?: return ResponseEntity.badRequest().body("Invalid room id")
-
-        roomService.joinRoom(roomId)
+        roomService.joinRoom(roomDTO.roomId)
 
         return ResponseEntity.ok("Joined room successfully")
+    }
+
+    @PutMapping("/edit")
+    fun editRoom(
+        @RequestBody roomDTO: RoomDTO
+    ) : ResponseEntity<String> {
+        roomService.editRoom(roomDTO)
+
+        return ResponseEntity.ok("Room edited successfully")
+    }
+
+    @DeleteMapping("/leave")
+    fun leaveRoom(
+        @RequestBody roomDTO: RoomDTO
+    ) : ResponseEntity<String> {
+        roomService.leaveRoom(roomDTO.roomId)
+
+        return ResponseEntity.ok("Left room successfully")
+    }
+
+    @DeleteMapping("/delete")
+    fun deleteRoom(
+        @RequestBody roomDTO: RoomDTO
+    ) : ResponseEntity<String> {
+        roomService.deleteRoom(roomDTO.roomId)
+
+        return ResponseEntity.ok("Deleted room successfully")
     }
 }

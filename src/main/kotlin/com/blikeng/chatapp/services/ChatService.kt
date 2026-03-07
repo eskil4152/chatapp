@@ -12,6 +12,7 @@ import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.ChatEncrypt
 import jakarta.annotation.PreDestroy
+import org.flywaydb.core.extensibility.Tier
 import org.springframework.http.HttpStatus
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.scheduling.annotation.Scheduled
@@ -67,17 +68,15 @@ class ChatService(
         }
     }
 
-    fun addMessage(message: ReceivedMessage){
+    fun addMessage(message: ReceivedMessage, timestamp: Timestamp){
         val user = userRepository.findById(message.userId).orElseThrow()
         val room = roomRepository.findById(message.roomId).orElseThrow()
-
-        val ts = Timestamp(System.currentTimeMillis())
 
         val entity = ChatEntity(
             user = user,
             room = room,
             message = null,
-            timestamp = ts
+            timestamp = timestamp
         )
 
         if (!room.encrypted) {
@@ -156,7 +155,7 @@ class ChatService(
             session.sendMessage(
                 TextMessage(
                     jacksonObjectMapper().writeValueAsString(
-                        WsChat(content = content, username = m.user.username)
+                        WsChat(content = content, username = m.user.username, timestamp = m.timestamp)
                     )
                 )
             )
@@ -168,16 +167,17 @@ class ChatService(
     }
 
     fun broadcast(roomId: UUID, message: ReceivedMessage, username: String) {
-        if (message.type == "MESSAGE" && rooms[roomId] != null) addMessage(message)
+        val timestamp = Timestamp(System.currentTimeMillis())
+        if (message.type == "MESSAGE" && rooms[roomId] != null) addMessage(message, timestamp)
 
         if (!userRoomRepository.existsByIdUserIdAndIdRoomId(message.userId, roomId)) throw ResponseStatusException(HttpStatus.FORBIDDEN, NOT_PERMITTED)
 
         val sendMessage : WsChat;
 
         if (message.type == "MESSAGE") {
-            sendMessage = WsChat(content = message.content, username = username, type = message.type)
+            sendMessage = WsChat(content = message.content, username = username, type = message.type, timestamp = timestamp)
         } else {
-            sendMessage = WsChat(content = message.content, username = "Server", type = message.type)
+            sendMessage = WsChat(content = message.content, username = "Server", type = message.type, timestamp = timestamp)
         }
 
         val json = jacksonObjectMapper().writeValueAsString(sendMessage)

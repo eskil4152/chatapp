@@ -2,6 +2,8 @@ package com.blikeng.chatapp.controllers
 
 import com.blikeng.chatapp.dtos.LoginDto
 import com.blikeng.chatapp.services.AuthService
+import jakarta.servlet.http.Cookie
+import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseCookie
@@ -52,6 +54,18 @@ class AuthController(
             .status(200)
             .header(HttpHeaders.SET_COOKIE, cookie.toString())
             .body("User logged in")
+    }
+
+    @PostMapping("/logout")
+    fun logout(response: HttpServletResponse): ResponseEntity<String> {
+        val cookie = Cookie("AUTH", null)
+        cookie.path = "/"
+        cookie.isHttpOnly = true
+        cookie.maxAge = 0
+
+        response.addCookie(cookie)
+
+        return ResponseEntity.ok("User logged out")
     }
 
     @GetMapping("/auth")

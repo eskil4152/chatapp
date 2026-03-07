@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.controllerTests
 
-import com.blikeng.chatapp.ErrorMessages.INVALID_PASSWORD
+import com.blikeng.chatapp.ErrorMessages.WRONG_PASSWORD
 import com.blikeng.chatapp.ErrorMessages.INVALID_TOKEN
 import com.blikeng.chatapp.controllers.UserController
 import com.blikeng.chatapp.dtos.UserDTO
@@ -99,7 +99,7 @@ class UserControllerTests {
 
     @Test
     fun shouldReturnABadRequest(){
-        every { userService.editPassword(any()) } throws ResponseStatusException(HttpStatus.BAD_REQUEST, INVALID_PASSWORD)
+        every { userService.editPassword(any()) } throws ResponseStatusException(HttpStatus.BAD_REQUEST, WRONG_PASSWORD)
 
         mockMvc.patch("/api/user/edit/password") {
             contentType = MediaType.APPLICATION_JSON
@@ -111,7 +111,7 @@ class UserControllerTests {
             """.trimIndent()
         }
             .andExpect { status { isBadRequest() } }
-            .andExpect { status { reason(INVALID_PASSWORD) } }
+            .andExpect { status { reason(WRONG_PASSWORD) } }
     }
 
     @Test

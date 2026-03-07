@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.serviceTests
 
-import com.blikeng.chatapp.ErrorMessages.INVALID_PASSWORD
+import com.blikeng.chatapp.ErrorMessages.WRONG_PASSWORD
 import com.blikeng.chatapp.ErrorMessages.SHORT_PASSWORD
 import com.blikeng.chatapp.dtos.ChangeUserDTO
 import com.blikeng.chatapp.dtos.EditPasswordDTO
@@ -221,7 +221,7 @@ class UserServiceTests {
         }
 
         assertEquals(exception.statusCode, HttpStatus.BAD_REQUEST)
-        assertEquals(exception.reason, INVALID_PASSWORD)
+        assertEquals(exception.reason, WRONG_PASSWORD)
 
         verify(exactly = 0) { userRepository.save(any()) }
     }
