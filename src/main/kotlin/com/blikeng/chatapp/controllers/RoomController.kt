@@ -54,4 +54,13 @@ class RoomController(
 
         return ResponseEntity.ok("Left room successfully")
     }
+
+    @DeleteMapping("/delete")
+    fun deleteRoom(
+        @RequestBody roomDTO: RoomDTO
+    ) : ResponseEntity<String> {
+        roomService.deleteRoom(roomDTO.roomId)
+
+        return ResponseEntity.ok("Deleted room successfully")
+    }
 }

@@ -26,10 +26,10 @@ class RoomService(
     @Autowired private val userService: UserService,
 ) {
     fun makeNewRoom(roomName: String?, encrypted: Boolean?) {
-        val id = getId()
-        if (roomName == null || roomName.trim().isEmpty()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, INVALID_ROOM_NAME)
+        val userId = getId()
+        userService.getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
 
-        userService.getUserById(id) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
+        if (roomName == null || roomName.trim().isEmpty()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, INVALID_ROOM_NAME)
 
         val room = roomRepository.save(
             RoomEntity(
@@ -38,13 +38,15 @@ class RoomService(
                 keyVersion = if (encrypted == true) 1 else null
             ))
 
-        val userRoom = UserRoomEntity(UserRoomId(id, room.id), RoomRole.OWNER)
+        val userRoom = UserRoomEntity(UserRoomId(userId, room.id), RoomRole.OWNER)
         userRoomRepository.save(userRoom)
     }
 
     fun getAllUserRooms(): List<RoomDTO> {
-        val id = getId()
-        val joinedRooms = roomRepository.findRoomsForUser(id)
+        val userId = getId()
+        userService.getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
+
+        val joinedRooms = roomRepository.findRoomsForUser(userId)
 
         val roomDtos = joinedRooms.map { room ->
             RoomDTO(roomId = room.room.id.toString(), roomName = room.room.name, encrypted = room.room.encrypted, role = room.role)
@@ -54,8 +56,8 @@ class RoomService(
     }
 
     fun joinRoom(roomId: String?){
-        val id = getId()
-        userService.getUserById(id) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
+        val userId = getId()
+        userService.getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
 
         val roomUUID = try {
             UUID.fromString(roomId)
@@ -68,12 +70,13 @@ class RoomService(
             ROOM_NOT_FOUND
         )
 
-        val userRoom = UserRoomEntity(UserRoomId(id, roomUUID), RoomRole.MEMBER)
+        val userRoom = UserRoomEntity(UserRoomId(userId, roomUUID), RoomRole.MEMBER)
         userRoomRepository.save(userRoom)
     }
 
     fun editRoom(roomDTO: RoomDTO) {
         val userId = getId()
+        userService.getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
 
         val roomId = try {
             UUID.fromString(roomDTO.roomId)
@@ -102,8 +105,8 @@ class RoomService(
 
     @Transactional
     fun leaveRoom(roomId: String?){
-        val id = getId()
-        userService.getUserById(id) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
+        val userId = getId()
+        userService.getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
 
         val roomUUID = try {
             UUID.fromString(roomId)
@@ -111,11 +114,33 @@ class RoomService(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, INVALID_ROOM_ID)
         }
 
-        val existed = userRoomRepository.existsByIdUserIdAndIdRoomId(id, roomUUID)
+        val existed = userRoomRepository.existsByIdUserIdAndIdRoomId(userId, roomUUID)
         if (!existed) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, ROOM_NOT_FOUND)
         }
 
-        userRoomRepository.deleteByIdUserIdAndIdRoomId(id, roomUUID)
+        userRoomRepository.deleteByIdUserIdAndIdRoomId(userId, roomUUID)
+    }
+
+    @Transactional
+    fun deleteRoom(roomId: String?){
+        val userId = getId()
+        userService.getUserById(userId) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
+
+        val roomUUID = try {
+            UUID.fromString(roomId)
+        } catch (e: IllegalArgumentException) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, INVALID_ROOM_ID)
+        }
+
+        val userRoom = userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomUUID)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, ROOM_NOT_FOUND)
+
+        if (userRoom.role != RoomRole.OWNER) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot delete")
+        }
+
+        userRoomRepository.deleteAllByIdRoomId(roomUUID)
+        roomRepository.deleteById(roomUUID)
     }
 }

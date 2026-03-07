@@ -121,6 +121,8 @@ class RoomServiceTests {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
 
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+
         val exception = assertFailsWith<ResponseStatusException> {
             roomService.makeNewRoom("", false)
         }
@@ -134,12 +136,28 @@ class RoomServiceTests {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
 
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+
         val exception = assertFailsWith<ResponseStatusException> {
             roomService.makeNewRoom(null, false)
         }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
         assertEquals("Invalid room name", exception.reason)
+    }
+
+    @Test
+    fun shouldFailToMakeRoomWhenInvalidUser() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns null
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            roomService.makeNewRoom("rong name", false)
+        }
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
     }
 
     @Test
@@ -151,6 +169,7 @@ class RoomServiceTests {
         val room = RoomEntity(id = roomId, name = "r")
         val joinedRoom = JoinedRoom(room, RoomRole.OWNER)
 
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
         every { roomRepository.findRoomsForUser(any()) } returns listOf(joinedRoom)
 
         val rooms = roomService.getAllUserRooms()
@@ -245,6 +264,20 @@ class RoomServiceTests {
     }
 
     @Test
+    fun shouldFailToGetRoomsWhenInvalidUser() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns null
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            roomService.getAllUserRooms()
+        }
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
+    }
+
+    @Test
     fun shouldFailToMakeRoomWhenNoAuthentication() {
         val exception = assertFailsWith<ResponseStatusException> {
             roomService.makeNewRoom("roomName", false)
@@ -293,7 +326,7 @@ class RoomServiceTests {
     }
 
     @Test
-    fun shouldFailToLeaveRoomWhenNotAuthenticated() {
+    fun shouldFailToLeaveRoomWhenInvalidUser() {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
 
@@ -343,6 +376,8 @@ class RoomServiceTests {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(userId, null, emptyList())
 
+        every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
+
         val roomDTO = RoomDTO(
             roomId = roomId.toString(),
             roomName = "newName",
@@ -370,6 +405,8 @@ class RoomServiceTests {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
 
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+
         val roomDTO = RoomDTO(
             roomId = UUID.randomUUID().toString(),
             encrypted = false,
@@ -388,6 +425,8 @@ class RoomServiceTests {
     fun shouldFailToEditRoomNameWithInvalidName(){
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
 
         val roomDTO = RoomDTO(
             roomId = UUID.randomUUID().toString(),
@@ -409,6 +448,7 @@ class RoomServiceTests {
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
 
         every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns null
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
 
         val roomDTO = RoomDTO(
             roomId = UUID.randomUUID().toString(),
@@ -435,6 +475,8 @@ class RoomServiceTests {
         every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns
                 UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.MEMBER)
 
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+
         val roomDTO = RoomDTO(
             roomId = UUID.randomUUID().toString(),
             encrypted = false,
@@ -460,6 +502,7 @@ class RoomServiceTests {
         every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns
                 UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.OWNER)
         every { roomRepository.findById(roomId) } returns Optional.empty()
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
 
         val roomDTO = RoomDTO(
             roomId = roomId.toString(),
@@ -480,6 +523,8 @@ class RoomServiceTests {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
 
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+
         val roomDTO = RoomDTO(
             roomId = "not a real UUID",
             encrypted = false,
@@ -492,5 +537,108 @@ class RoomServiceTests {
         }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
+    }
+
+    @Test
+    fun shouldFailToEditRoomWhenInvalidUser() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns null
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            roomService.editRoom(RoomDTO(UUID.randomUUID().toString(), "new room name", false, RoomRole.OWNER))
+        }
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
+    }
+
+    @Test
+    fun shouldDeleteRoom(){
+        val userId = UUID.randomUUID()
+        val roomId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns
+                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.OWNER)
+
+        every { roomRepository.deleteById(roomId) } just Runs
+        every { userRoomRepository.deleteAllByIdRoomId(roomId) } just Runs
+
+        roomService.deleteRoom(roomId.toString())
+
+        verify(exactly = 1) {
+            roomRepository.deleteById(roomId)
+            userRoomRepository.deleteAllByIdRoomId(roomId)
+        }
+    }
+
+    @Test
+    fun shouldFailToDeleteRoomWithoutBeingInRoom(){
+        val userId = UUID.randomUUID()
+        val roomId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns null
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            roomService.deleteRoom(roomId.toString())
+        }
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.statusCode)
+    }
+
+    @Test
+    fun shouldFailToDeleteRoomWithoutBeingOwner(){
+        val userId = UUID.randomUUID()
+        val roomId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.MEMBER)
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            roomService.deleteRoom(roomId.toString())
+        }
+
+        assertEquals(HttpStatus.FORBIDDEN, exception.statusCode)
+    }
+
+    @Test
+    fun shouldFailToDeleteRoomWithInvalidId(){
+        val userId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            roomService.deleteRoom("not a real UUID")
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
+    }
+
+    @Test
+    fun shouldFailToDeleteRoomWhenInvalidUser() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns null
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            roomService.deleteRoom(UUID.randomUUID().toString())
+        }
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
     }
 }

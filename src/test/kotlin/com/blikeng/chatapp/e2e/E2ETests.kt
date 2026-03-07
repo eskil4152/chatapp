@@ -724,6 +724,38 @@ class E2ETests : PostgresContainerBase() {
 
     @Test
     @Order(34)
+    fun shouldDeleteRoom(){
+        mockMvc.delete("/api/rooms/delete") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                    "roomId":"$roomId"
+                }
+            """.trimIndent()
+            user1Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { content { string("Deleted room successfully")} }
+
+        mockMvc.get("/api/rooms") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                    "roomId":"$roomId"
+                }
+            """.trimIndent()
+            user1Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+            .andExpect {
+                content {
+                    string(not(containsString(roomId)))
+                }
+            }
+    }
+
+    @Test
+    @Order(35)
     fun shouldLogOut(){
         val result = mockMvc.post("/api/logout") {
             contentType = MediaType.APPLICATION_JSON

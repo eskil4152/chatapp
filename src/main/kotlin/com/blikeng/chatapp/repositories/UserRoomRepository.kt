@@ -14,4 +14,6 @@ interface UserRoomRepository: JpaRepository<UserRoomEntity, UserRoomId> {
     fun findByIdUserIdAndIdRoomId(userId: UUID, roomId: UUID): UserRoomEntity?
 
     fun deleteByIdUserIdAndIdRoomId(userId: UUID, roomId: UUID)
+
+    fun deleteAllByIdRoomId(roomId: UUID)
 }

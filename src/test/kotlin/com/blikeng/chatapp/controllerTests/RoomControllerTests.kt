@@ -106,6 +106,23 @@ class RoomControllerTests {
     }
 
     @Test
+    fun shouldDeleteRoom(){
+        val roomId = UUID.randomUUID()
+
+        every { roomService.deleteRoom(any()) } returns Unit
+
+        mockMvc.delete("/api/rooms/delete") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                    "roomId":"$roomId"
+                }
+            """.trimIndent()
+        }
+            .andExpect { status { isOk() } }
+    }
+
+    @Test
     fun shouldGetUnauthorized(){
         every { roomService.makeNewRoom(any(), any()) } throws ResponseStatusException(HttpStatus.UNAUTHORIZED)
 
