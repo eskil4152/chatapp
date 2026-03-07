@@ -23,7 +23,6 @@ class RoomController(
     fun makeRoom(
         @RequestBody roomDTO: RoomDTO): ResponseEntity<String>
     {
-        if (roomDTO.roomName.isNullOrBlank()) return ResponseEntity.badRequest().body("Invalid room name")
         roomService.makeNewRoom(roomDTO.roomName, roomDTO.encrypted)
 
         return ResponseEntity.status(201).body("Room created successfully")
@@ -33,11 +32,18 @@ class RoomController(
     fun joinRoom(
         @RequestBody roomDTO: RoomDTO
     ) : ResponseEntity<String> {
-        val roomId = roomDTO.roomId ?: return ResponseEntity.badRequest().body("Invalid room id")
-
-        roomService.joinRoom(roomId)
+        roomService.joinRoom(roomDTO.roomId)
 
         return ResponseEntity.ok("Joined room successfully")
+    }
+
+    @PutMapping("/edit")
+    fun editRoom(
+        @RequestBody roomDTO: RoomDTO
+    ) : ResponseEntity<String> {
+        roomService.editRoom(roomDTO)
+
+        return ResponseEntity.ok("Room edited successfully")
     }
 
     @DeleteMapping("/leave")

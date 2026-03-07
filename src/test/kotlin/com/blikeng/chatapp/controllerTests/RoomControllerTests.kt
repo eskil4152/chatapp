@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.controllerTests
 
-import com.blikeng.chatapp.ErrorMessages.INVALID_ROOM_NAME
+import com.blikeng.chatapp.ErrorMessages.INVALID_ROOM_ID
 import com.blikeng.chatapp.ErrorMessages.ROOM_NOT_FOUND
 import com.blikeng.chatapp.controllers.RoomController
 import com.blikeng.chatapp.dtos.RoomDTO
@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import org.springframework.test.web.servlet.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.web.server.ResponseStatusException
 import java.util.*
@@ -69,31 +70,6 @@ class RoomControllerTests {
     }
 
     @Test
-    fun shouldFailToMakeRoomWithInvalidName(){
-        mockMvc.post("/api/rooms/make") {
-            contentType = MediaType.APPLICATION_JSON
-            content = "{}"
-        }
-            .andExpect { status { isBadRequest() } }
-            .andExpect { content { string("Invalid room name") } }
-    }
-
-    @Test
-    fun shouldFailToMakeRoomWithBlankName(){
-        mockMvc.post("/api/rooms/make") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """
-                {
-                    "roomName":"",
-                    "encrypted":false
-                }
-            """.trimIndent()
-        }
-            .andExpect { status { isBadRequest() } }
-            .andExpect { content { string("Invalid room name") } }
-    }
-
-    @Test
     fun shouldJoinRoom(){
         val roomId = UUID.randomUUID()
 
@@ -109,6 +85,24 @@ class RoomControllerTests {
         }
             .andExpect { status { isOk() } }
             .andExpect { content { string("Joined room successfully") } }
+    }
+
+    @Test
+    fun shouldUpdateRoomName(){
+        val roomId = UUID.randomUUID()
+
+        every { roomService.editRoom(any()) } returns Unit
+
+        mockMvc.put("/api/rooms/edit") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                    "roomId":"$roomId",
+                    "roomName":"new name"
+                }
+            """.trimIndent()
+        }
+            .andExpect { status { isOk() } }
     }
 
     @Test
@@ -161,38 +155,6 @@ class RoomControllerTests {
         }.andExpect {
             status { isNotFound() }
             content { content().string(ROOM_NOT_FOUND) }
-        }
-    }
-
-    @Test
-    fun shouldGetBadRequestWhenJoiningRoomWithoutId(){
-        mockMvc.post("/api/rooms/join") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """
-                {
-                }
-            """.trimIndent()
-        }.andExpect {
-            status { isBadRequest() }
-            content { content().string(INVALID_ROOM_NAME) }
-        }
-    }
-
-    @Test
-    fun shouldLeaveRoom(){
-        every { roomService.leaveRoom(any()) } returns Unit
-
-        val roomId = UUID.randomUUID()
-
-        mockMvc.delete("/api/rooms/leave") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """
-                {
-                    "roomId":"$roomId"
-                }
-            """.trimIndent()
-        }.andExpect {
-            status { isOk() }
         }
     }
 }

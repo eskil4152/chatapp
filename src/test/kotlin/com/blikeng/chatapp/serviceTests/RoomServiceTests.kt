@@ -1,10 +1,12 @@
 package com.blikeng.chatapp.serviceTests
 
-import com.blikeng.chatapp.ErrorMessages.INVALID_ROOM_NAME
+import com.blikeng.chatapp.ErrorMessages.INVALID_ROOM_ID
 import com.blikeng.chatapp.dtos.RoomDTO
 import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.entities.RoomRole
 import com.blikeng.chatapp.entities.UserEntity
+import com.blikeng.chatapp.entities.UserRoomEntity
+import com.blikeng.chatapp.entities.UserRoomId
 import com.blikeng.chatapp.repositories.JoinedRoom
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
@@ -121,6 +123,19 @@ class RoomServiceTests {
 
         val exception = assertFailsWith<ResponseStatusException> {
             roomService.makeNewRoom("", false)
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
+        assertEquals("Invalid room name", exception.reason)
+    }
+
+    @Test
+    fun shouldFailToMakeRoomWithoutRoomName(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            roomService.makeNewRoom(null, false)
         }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
@@ -262,7 +277,7 @@ class RoomServiceTests {
         }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
-        assertEquals(INVALID_ROOM_NAME, exception.reason)
+        assertEquals(INVALID_ROOM_ID, exception.reason)
     }
 
     @Test
@@ -318,5 +333,164 @@ class RoomServiceTests {
         }
 
         assertEquals(HttpStatus.NOT_FOUND, exception.statusCode)
+    }
+
+    @Test
+    fun shouldEditRoomName(){
+        val userId = UUID.randomUUID()
+        val roomId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        val roomDTO = RoomDTO(
+            roomId = roomId.toString(),
+            roomName = "newName",
+            encrypted = false,
+            role = RoomRole.OWNER
+        )
+
+        val room = RoomEntity(id = roomId, name = "r")
+
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns
+                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.OWNER)
+
+        every { roomRepository.findById(roomId) } returns Optional.of(room)
+        every { roomRepository.save(any()) } answers { firstArg() }
+
+        roomService.editRoom(roomDTO)
+
+        verify {
+            roomRepository.save(match { it.name == "newName" && it.id == roomId })
+        }
+    }
+
+    @Test
+    fun shouldFailToEditRoomNameWithoutName(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        val roomDTO = RoomDTO(
+            roomId = UUID.randomUUID().toString(),
+            encrypted = false,
+            roomName = null,
+            role = RoomRole.OWNER
+        )
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            roomService.editRoom(roomDTO)
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
+    }
+
+    @Test
+    fun shouldFailToEditRoomNameWithInvalidName(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        val roomDTO = RoomDTO(
+            roomId = UUID.randomUUID().toString(),
+            encrypted = false,
+            roomName = "",
+            role = RoomRole.OWNER
+        )
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            roomService.editRoom(roomDTO)
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
+    }
+
+    @Test
+    fun shouldFailToEditRoomWithoutBeingInRoom(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns null
+
+        val roomDTO = RoomDTO(
+            roomId = UUID.randomUUID().toString(),
+            encrypted = false,
+            roomName = "real name",
+            role = RoomRole.OWNER
+        )
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            roomService.editRoom(roomDTO)
+        }
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.statusCode)
+    }
+
+    @Test
+    fun shouldFailToEditRoomWithoutBeingOwner(){
+        val userId = UUID.randomUUID()
+        val roomId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns
+                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.MEMBER)
+
+        val roomDTO = RoomDTO(
+            roomId = UUID.randomUUID().toString(),
+            encrypted = false,
+            roomName = "real name",
+            role = RoomRole.OWNER
+        )
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            roomService.editRoom(roomDTO)
+        }
+
+        assertEquals(HttpStatus.FORBIDDEN, exception.statusCode)
+    }
+
+    @Test
+    fun shouldFailToEditRoomIfNotFoundInDatabase(){
+        val userId = UUID.randomUUID()
+        val roomId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns
+                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.OWNER)
+        every { roomRepository.findById(roomId) } returns Optional.empty()
+
+        val roomDTO = RoomDTO(
+            roomId = roomId.toString(),
+            encrypted = false,
+            roomName = "real name",
+            role = RoomRole.OWNER
+        )
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            roomService.editRoom(roomDTO)
+        }
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.statusCode)
+    }
+
+    @Test
+    fun shouldFailToEditRoomWithInvalidId(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        val roomDTO = RoomDTO(
+            roomId = "not a real UUID",
+            encrypted = false,
+            roomName = "new room name",
+            role = RoomRole.OWNER
+        )
+
+        val exception = assertFailsWith<ResponseStatusException> {
+            roomService.editRoom(roomDTO)
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
     }
 }

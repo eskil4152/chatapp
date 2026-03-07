@@ -8,6 +8,7 @@ object ErrorMessages {
     const val WRONG_PASSWORD = "Wrong password"
     const val INVALID_USER = "Invalid user"
     const val INVALID_ROOM_NAME = "Invalid room name"
+    const val INVALID_ROOM_ID = "Invalid room ID"
     const val ROOM_NOT_FOUND = "Room not found"
     const val NOT_PERMITTED = "Not permitted"
     const val SHORT_USERNAME = "Username must be at least 3 characters long"

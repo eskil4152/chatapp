@@ -16,6 +16,7 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.*
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketHttpHeaders
 import org.springframework.web.socket.WebSocketSession
@@ -666,6 +667,31 @@ class E2ETests : PostgresContainerBase() {
 
     @Test
     @Order(32)
+    fun shouldEditRoomName(){
+        mockMvc.put("/api/rooms/edit") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+            {
+                "roomName":"New Named Encrypted room",
+                "roomId":"$encryptedRoomId"
+            }
+        """.trimIndent()
+            user2Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+
+        mockMvc.get("/api/rooms") {
+            user2Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+            .andExpect {
+                jsonPath("$[?(@.roomId == '$encryptedRoomId')].roomName")
+                    .value("New Named Encrypted room")
+            }
+    }
+
+    @Test
+    @Order(33)
     fun shouldLeaveRoom(){
         mockMvc.delete("/api/rooms/leave") {
             contentType = MediaType.APPLICATION_JSON
@@ -697,7 +723,7 @@ class E2ETests : PostgresContainerBase() {
     }
 
     @Test
-    @Order(33)
+    @Order(34)
     fun shouldLogOut(){
         val result = mockMvc.post("/api/logout") {
             contentType = MediaType.APPLICATION_JSON

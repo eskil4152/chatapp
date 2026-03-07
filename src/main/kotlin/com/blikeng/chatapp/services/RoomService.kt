@@ -1,5 +1,6 @@
 package com.blikeng.chatapp.services
 
+import com.blikeng.chatapp.ErrorMessages.INVALID_ROOM_ID
 import com.blikeng.chatapp.ErrorMessages.INVALID_ROOM_NAME
 import com.blikeng.chatapp.ErrorMessages.INVALID_USER
 import com.blikeng.chatapp.ErrorMessages.ROOM_NOT_FOUND
@@ -24,9 +25,9 @@ class RoomService(
     @Autowired private val userRoomRepository: UserRoomRepository,
     @Autowired private val userService: UserService,
 ) {
-    fun makeNewRoom(roomName: String, encrypted: Boolean?) {
+    fun makeNewRoom(roomName: String?, encrypted: Boolean?) {
         val id = getId()
-        if (roomName.trim().isEmpty()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, INVALID_ROOM_NAME)
+        if (roomName == null || roomName.trim().isEmpty()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, INVALID_ROOM_NAME)
 
         userService.getUserById(id) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
 
@@ -52,14 +53,14 @@ class RoomService(
         return roomDtos
     }
 
-    fun joinRoom(roomId: String){
+    fun joinRoom(roomId: String?){
         val id = getId()
         userService.getUserById(id) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
 
         val roomUUID = try {
             UUID.fromString(roomId)
         } catch (e: IllegalArgumentException) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, INVALID_ROOM_NAME)
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, INVALID_ROOM_ID)
         }
 
         roomRepository.findById(roomUUID).orElse(null) ?: throw ResponseStatusException(
@@ -71,6 +72,34 @@ class RoomService(
         userRoomRepository.save(userRoom)
     }
 
+    fun editRoom(roomDTO: RoomDTO) {
+        val userId = getId()
+
+        val roomId = try {
+            UUID.fromString(roomDTO.roomId)
+        } catch (e: IllegalArgumentException) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid room id")
+        }
+
+        val name = roomDTO.roomName
+        if (name.isNullOrBlank()) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, INVALID_ROOM_NAME)
+        }
+
+        val userRoom = userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, ROOM_NOT_FOUND)
+
+        if (userRoom.role != RoomRole.OWNER) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot edit")
+        }
+
+        val room = roomRepository.findById(roomId).orElse(null)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, ROOM_NOT_FOUND)
+
+        room.name = name
+        roomRepository.save(room)
+    }
+
     @Transactional
     fun leaveRoom(roomId: String?){
         val id = getId()
@@ -79,7 +108,7 @@ class RoomService(
         val roomUUID = try {
             UUID.fromString(roomId)
         } catch (e: IllegalArgumentException) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, INVALID_ROOM_NAME)
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, INVALID_ROOM_ID)
         }
 
         val existed = userRoomRepository.existsByIdUserIdAndIdRoomId(id, roomUUID)

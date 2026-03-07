@@ -13,7 +13,7 @@ class RoomEntity(
     val id: UUID = UUID.randomUUID(),
 
     @Column(unique = true, nullable = false)
-    val name: String,
+    var name: String,
 
     val encrypted: Boolean = false,
     val keyVersion: Int? = null
