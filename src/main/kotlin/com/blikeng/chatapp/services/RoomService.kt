@@ -47,16 +47,22 @@ class RoomService(
         return rooms
     }
 
-    fun joinRoom(roomId: UUID){
+    fun joinRoom(roomId: String){
         val id = SecurityContextHolder.getContext().authentication?.principal as? UUID ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_TOKEN)
         userService.getUserById(id) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
 
-        roomRepository.findById(roomId).orElse(null) ?: throw ResponseStatusException(
+        val roomUUID = try {
+            UUID.fromString(roomId)
+        } catch (e: IllegalArgumentException) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, INVALID_ROOM_NAME)
+        }
+
+        roomRepository.findById(roomUUID).orElse(null) ?: throw ResponseStatusException(
             HttpStatus.NOT_FOUND,
             ROOM_NOT_FOUND
         )
 
-        val userRoom = UserRoomEntity(UserRoomId(id, roomId), RoomRole.MEMBER)
+        val userRoom = UserRoomEntity(UserRoomId(id, roomUUID), RoomRole.MEMBER)
         userRoomRepository.save(userRoom)
     }
 }

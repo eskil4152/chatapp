@@ -1,7 +1,6 @@
 package com.blikeng.chatapp.services
 
 import com.blikeng.chatapp.ErrorMessages.INVALID_CREDENTIALS
-import com.blikeng.chatapp.ErrorMessages.INVALID_TOKEN
 import com.blikeng.chatapp.ErrorMessages.SHORT_PASSWORD
 import com.blikeng.chatapp.ErrorMessages.SHORT_USERNAME
 import com.blikeng.chatapp.ErrorMessages.USERNAME_ALREADY_EXISTS

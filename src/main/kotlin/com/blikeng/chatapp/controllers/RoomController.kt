@@ -5,8 +5,6 @@ import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.services.RoomService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
-import org.springframework.security.core.Authentication
-import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
 import java.util.*
 
@@ -37,9 +35,9 @@ class RoomController(
     fun joinRoom(
         @RequestBody roomInfo: RoomInfo
     ) : ResponseEntity<String> {
-        val roomId = roomInfo.roomId
+        val roomId = roomInfo.roomId ?: return ResponseEntity.badRequest().body("Invalid room id")
 
-        roomService.joinRoom(UUID.fromString(roomId))
+        roomService.joinRoom(roomId)
 
         return ResponseEntity.ok("Joined room successfully")
     }

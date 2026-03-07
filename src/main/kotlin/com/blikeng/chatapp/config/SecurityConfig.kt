@@ -1,6 +1,7 @@
 package com.blikeng.chatapp.config
 
 import com.blikeng.chatapp.security.JwtAuthFilter
+import jakarta.servlet.DispatcherType
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -21,9 +22,11 @@ class SecurityConfig(
     fun securityWebFilterChain(http: HttpSecurity): SecurityFilterChain {
         http
             .authorizeHttpRequests { authRequest ->
+                authRequest.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 authRequest.requestMatchers("/api/login").permitAll()
                 authRequest.requestMatchers("/api/register").permitAll()
                 authRequest.requestMatchers("/ws/**").permitAll()
+                authRequest.requestMatchers("/error").permitAll()
                 authRequest.anyRequest().authenticated()
             }
             .httpBasic { it.disable() }

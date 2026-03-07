@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.dtos
 
-import java.util.UUID
+import java.util.*
 
 data class WsJoined(
     val type: String = "JOINED",

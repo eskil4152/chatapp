@@ -1,8 +1,6 @@
 package com.blikeng.chatapp.securityTests
 
 import com.blikeng.chatapp.security.PasswordService
-import io.mockk.junit5.MockKExtension
-import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import kotlin.test.Test
 

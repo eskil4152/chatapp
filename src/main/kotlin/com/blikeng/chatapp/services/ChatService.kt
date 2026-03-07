@@ -172,7 +172,14 @@ class ChatService(
 
         if (!userRoomRepository.existsByIdUserIdAndIdRoomId(message.userId, roomId)) throw ResponseStatusException(HttpStatus.FORBIDDEN, NOT_PERMITTED)
 
-        val sendMessage = WsChat(content = message.content, username = username, type = message.type)
+        val sendMessage : WsChat;
+
+        if (message.type == "MESSAGE") {
+            sendMessage = WsChat(content = message.content, username = username, type = message.type)
+        } else {
+            sendMessage = WsChat(content = message.content, username = "Server", type = message.type)
+        }
+
         val json = jacksonObjectMapper().writeValueAsString(sendMessage)
         rooms[roomId]?.forEach { it.sendMessage(TextMessage(json)) }
     }

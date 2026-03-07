@@ -1,5 +1,6 @@
 package com.blikeng.chatapp.controllerTests
 
+import com.blikeng.chatapp.ErrorMessages.INVALID_ROOM_NAME
 import com.blikeng.chatapp.ErrorMessages.ROOM_NOT_FOUND
 import com.blikeng.chatapp.controllers.RoomController
 import com.blikeng.chatapp.entities.RoomEntity
@@ -17,9 +18,7 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
-import org.springframework.web.client.HttpStatusCodeException
 import org.springframework.web.server.ResponseStatusException
 import java.util.*
 import kotlin.test.Test
@@ -160,6 +159,20 @@ class RoomControllerTests {
         }.andExpect {
             status { isNotFound() }
             content { content().string(ROOM_NOT_FOUND) }
+        }
+    }
+
+    @Test
+    fun shouldGetBadRequestWhenJoiningRoomWithoutId(){
+        mockMvc.post("/api/rooms/join") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                }
+            """.trimIndent()
+        }.andExpect {
+            status { isBadRequest() }
+            content { content().string(INVALID_ROOM_NAME) }
         }
     }
 }
