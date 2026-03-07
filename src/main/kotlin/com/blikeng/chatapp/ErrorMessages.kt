@@ -5,7 +5,7 @@ object ErrorMessages {
     const val USER_NOT_FOUND = "User not found"
     const val USERNAME_ALREADY_EXISTS = "Username already exists"
     const val INVALID_TOKEN = "Invalid token"
-    const val INVALID_PASSWORD = "Invalid password"
+    const val WRONG_PASSWORD = "Wrong password"
     const val INVALID_USER = "Invalid user"
     const val INVALID_ROOM_NAME = "Invalid room name"
     const val ROOM_NOT_FOUND = "Room not found"

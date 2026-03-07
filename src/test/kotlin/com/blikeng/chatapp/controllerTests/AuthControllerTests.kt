@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie
 import org.springframework.web.server.ResponseStatusException
 import kotlin.test.Test
+import kotlin.test.assertEquals
 
 @WebMvcTest(
     controllers = [AuthController::class],
@@ -102,6 +103,17 @@ class AuthControllerTests {
         }
             .andExpect { status { isConflict() } }
             .andExpect { content().string("Username already exists") }
+    }
+
+    @Test
+    fun shouldLogOutUser() {
+        val res = mockMvc.post("/api/logout") {
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { cookie().exists("AUTH") }
+            .andReturn()
+
+        assert(res.response.cookies.any { it.name == "AUTH" && it.value == null })
     }
 
     @Test

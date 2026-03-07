@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.e2e
 
-import com.blikeng.chatapp.ErrorMessages.INVALID_PASSWORD
+import com.blikeng.chatapp.ErrorMessages.WRONG_PASSWORD
 import com.blikeng.chatapp.ErrorMessages.SHORT_PASSWORD
 import jakarta.servlet.http.Cookie
 import org.junit.jupiter.api.*
@@ -282,7 +282,7 @@ class E2ETests : PostgresContainerBase() {
             """.trimIndent()
         }
             .andExpect { status { isBadRequest() } }
-            .andExpect { status { reason(INVALID_PASSWORD) } }
+            .andExpect { status { reason(WRONG_PASSWORD) } }
     }
 
     @Test
@@ -660,5 +660,20 @@ class E2ETests : PostgresContainerBase() {
         assertTrue(received.any { it.contains("encrypted hello from user1") })
 
         session.close()
+    }
+
+    @Test
+    @Order(32)
+    fun shouldLogOut(){
+        val result = mockMvc.post("/api/logout") {
+            contentType = MediaType.APPLICATION_JSON
+            user1Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { content { string("User logged out") } }
+            .andReturn()
+
+        assertNull(result.response.cookies.find { it.name == "AUTH" }?.value)
+        user1Cookie = result.response.cookies.find { it.name == "AUTH" }
     }
 }

@@ -1,12 +1,13 @@
 package com.blikeng.chatapp.dtos
 
+import java.sql.Timestamp
 import java.util.*
 
 data class WsJoined(
     val type: String = "JOINED",
     val roomId: UUID,
     val roomName: String,
-    val encrypted: Boolean
+    val encrypted: Boolean,
 )
 
 data class WsError(
@@ -18,5 +19,6 @@ data class WsError(
 data class WsChat(
     val type: String = "MESSAGE",
     val username: String,
-    val content: String
+    val content: String,
+    val timestamp: Timestamp
 )
