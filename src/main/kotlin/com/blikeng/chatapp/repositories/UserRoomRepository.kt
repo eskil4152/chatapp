@@ -9,4 +9,6 @@ import java.util.*
 @Repository
 interface UserRoomRepository: JpaRepository<UserRoomEntity, UserRoomId> {
     fun existsByIdUserIdAndIdRoomId(userId: UUID, roomId: UUID): Boolean
+
+    fun deleteByIdUserIdAndIdRoomId(userId: UUID, roomId: UUID)
 }
