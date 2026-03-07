@@ -7,6 +7,7 @@ import com.blikeng.chatapp.entities.RoomRole
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.entities.UserRoomEntity
 import com.blikeng.chatapp.entities.UserRoomId
+import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.JoinedRoom
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
@@ -38,6 +39,7 @@ class RoomServiceTests {
     @MockK private lateinit var roomRepository: RoomRepository
     @MockK private lateinit var userService: UserService
     @MockK private lateinit var userRoomRepository: UserRoomRepository
+    @MockK private lateinit var chatRepository: ChatRepository
 
     @InjectMockKs
     lateinit var roomService: RoomService
@@ -567,6 +569,7 @@ class RoomServiceTests {
 
         every { roomRepository.deleteById(roomId) } just Runs
         every { userRoomRepository.deleteAllByIdRoomId(roomId) } just Runs
+        every { chatRepository.deleteAllByRoom_Id(roomId) } just Runs
 
         roomService.deleteRoom(roomId.toString())
 
