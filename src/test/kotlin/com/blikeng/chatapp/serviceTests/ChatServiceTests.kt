@@ -264,8 +264,8 @@ class ChatServiceTests {
         val room = RoomEntity(name = "r")
         val user = UserEntity(username = "u", password = "")
 
-        val chat1 = ChatEntity(room = room, user = user, message =  "Hello", timestamp =  Timestamp(System.currentTimeMillis()))
-        val chat2 = ChatEntity(room = room, user = user, message =  "Hello again", timestamp =  Timestamp(System.currentTimeMillis()))
+        val chat1 = ChatEntity(roomId = room.id, user = user, message =  "Hello", timestamp =  Timestamp(System.currentTimeMillis()))
+        val chat2 = ChatEntity(roomId = room.id, user = user, message =  "Hello again", timestamp =  Timestamp(System.currentTimeMillis()))
         val saved: List<ChatEntity> = listOf(chat1, chat2)
 
         every { chatRepository.getAllChatsByRoomId(any()) } returns saved
@@ -300,7 +300,7 @@ class ChatServiceTests {
         val user = UserEntity(username = "u", password = "")
 
         val chat = ChatEntity(
-            room = room,
+            roomId = room.id,
             user = user,
             message = null,
             ciphertext = "cipher".toByteArray(),
@@ -522,7 +522,7 @@ class ChatServiceTests {
         val user = UserEntity(username = "u", password = "")
 
         val chat = ChatEntity(
-            room = room,
+            roomId = room.id,
             user = user,
             message = null,
             timestamp = Timestamp(System.currentTimeMillis())
