@@ -765,7 +765,11 @@ class E2ETests : PostgresContainerBase() {
             .andExpect { content { string("User logged out") } }
             .andReturn()
 
-        assertNull(result.response.cookies.find { it.name == "AUTH" }?.value)
-        user1Cookie = result.response.cookies.find { it.name == "AUTH" }
+        val authCookie = result.response.cookies.find { it.name == "AUTH" }
+        assertNotNull(authCookie)
+        assertEquals("", authCookie.value)
+        assertEquals(0, authCookie.maxAge)
+
+        user1Cookie = authCookie
     }
 }

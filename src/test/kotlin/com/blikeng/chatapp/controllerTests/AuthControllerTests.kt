@@ -113,7 +113,11 @@ class AuthControllerTests {
             .andExpect { cookie().exists("AUTH") }
             .andReturn()
 
-        assert(res.response.cookies.any { it.name == "AUTH" && it.value == null })
+        assert(
+            res.response.cookies.any {
+                it.name == "AUTH" && it.value == "" && it.maxAge == 0
+            }
+        )
     }
 
     @Test
