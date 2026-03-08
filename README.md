@@ -72,9 +72,5 @@ Hosted on Azure and connected to GitHub Pages frontend.
 
 ### Future additions:
 - [ ] Allow for friends
-- [ ] Allow for dm
-- [ ] Add login options
-  - [ ] Google
-  - [ ] Microsoft
-- [ ] CSRF
-- [ ] Compress messages before saving
+  - [ ] Allow for dm
+- [ ] Compress long messages before saving

@@ -25,7 +25,7 @@ class AuthController(
             .httpOnly(true)
             .secure(true)
             .path("/")
-            .sameSite("None")
+            .sameSite("Strict")
             .maxAge(24 * 60 * 60)
             .build()
 
@@ -45,7 +45,7 @@ class AuthController(
             .httpOnly(true)
             .secure(true)
             .path("/")
-            .sameSite("None")
+            .sameSite("Strict")
             .maxAge(24 * 60 * 60)
             .build()
 
@@ -57,15 +57,19 @@ class AuthController(
     }
 
     @PostMapping("/logout")
-    fun logout(response: HttpServletResponse): ResponseEntity<String> {
-        val cookie = Cookie("AUTH", null)
-        cookie.path = "/"
-        cookie.isHttpOnly = true
-        cookie.maxAge = 0
+    fun logout(): ResponseEntity<String> {
+        val cookie = ResponseCookie.from("AUTH", "")
+            .httpOnly(true)
+            .secure(true)
+            .path("/")
+            .sameSite("Strict")
+            .maxAge(0)
+            .build()
 
-        response.addCookie(cookie)
-
-        return ResponseEntity.ok("User logged out")
+        return ResponseEntity
+            .status(200)
+            .header(HttpHeaders.SET_COOKIE, cookie.toString())
+            .body("User logged out")
     }
 
     @GetMapping("/auth")
