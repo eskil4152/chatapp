@@ -13,9 +13,10 @@
 A real-time chat application built with Java and Spring Boot. Features a REST API, websockets, optional encryption, persistent storage and user authentication.
 Hosted on Azure and connected to GitHub Pages frontend.
 
+### Access:
+[Frontend (production)](https://chatapp.blikeng.com)
 
-### Access via frontend: 
-[GitHub Pages](https://eskil4152.github.io/chatapp-client)
+[GitHub Pages (temporary, will be removed due to SameSite cookie limitations)](https://eskil4152.github.io/chatapp-client)
 
 ### Features:
 * Database
