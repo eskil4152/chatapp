@@ -4,16 +4,12 @@ import com.blikeng.chatapp.dtos.FriendDTO
 import com.blikeng.chatapp.entities.FriendsEntity
 import com.blikeng.chatapp.entities.FriendsId
 import com.blikeng.chatapp.entities.UserEntity
-import com.blikeng.chatapp.errors.AlreadyFriendsException
-import com.blikeng.chatapp.errors.FriendYourselfException
-import com.blikeng.chatapp.errors.InvalidUserException
-import com.blikeng.chatapp.errors.NotFriendsException
-import com.blikeng.chatapp.errors.UserNotFoundException
+import com.blikeng.chatapp.errors.*
 import com.blikeng.chatapp.getId
 import com.blikeng.chatapp.repositories.FriendsRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import org.springframework.stereotype.Service
-import java.util.UUID
+import java.util.*
 
 @Service
 class FriendsService(

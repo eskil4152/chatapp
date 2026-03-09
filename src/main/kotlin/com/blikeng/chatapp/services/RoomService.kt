@@ -1,16 +1,12 @@
 package com.blikeng.chatapp.services
 
-import com.blikeng.chatapp.getId
 import com.blikeng.chatapp.dtos.RoomDTO
 import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.entities.RoomRole
 import com.blikeng.chatapp.entities.UserRoomEntity
 import com.blikeng.chatapp.entities.UserRoomId
-import com.blikeng.chatapp.errors.InvalidRoomNameException
-import com.blikeng.chatapp.errors.InvalidUUIDException
-import com.blikeng.chatapp.errors.InvalidUserException
-import com.blikeng.chatapp.errors.NotPermittedException
-import com.blikeng.chatapp.errors.RoomNotFoundException
+import com.blikeng.chatapp.errors.*
+import com.blikeng.chatapp.getId
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository

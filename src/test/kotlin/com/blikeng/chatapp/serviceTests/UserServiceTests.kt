@@ -20,7 +20,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
-import org.springframework.web.server.ResponseStatusException
 import java.util.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
