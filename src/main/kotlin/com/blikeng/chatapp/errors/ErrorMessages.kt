@@ -15,4 +15,9 @@ object ErrorMessages {
     const val SHORT_USERNAME = "Username must be at least 3 characters long"
 
     const val INVALID_UUID = "Invalid UUID"
+
+    const val USER_NOT_FOUND = "User not found"
+    const val ALREADY_FRIEND = "Already friends"
+    const val NOT_FRIENDS = "Not friends"
+    const val CANT_FRIEND_YOURSELF = "You can't friend yourself"
 }
