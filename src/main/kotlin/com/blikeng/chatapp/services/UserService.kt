@@ -1,23 +1,18 @@
 package com.blikeng.chatapp.services
 
-import com.blikeng.chatapp.ErrorMessages.WRONG_PASSWORD
-import com.blikeng.chatapp.ErrorMessages.INVALID_TOKEN
-import com.blikeng.chatapp.ErrorMessages.INVALID_USER
-import com.blikeng.chatapp.ErrorMessages.SHORT_PASSWORD
-import com.blikeng.chatapp.ErrorMessages.USER_NOT_FOUND
 import com.blikeng.chatapp.dtos.ChangeUserDTO
 import com.blikeng.chatapp.dtos.EditPasswordDTO
 import com.blikeng.chatapp.dtos.UserDTO
 import com.blikeng.chatapp.entities.UserEntity
+import com.blikeng.chatapp.errors.InvalidUserException
+import com.blikeng.chatapp.errors.ShortPasswordException
+import com.blikeng.chatapp.errors.WrongPasswordException
 import com.blikeng.chatapp.getId
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.security.PasswordService
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.http.HttpStatus
-import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
-import org.springframework.web.server.ResponseStatusException
 import java.util.*
 
 @Service
@@ -32,7 +27,7 @@ class UserService(
 
     fun getSelf(): UserDTO {
         val id = getId()
-        val user = getUserById(id) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, USER_NOT_FOUND)
+        val user = getUserById(id) ?: throw InvalidUserException()
 
         return UserDTO(
             user.username,
@@ -48,7 +43,7 @@ class UserService(
 
     fun editProfile(changeUserDTO: ChangeUserDTO) {
         val id = getId()
-        val user = getUserById(id) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
+        val user = getUserById(id) ?: throw InvalidUserException()
 
         changeUserDTO.bio.let { user.bio = it }
         changeUserDTO.email.let { user.email = it }
@@ -60,10 +55,10 @@ class UserService(
 
     fun editPassword(passwords: EditPasswordDTO) {
         val id = getId()
-        val user = getUserById(id) ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_USER)
+        val user = getUserById(id) ?: throw InvalidUserException()
 
-        if (!passwordService.checkPassword(passwords.oldPassword, user.password)) throw ResponseStatusException(HttpStatus.BAD_REQUEST, WRONG_PASSWORD)
-        if (passwords.newPassword.trim().length < 8) throw ResponseStatusException(HttpStatus.BAD_REQUEST, SHORT_PASSWORD)
+        if (!passwordService.checkPassword(passwords.oldPassword, user.password)) throw WrongPasswordException()
+        if (passwords.newPassword.trim().length < 8) throw ShortPasswordException()
 
         val encoded = passwordService.encodePassword(passwords.newPassword)
         user.password = encoded

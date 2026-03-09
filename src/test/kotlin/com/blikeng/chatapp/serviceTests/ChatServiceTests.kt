@@ -3,6 +3,8 @@ package com.blikeng.chatapp.serviceTests
 import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.entities.UserEntity
+import com.blikeng.chatapp.errors.ApiException
+import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
@@ -126,12 +128,12 @@ class ChatServiceTests {
         val session = mockk<WebSocketSession>()
         every { session.attributes } returns emptyMap()
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             chatService.joinRoom(UUID.randomUUID(), session)
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
-        assertEquals("Invalid token", exception.reason)
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
+        assertEquals(ErrorMessages.INVALID_TOKEN, exception.message)
     }
 
     @Test
@@ -144,12 +146,12 @@ class ChatServiceTests {
         val attrs: MutableMap<String, Any> = hashMapOf("userId" to UUID.randomUUID())
         every { session.attributes } returns attrs
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             chatService.joinRoom(UUID.randomUUID(), session)
         }
 
-        assertEquals(HttpStatus.FORBIDDEN, exception.statusCode)
-        assertEquals("Not permitted", exception.reason)
+        assertEquals(HttpStatus.NOT_FOUND, exception.status)
+        assertEquals(ErrorMessages.ROOM_NOT_FOUND, exception.message)
     }
 
     @Test
@@ -158,12 +160,12 @@ class ChatServiceTests {
 
         val message = ReceivedMessage(UUID.randomUUID(), UUID.randomUUID(), "hello", "MESSAGE")
 
-        val ex = assertFailsWith<ResponseStatusException> {
+        val ex = assertFailsWith<ApiException> {
             chatService.broadcast(UUID.randomUUID(), message, "u")
         }
 
-        assertEquals(HttpStatus.FORBIDDEN, ex.statusCode)
-        assertEquals("Not permitted", ex.reason)
+        assertEquals(HttpStatus.NOT_FOUND, ex.status)
+        assertEquals(ErrorMessages.ROOM_NOT_FOUND, ex.message)
     }
 
     @Test

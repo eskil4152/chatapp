@@ -1,10 +1,11 @@
 package com.blikeng.chatapp.controllerTests
 
-import com.blikeng.chatapp.ErrorMessages.INVALID_ROOM_ID
-import com.blikeng.chatapp.ErrorMessages.ROOM_NOT_FOUND
 import com.blikeng.chatapp.controllers.RoomController
 import com.blikeng.chatapp.dtos.RoomDTO
 import com.blikeng.chatapp.entities.RoomRole
+import com.blikeng.chatapp.errors.InvalidRoomNameException
+import com.blikeng.chatapp.errors.InvalidTokenException
+import com.blikeng.chatapp.errors.RoomNotFoundException
 import com.blikeng.chatapp.security.JwtAuthFilter
 import com.blikeng.chatapp.services.RoomService
 import com.ninjasquad.springmockk.MockkBean
@@ -124,7 +125,7 @@ class RoomControllerTests {
 
     @Test
     fun shouldGetUnauthorized(){
-        every { roomService.makeNewRoom(any(), any()) } throws ResponseStatusException(HttpStatus.UNAUTHORIZED)
+        every { roomService.makeNewRoom(any(), any()) } throws InvalidTokenException()
 
         mockMvc.post("/api/rooms/make") {
             contentType = MediaType.APPLICATION_JSON
@@ -142,7 +143,7 @@ class RoomControllerTests {
 
     @Test
     fun shouldGetBadRequest(){
-        every { roomService.makeNewRoom(any(), any()) } throws ResponseStatusException(HttpStatus.BAD_REQUEST)
+        every { roomService.makeNewRoom(any(), any()) } throws InvalidRoomNameException()
 
         mockMvc.post("/api/rooms/make") {
             contentType = MediaType.APPLICATION_JSON
@@ -154,13 +155,13 @@ class RoomControllerTests {
             """.trimIndent()
         }.andExpect {
             status { isBadRequest() }
-            content { content().string("Invalid room name") }
+            content { content { string("Invalid room name") }}
         }
     }
 
     @Test
     fun shouldGetNotFound(){
-        every { roomService.joinRoom(any()) } throws ResponseStatusException(HttpStatus.NOT_FOUND)
+        every { roomService.joinRoom(any()) } throws RoomNotFoundException()
 
         mockMvc.post("/api/rooms/join") {
             contentType = MediaType.APPLICATION_JSON
@@ -169,9 +170,8 @@ class RoomControllerTests {
                     "roomId":"${UUID.randomUUID()}"
                 }
             """.trimIndent()
-        }.andExpect {
-            status { isNotFound() }
-            content { content().string(ROOM_NOT_FOUND) }
         }
+            .andExpect { status { isNotFound() }}
+            .andExpect { content { string("Room not found") }}
     }
 }

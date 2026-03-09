@@ -8,7 +8,6 @@ import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
 
-
 @Component
 class JwtAuthFilter(
     private val jwtService: JwtService,

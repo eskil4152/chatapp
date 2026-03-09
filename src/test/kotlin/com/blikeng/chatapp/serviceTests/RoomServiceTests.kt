@@ -1,26 +1,19 @@
 package com.blikeng.chatapp.serviceTests
 
-import com.blikeng.chatapp.ErrorMessages.INVALID_ROOM_ID
 import com.blikeng.chatapp.dtos.RoomDTO
-import com.blikeng.chatapp.entities.RoomEntity
-import com.blikeng.chatapp.entities.RoomRole
-import com.blikeng.chatapp.entities.UserEntity
-import com.blikeng.chatapp.entities.UserRoomEntity
-import com.blikeng.chatapp.entities.UserRoomId
+import com.blikeng.chatapp.entities.*
+import com.blikeng.chatapp.errors.ApiException
+import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.JoinedRoom
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.services.RoomService
 import com.blikeng.chatapp.services.UserService
-import io.mockk.Runs
-import io.mockk.every
+import io.mockk.*
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
-import io.mockk.just
-import io.mockk.slot
-import io.mockk.verify
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.assertNotNull
 import org.junit.jupiter.api.assertNull
@@ -28,7 +21,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
-import org.springframework.web.server.ResponseStatusException
 import java.util.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -110,12 +102,12 @@ class RoomServiceTests {
 
         every { userService.getUserById(any()) } returns null
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.makeNewRoom("r", false)
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
-        assertEquals("Invalid user", exception.reason)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.INVALID_USER, exception.message)
     }
 
     @Test
@@ -125,12 +117,12 @@ class RoomServiceTests {
 
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.makeNewRoom("", false)
         }
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
-        assertEquals("Invalid room name", exception.reason)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.INVALID_ROOM_NAME, exception.message)
     }
 
     @Test
@@ -140,12 +132,12 @@ class RoomServiceTests {
 
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.makeNewRoom(null, false)
         }
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
-        assertEquals("Invalid room name", exception.reason)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.INVALID_ROOM_NAME, exception.message)
     }
 
     @Test
@@ -155,11 +147,11 @@ class RoomServiceTests {
 
         every { userService.getUserById(any()) } returns null
 
-        val exception = assertFailsWith<ResponseStatusException> {
-            roomService.makeNewRoom("rong name", false)
+        val exception = assertFailsWith<ApiException> {
+            roomService.makeNewRoom("wrong name", false)
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test
@@ -231,12 +223,12 @@ class RoomServiceTests {
 
         every { userService.getUserById(any()) } returns null
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.joinRoom(UUID.randomUUID().toString())
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
-        assertEquals("Invalid user", exception.reason)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.INVALID_USER, exception.message)
     }
 
     @Test
@@ -247,22 +239,22 @@ class RoomServiceTests {
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
         every { roomRepository.findById(any()) } returns Optional.empty()
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.joinRoom(UUID.randomUUID().toString())
         }
 
-        assertEquals(HttpStatus.NOT_FOUND, exception.statusCode)
-        assertEquals("Room not found", exception.reason)
+        assertEquals(HttpStatus.NOT_FOUND, exception.status)
+        assertEquals(ErrorMessages.ROOM_NOT_FOUND, exception.message)
     }
 
     @Test
     fun shouldFailToGetRoomsWhenNoAuthentication() {
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.getAllUserRooms()
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
-        assertEquals("Invalid token", exception.reason)
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
+        assertEquals(ErrorMessages.INVALID_TOKEN, exception.message)
     }
 
     @Test
@@ -272,31 +264,31 @@ class RoomServiceTests {
 
         every { userService.getUserById(any()) } returns null
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.getAllUserRooms()
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test
     fun shouldFailToMakeRoomWhenNoAuthentication() {
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.makeNewRoom("roomName", false)
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
-        assertEquals("Invalid token", exception.reason)
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
+        assertEquals(ErrorMessages.INVALID_TOKEN, exception.message)
     }
 
     @Test
     fun shouldFailToJoinRoomWhenNoAuthentication() {
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.joinRoom(UUID.randomUUID().toString())
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
-        assertEquals("Invalid token", exception.reason)
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
+        assertEquals(ErrorMessages.INVALID_TOKEN, exception.message)
     }
 
     @Test
@@ -307,12 +299,12 @@ class RoomServiceTests {
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
         every { roomRepository.findById(any()) } returns Optional.empty()
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.joinRoom("not a real UUID")
         }
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
-        assertEquals(INVALID_ROOM_ID, exception.reason)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.INVALID_UUID, exception.message)
     }
 
     @Test
@@ -334,11 +326,11 @@ class RoomServiceTests {
 
         every { userService.getUserById(any()) } returns null
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.leaveRoom(UUID.randomUUID().toString())
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test
@@ -348,11 +340,11 @@ class RoomServiceTests {
 
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.leaveRoom("")
         }
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test
@@ -363,11 +355,11 @@ class RoomServiceTests {
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns false
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.leaveRoom(UUID.randomUUID().toString())
         }
 
-        assertEquals(HttpStatus.NOT_FOUND, exception.statusCode)
+        assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
     @Test
@@ -416,11 +408,11 @@ class RoomServiceTests {
             role = RoomRole.OWNER
         )
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.editRoom(roomDTO)
         }
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test
@@ -437,11 +429,11 @@ class RoomServiceTests {
             role = RoomRole.OWNER
         )
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.editRoom(roomDTO)
         }
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test
@@ -459,11 +451,11 @@ class RoomServiceTests {
             role = RoomRole.OWNER
         )
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.editRoom(roomDTO)
         }
 
-        assertEquals(HttpStatus.NOT_FOUND, exception.statusCode)
+        assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
     @Test
@@ -486,11 +478,11 @@ class RoomServiceTests {
             role = RoomRole.OWNER
         )
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.editRoom(roomDTO)
         }
 
-        assertEquals(HttpStatus.FORBIDDEN, exception.statusCode)
+        assertEquals(HttpStatus.FORBIDDEN, exception.status)
     }
 
     @Test
@@ -513,11 +505,11 @@ class RoomServiceTests {
             role = RoomRole.OWNER
         )
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.editRoom(roomDTO)
         }
 
-        assertEquals(HttpStatus.NOT_FOUND, exception.statusCode)
+        assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
     @Test
@@ -534,11 +526,11 @@ class RoomServiceTests {
             role = RoomRole.OWNER
         )
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.editRoom(roomDTO)
         }
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test
@@ -548,11 +540,11 @@ class RoomServiceTests {
 
         every { userService.getUserById(any()) } returns null
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.editRoom(RoomDTO(UUID.randomUUID().toString(), "new room name", false, RoomRole.OWNER))
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test
@@ -589,11 +581,11 @@ class RoomServiceTests {
         every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
         every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns null
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.deleteRoom(roomId.toString())
         }
 
-        assertEquals(HttpStatus.NOT_FOUND, exception.statusCode)
+        assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
     @Test
@@ -607,11 +599,11 @@ class RoomServiceTests {
         every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
         every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.MEMBER)
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.deleteRoom(roomId.toString())
         }
 
-        assertEquals(HttpStatus.FORBIDDEN, exception.statusCode)
+        assertEquals(HttpStatus.FORBIDDEN, exception.status)
     }
 
     @Test
@@ -623,11 +615,11 @@ class RoomServiceTests {
 
         every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.deleteRoom("not a real UUID")
         }
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test
@@ -637,10 +629,10 @@ class RoomServiceTests {
 
         every { userService.getUserById(any()) } returns null
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.deleteRoom(UUID.randomUUID().toString())
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 }
