@@ -35,9 +35,6 @@
 		<sonar.coverage.jacoco.xmlReportPaths>target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
 		<sonar.coverage.exclusions>
 			**/ChatappApplication.kt,
-			**/*Entity*,
-			**/*Dto*,
-			**/*Config*
 		</sonar.coverage.exclusions>
 	</properties>
 	<dependencies>
@@ -168,10 +165,7 @@
 						</goals>
 						<configuration>
 							<excludes>
-								<exclude>**/*ApplicationKt.class</exclude>
 								<exclude>**/ChatappApplication*</exclude>
-								<exclude>**/dtos/</exclude>
-								<exclude>**/entities/</exclude>
 							</excludes>
 							<formats>
 								<format>XML</format>

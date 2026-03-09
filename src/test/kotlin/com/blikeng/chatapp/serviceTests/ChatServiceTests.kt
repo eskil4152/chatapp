@@ -438,7 +438,7 @@ class ChatServiceTests {
 
         every { chatFlushService.saveBatch(any()) } just Runs
 
-        chatService.addMessage(ReceivedMessage(room.id,user.id,"hello","MESSAGE"), Timestamp(System.currentTimeMillis()))
+        chatService.addMessage(ReceivedMessage(room.id,user.id,"hello","MESSAGE"))
 
         chatService.shutdownFlush()
 
@@ -453,7 +453,7 @@ class ChatServiceTests {
         every { userRepository.findById(user.id) } returns Optional.of(user)
         every { roomRepository.findById(room.id) } returns Optional.of(room)
 
-        chatService.addMessage(ReceivedMessage(room.id, user.id, "hello", "MESSAGE"), Timestamp(System.currentTimeMillis()))
+        chatService.addMessage(ReceivedMessage(room.id, user.id, "hello", "MESSAGE"))
 
         val enteredSaveBatch = CountDownLatch(1)
         val releaseSaveBatch = CountDownLatch(1)
@@ -491,8 +491,8 @@ class ChatServiceTests {
         every { roomRepository.findById(room1.id) } returns Optional.of(room1)
         every { roomRepository.findById(room2.id) } returns Optional.of(room2)
 
-        chatService.addMessage(ReceivedMessage(room1.id, user.id, "one", "MESSAGE"), Timestamp(System.currentTimeMillis()))
-        chatService.addMessage(ReceivedMessage(room2.id, user.id, "two", "MESSAGE"), Timestamp(System.currentTimeMillis()))
+        chatService.addMessage(ReceivedMessage(room1.id, user.id, "one", "MESSAGE"))
+        chatService.addMessage(ReceivedMessage(room2.id, user.id, "two", "MESSAGE"))
 
         val session = mockk<WebSocketSession>(relaxed = true)
         val attrs: MutableMap<String, Any> = hashMapOf("userId" to user.id)
@@ -553,7 +553,7 @@ class ChatServiceTests {
         every { roomRepository.findById(roomId) } returns Optional.of(room)
         every { chatFlushService.saveBatch(any()) } returns Unit
 
-        chatService.addMessage(ReceivedMessage(roomId, userId, "hello", "MESSAGE"), Timestamp(System.currentTimeMillis()))
+        chatService.addMessage(ReceivedMessage(roomId, userId, "hello", "MESSAGE"))
 
         chatService.shutdownFlush()
 

@@ -68,22 +68,17 @@ class ChatService(
         }
     }
 
-    fun addMessage(message: ReceivedMessage, timestamp: Timestamp){
+    fun addMessage(message: ReceivedMessage){
         val user = userRepository.findById(message.userId).orElseThrow()
         val room = roomRepository.findById(message.roomId).orElseThrow()
 
         val entity = ChatEntity(
             user = user,
             roomId = room.id,
-            message = null,
-            timestamp = timestamp
         )
 
         if (!room.encrypted) {
             entity.message = message.content
-            entity.ciphertext = null
-            entity.nonce = null
-            entity.keyVersion = null
         } else {
             val v = room.keyVersion
             val enc = encrypt.encrypt(
@@ -91,7 +86,7 @@ class ChatService(
                 aad = configureAad(room.id, entity.id, user.id),
                 keyVersion = v!!
             )
-            entity.message = null
+
             entity.ciphertext = enc.ciphertext
             entity.nonce = enc.nonce
             entity.keyVersion = v
@@ -168,16 +163,14 @@ class ChatService(
 
     fun broadcast(roomId: UUID, message: ReceivedMessage, username: String) {
         val timestamp = Timestamp(System.currentTimeMillis())
-        if (message.type == "MESSAGE" && rooms[roomId] != null) addMessage(message, timestamp)
+        if (message.type == "MESSAGE" && rooms[roomId] != null) addMessage(message)
 
-        if (!userRoomRepository.existsByIdUserIdAndIdRoomId(message.userId, roomId)) throw ResponseStatusException(HttpStatus.FORBIDDEN, NOT_PERMITTED)
+        if (!userRoomRepository.existsByIdUserIdAndIdRoomId(message.userId, roomId)) throw ResponseStatusException(HttpStatus.FORBIDDEN, NOT_PERMITTED);
 
-        val sendMessage : WsChat;
-
-        if (message.type == "MESSAGE") {
-            sendMessage = WsChat(content = message.content, username = username, type = message.type, timestamp = timestamp)
+        val sendMessage = if (message.type == "MESSAGE") {
+            WsChat(content = message.content, username = username, type = message.type, timestamp = timestamp)
         } else {
-            sendMessage = WsChat(content = message.content, username = "Server", type = message.type, timestamp = timestamp)
+            WsChat(content = message.content, username = "Server", type = message.type, timestamp = timestamp)
         }
 
         val json = jacksonObjectMapper().writeValueAsString(sendMessage)
