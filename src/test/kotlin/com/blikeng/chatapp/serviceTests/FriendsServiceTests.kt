@@ -1,6 +1,5 @@
 package com.blikeng.chatapp.serviceTests
 
-import com.blikeng.chatapp.dtos.FriendDTO
 import com.blikeng.chatapp.entities.FriendsEntity
 import com.blikeng.chatapp.entities.FriendsId
 import com.blikeng.chatapp.entities.UserEntity
@@ -22,9 +21,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
-import java.sql.Date
-import java.time.Instant
-import java.util.UUID
+import java.util.*
 import kotlin.test.assertFailsWith
 
 @ExtendWith(MockKExtension::class)

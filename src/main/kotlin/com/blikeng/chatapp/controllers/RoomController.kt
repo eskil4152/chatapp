@@ -1,13 +1,11 @@
 package com.blikeng.chatapp.controllers
 
-import com.blikeng.chatapp.dtos.FriendDTO
 import com.blikeng.chatapp.dtos.RoomDTO
 import com.blikeng.chatapp.dtos.UsernameDTO
 import com.blikeng.chatapp.services.RoomService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
-import java.util.UUID
 
 @RestController
 @RequestMapping("/api/rooms")

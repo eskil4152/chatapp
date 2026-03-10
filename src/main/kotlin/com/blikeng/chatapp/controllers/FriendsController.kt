@@ -2,7 +2,6 @@ package com.blikeng.chatapp.controllers
 
 import com.blikeng.chatapp.dtos.FriendDTO
 import com.blikeng.chatapp.dtos.UsernameDTO
-import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.services.FriendsService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity

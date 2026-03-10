@@ -7,10 +7,8 @@ import com.blikeng.chatapp.errors.InvalidUserException
 import com.blikeng.chatapp.errors.UserNotFoundException
 import com.blikeng.chatapp.security.JwtAuthFilter
 import com.blikeng.chatapp.services.FriendsService
-import com.blikeng.chatapp.services.UserService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
-import io.mockk.impl.annotations.MockK
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
