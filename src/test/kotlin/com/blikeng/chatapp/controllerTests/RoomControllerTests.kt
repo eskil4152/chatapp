@@ -119,6 +119,21 @@ class RoomControllerTests {
     }
 
     @Test
+    fun shouldCreatePrivateRoom(){
+        every { roomService.getOrStartPrivateMessage("dm") } returns UUID.randomUUID()
+
+        mockMvc.post("/api/rooms/dm"){
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                    "username":"dm"
+                }
+            """.trimIndent()
+        }
+            .andExpect { status { isCreated() } }
+    }
+
+    @Test
     fun shouldGetUnauthorized(){
         every { roomService.makeNewRoom(any(), any()) } throws InvalidTokenException()
 

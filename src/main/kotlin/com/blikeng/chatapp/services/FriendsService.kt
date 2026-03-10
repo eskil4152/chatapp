@@ -31,7 +31,7 @@ class FriendsService(
                 bio = friend.bio,
                 email = friend.email,
                 fullName = friend.fullName,
-                avatarUrl = friend.avatarUrl?.takeIf { it.isNotBlank() },
+                avatarUrl = friend.avatarUrl,
                 birthday = friend.birthday,
                 createdAt = friend.createdAt,
             )
@@ -62,7 +62,7 @@ class FriendsService(
         val friend = userRepository.getUserByUsername(friendUsername) ?: throw UserNotFoundException()
 
         val friendshipId = generateFriendshipId(id, friend.id)
-        if (!friendsRepository.existsById(friendshipId)) throw NotFriendsException()
+        if (!friendsRepository.existsById(friendshipId)) throw UserNotFoundException()
 
         friendsRepository.deleteById(friendshipId)
     }
@@ -74,24 +74,24 @@ class FriendsService(
         val friend = userRepository.getUserByUsername(friendUsername) ?: throw UserNotFoundException()
 
         val friendshipId = generateFriendshipId(id, friend.id)
-        if (!friendsRepository.existsById(friendshipId)) throw NotFriendsException()
+        if (!friendsRepository.existsById(friendshipId)) throw UserNotFoundException()
 
         return FriendDTO(
             username = friend.username,
             bio = friend.bio,
             email = friend.email,
             fullName = friend.fullName,
-            avatarUrl = friend.avatarUrl?.takeIf { it.isNotBlank() },
+            avatarUrl = friend.avatarUrl,
             birthday = friend.birthday,
             createdAt = friend.createdAt,
         )
     }
 
-    fun verifyFriendship(username: String, userId: UUID): UserEntity {
+    fun getFriendEntity(username: String, userId: UUID): UserEntity {
         val friend = userRepository.getUserByUsername(username) ?: throw UserNotFoundException()
 
         val friendshipId = generateFriendshipId(userId, friend.id)
-        if (!friendsRepository.existsById(friendshipId)) throw NotFriendsException()
+        if (!friendsRepository.existsById(friendshipId)) throw UserNotFoundException()
 
         return friend
     }

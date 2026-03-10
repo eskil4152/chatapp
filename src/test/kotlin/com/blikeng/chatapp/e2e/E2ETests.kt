@@ -768,4 +768,55 @@ class E2ETests : PostgresContainerBase() {
 
         user1Cookie = authCookie
     }
+
+    @Test
+    @Order(36)
+    fun shouldFailToAddNonExistingUserAsFriend(){
+        mockMvc.post("/api/friends/add") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                    "username":"not a registered username"
+                }
+            """.trimIndent()
+            user2Cookie?.let { cookie(it) }
+        }.andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    @Order(37)
+    fun shouldAddFriend(){
+        mockMvc.post("/api/friends/add") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                    "username":"username"
+                }
+            """.trimIndent()
+            user2Cookie?.let { cookie(it) }
+        }.andExpect { status { isOk() } }
+
+        mockMvc.get("/api/friends") {
+            user2Cookie?.let { cookie(it) }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$[0].username") { value("username") }
+        }
+    }
+
+    @Test
+    @Order(38)
+    fun shouldMakePrivateRoom(){
+        mockMvc.post("/api/rooms/dm") {
+            contentType = MediaType.APPLICATION_JSON
+            user2Cookie?.let { cookie(it) }
+            content = """
+                {
+                    "username":"username"
+                }
+            """.trimIndent()
+        }.andExpect {
+            status { isCreated() }
+        }
+    }
 }

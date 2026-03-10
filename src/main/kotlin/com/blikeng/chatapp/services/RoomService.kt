@@ -59,7 +59,11 @@ class RoomService(
         val roomDtos = joinedRooms.map { room ->
             if (room.type == RoomType.PRIVATE) {
                 val otherUser = userRoomRepository.findOtherUser(room.room.id, userId)
-                room.room.name = otherUser?.username ?: "Error"
+                if (otherUser == null) {
+                    room.room.name = "Error"
+                } else {
+                    room.room.name = otherUser.username
+                }
             }
             RoomDTO(roomId = room.room.id.toString(), roomName = room.room.name, encrypted = room.room.encrypted, role = room.role, type = room.type)
         }
@@ -157,7 +161,7 @@ class RoomService(
         val userId = getId()
         userService.getUserById(userId) ?: throw InvalidUserException()
 
-        val friend = friendsService.verifyFriendship(username, userId)
+        val friend = friendsService.getFriendEntity(username, userId)
 
         val roomId = generatePrivateRoomId(friend.id, userId)
         val roomExists = roomRepository.findById(roomId).orElse(null)

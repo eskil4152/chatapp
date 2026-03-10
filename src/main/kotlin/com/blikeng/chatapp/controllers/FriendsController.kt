@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.*
 @RestController
 @RequestMapping("/api/friends")
 class FriendsController(@Autowired private val friendsService: FriendsService) {
-
     @GetMapping("")
     fun getFriends(): ResponseEntity<List<FriendDTO>> {
         val friends = friendsService.getFriends();

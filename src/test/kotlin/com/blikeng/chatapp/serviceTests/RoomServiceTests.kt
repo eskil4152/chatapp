@@ -4,10 +4,11 @@ import com.blikeng.chatapp.dtos.RoomDTO
 import com.blikeng.chatapp.entities.*
 import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.errors.ErrorMessages
-import com.blikeng.chatapp.repositories.ChatRepository
+import com.blikeng.chatapp.errors.UserNotFoundException
 import com.blikeng.chatapp.repositories.JoinedRoom
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
+import com.blikeng.chatapp.services.FriendsService
 import com.blikeng.chatapp.services.RoomService
 import com.blikeng.chatapp.services.UserService
 import io.mockk.*
@@ -31,7 +32,7 @@ class RoomServiceTests {
     @MockK private lateinit var roomRepository: RoomRepository
     @MockK private lateinit var userService: UserService
     @MockK private lateinit var userRoomRepository: UserRoomRepository
-    @MockK private lateinit var chatRepository: ChatRepository
+    @MockK private lateinit var friendService: FriendsService
 
     @InjectMockKs
     lateinit var roomService: RoomService
@@ -159,23 +160,60 @@ class RoomServiceTests {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
 
-        val roomId = UUID.randomUUID()
-        val room = RoomEntity(id = roomId, name = "r")
+        val room = RoomEntity(name = "r")
         val joinedRoom = JoinedRoom(room, RoomRole.OWNER)
 
+        val secondRoom = RoomEntity(name = "r2", type = RoomType.PRIVATE)
+        val joinedRoom2 = JoinedRoom(secondRoom, RoomRole.OWNER, type = RoomType.PRIVATE)
+
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
-        every { roomRepository.findRoomsForUser(any()) } returns listOf(joinedRoom)
+        every { roomRepository.findRoomsForUser(any()) } returns listOf(joinedRoom, joinedRoom2)
+        every { userRoomRepository.findOtherUser(secondRoom.id, any()) } returns UserEntity(username = "su", password = "")
 
         val rooms = roomService.getAllUserRooms()
         assertEquals(
             listOf(
                 RoomDTO(
-                    roomId = roomId.toString(),
-                    roomName = "r",
+                    roomId = room.id.toString(),
+                    roomName = room.name,
                     encrypted = room.encrypted,
                     role = RoomRole.OWNER,
-                    type = RoomType.GROUP
+                    type = room.type,
+                ),
+                RoomDTO(
+                    roomId = secondRoom.id.toString(),
+                    roomName = secondRoom.name,
+                    encrypted = secondRoom.encrypted,
+                    role = RoomRole.OWNER,
+                    type = secondRoom.type,
                 )
+            ),
+            rooms
+        )
+    }
+
+    @Test
+    fun gettingPrivateRoomsWithoutOtherUserShouldNameUserError(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        val room = RoomEntity(name = "r", type = RoomType.PRIVATE)
+        val joinedRoom = JoinedRoom(room, RoomRole.OWNER, type = RoomType.PRIVATE)
+
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+        every { roomRepository.findRoomsForUser(any()) } returns listOf(joinedRoom)
+        every { userRoomRepository.findOtherUser(any(), any()) } returns null
+
+        val rooms = roomService.getAllUserRooms()
+        assertEquals(
+            listOf(
+                RoomDTO(
+                    roomId = room.id.toString(),
+                    roomName = "Error",
+                    encrypted = room.encrypted,
+                    role = RoomRole.OWNER,
+                    type = room.type,
+                ),
             ),
             rooms
         )
@@ -642,5 +680,119 @@ class RoomServiceTests {
         }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+    }
+
+    @Test
+    fun shouldMakePrivateMessageRoom(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+        every { friendService.getFriendEntity("us", any()) } returns UserEntity(username = "us", password = "")
+        every { roomRepository.findById(any()) } returns Optional.empty()
+
+        every { roomRepository.save(any()) } answers { firstArg() }
+        every { userRoomRepository.save(any()) } answers { firstArg() }
+
+        val roomId = roomService.getOrStartPrivateMessage("us")
+
+        assertNotNull(roomId)
+        verify(exactly = 1) {roomRepository.save(any())}
+        verify(exactly = 2) {userRoomRepository.save(any())}
+    }
+
+    @Test
+    fun shouldGetPrivateMessageRoom(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+        every { friendService.getFriendEntity("us", any()) } returns UserEntity(username = "us", password = "")
+        every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "room"))
+
+        every { roomRepository.save(any()) } answers { firstArg() }
+        every { userRoomRepository.save(any()) } answers { firstArg() }
+
+        val roomId = roomService.getOrStartPrivateMessage("us")
+
+        assertNotNull(roomId)
+        verify(exactly = 0) {roomRepository.save(any())}
+        verify(exactly = 0) {userRoomRepository.save(any())}
+    }
+
+    @Test
+    fun shouldFailToGetPrivateMessagesWhenInvalidUser(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns null
+
+        val exception = assertFailsWith<ApiException> {
+            roomService.getOrStartPrivateMessage("some user")
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+    }
+
+    @Test
+    fun shouldFailToGetPrivateMessagesWhenFriendNotFound(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+        every { friendService.getFriendEntity("some user", any()) } throws UserNotFoundException()
+
+        val exception = assertFailsWith<ApiException> {
+            roomService.getOrStartPrivateMessage("some user")
+        }
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.status)
+    }
+
+    @Test
+    fun shouldFailToGetPrivateMessagesWithYourself(){
+        val user = UserEntity(username = "u", password = "")
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(user.id, null, emptyList())
+
+        every { userService.getUserById(user.id) } returns user
+        every { friendService.getFriendEntity("u", any()) } returns user
+        every { roomRepository.findById(any()) } returns Optional.empty()
+
+        val exception = assertFailsWith<ApiException> {
+            roomService.getOrStartPrivateMessage("u")
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+    }
+
+    @Test
+    fun shouldGenerateSamePrivateRoomForBothUserOrders() {
+        val low = UUID.fromString("00000000-0000-0000-0000-000000000001")
+        val high = UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff")
+
+        val userLow = UserEntity(id = low, username = "low", password = "")
+        val userHigh = UserEntity(id = high, username = "high", password = "")
+
+        every { userService.getUserById(low) } returns userLow
+        every { userService.getUserById(high) } returns userHigh
+
+        every { friendService.getFriendEntity("high", low) } returns userHigh
+        every { friendService.getFriendEntity("low", high) } returns userLow
+
+        every { roomRepository.findById(any()) } returns Optional.empty()
+        every { roomRepository.save(any()) } answers { firstArg() }
+        every { userRoomRepository.save(any()) } answers { firstArg() }
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(low, null, emptyList())
+        val roomId1 = roomService.getOrStartPrivateMessage("high")
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(high, null, emptyList())
+        val roomId2 = roomService.getOrStartPrivateMessage("low")
+
+        assertEquals(roomId1, roomId2)
     }
 }

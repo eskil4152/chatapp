@@ -71,6 +71,6 @@ class RoomController(
     fun privateMessage(
         @RequestBody usernameDTO: UsernameDTO
     ) : ResponseEntity<String> {
-        return ResponseEntity.ok(roomService.getOrStartPrivateMessage(usernameDTO.username).toString());
+        return ResponseEntity.status(201).body(roomService.getOrStartPrivateMessage(usernameDTO.username).toString());
     }
 }

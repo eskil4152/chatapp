@@ -22,5 +22,4 @@ class InvalidUUIDException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.
 // Friends
 class UserNotFoundException : ApiException(HttpStatus.NOT_FOUND, ErrorMessages.USER_NOT_FOUND)
 class AlreadyFriendsException : ApiException(HttpStatus.CONFLICT, ErrorMessages.ALREADY_FRIEND)
-class NotFriendsException : ApiException(HttpStatus.NOT_FOUND, ErrorMessages.NOT_FRIENDS)
 class FriendYourselfException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.CANT_FRIEND_YOURSELF)
