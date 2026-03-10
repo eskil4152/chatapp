@@ -42,7 +42,6 @@ class FriendsService(
         val id = getId()
         val user = userService.getUserById(id) ?: throw InvalidUserException()
 
-        println("Adding friend $friendUsername")
         val friend = userRepository.getUserByUsername(friendUsername) ?: throw UserNotFoundException()
 
         val friendshipId = generateFriendshipId(id, friend.id)
@@ -66,6 +65,26 @@ class FriendsService(
         if (!friendsRepository.existsById(friendshipId)) throw NotFriendsException()
 
         friendsRepository.deleteById(friendshipId)
+    }
+
+    fun getFriendInfo(friendUsername: String): FriendDTO {
+        val id = getId()
+        userService.getUserById(id) ?: throw InvalidUserException()
+
+        val friend = userRepository.getUserByUsername(friendUsername) ?: throw UserNotFoundException()
+
+        val friendshipId = generateFriendshipId(id, friend.id)
+        if (!friendsRepository.existsById(friendshipId)) throw NotFriendsException()
+
+        return FriendDTO(
+            username = friend.username,
+            bio = friend.bio,
+            email = friend.email,
+            fullName = friend.fullName,
+            avatarUrl = friend.avatarUrl?.takeIf { it.isNotBlank() },
+            birthday = friend.birthday,
+            createdAt = friend.createdAt,
+        )
     }
 
     fun verifyFriendship(username: String, userId: UUID): UserEntity {

@@ -36,4 +36,13 @@ class FriendsController(@Autowired private val friendsService: FriendsService) {
 
         return ResponseEntity.ok("Removed friend successfully")
     }
+
+    @GetMapping("/{username}")
+    fun getFriendsInfo(
+        @PathVariable username: String
+    ) : ResponseEntity<FriendDTO> {
+        val friend = friendsService.getFriendInfo(username)
+
+        return ResponseEntity.ok(friend)
+    }
 }
