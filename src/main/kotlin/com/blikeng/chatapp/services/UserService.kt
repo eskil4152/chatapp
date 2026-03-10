@@ -7,7 +7,7 @@ import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.errors.InvalidUserException
 import com.blikeng.chatapp.errors.ShortPasswordException
 import com.blikeng.chatapp.errors.WrongPasswordException
-import com.blikeng.chatapp.getId
+import com.blikeng.chatapp.tools.getId
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.security.PasswordService

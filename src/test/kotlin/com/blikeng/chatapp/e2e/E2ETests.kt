@@ -44,7 +44,7 @@ class E2ETests : PostgresContainerBase() {
 
     @BeforeAll
     fun setup(@Autowired jdbcTemplate: JdbcTemplate) {
-        jdbcTemplate.execute("TRUNCATE TABLE user_rooms, chats, rooms, users CASCADE")
+        jdbcTemplate.execute("TRUNCATE TABLE user_rooms, chats, rooms, users, friends CASCADE")
     }
 
     @Test

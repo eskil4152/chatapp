@@ -6,7 +6,7 @@ import com.blikeng.chatapp.entities.RoomRole
 import com.blikeng.chatapp.entities.UserRoomEntity
 import com.blikeng.chatapp.entities.UserRoomId
 import com.blikeng.chatapp.errors.*
-import com.blikeng.chatapp.getId
+import com.blikeng.chatapp.tools.getId
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository

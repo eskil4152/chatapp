@@ -5,7 +5,7 @@ import com.blikeng.chatapp.entities.FriendsEntity
 import com.blikeng.chatapp.entities.FriendsId
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.errors.*
-import com.blikeng.chatapp.getId
+import com.blikeng.chatapp.tools.getId
 import com.blikeng.chatapp.repositories.FriendsRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import org.springframework.stereotype.Service
