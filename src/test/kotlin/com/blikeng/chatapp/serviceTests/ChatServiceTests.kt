@@ -3,6 +3,8 @@ package com.blikeng.chatapp.serviceTests
 import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.entities.UserEntity
+import com.blikeng.chatapp.errors.ApiException
+import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
@@ -19,7 +21,6 @@ import io.mockk.junit5.MockKExtension
 import org.junit.jupiter.api.assertNull
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.http.HttpStatus
-import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import tools.jackson.module.kotlin.jacksonObjectMapper
@@ -126,12 +127,12 @@ class ChatServiceTests {
         val session = mockk<WebSocketSession>()
         every { session.attributes } returns emptyMap()
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             chatService.joinRoom(UUID.randomUUID(), session)
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
-        assertEquals("Invalid token", exception.reason)
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
+        assertEquals(ErrorMessages.INVALID_TOKEN, exception.message)
     }
 
     @Test
@@ -144,12 +145,12 @@ class ChatServiceTests {
         val attrs: MutableMap<String, Any> = hashMapOf("userId" to UUID.randomUUID())
         every { session.attributes } returns attrs
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             chatService.joinRoom(UUID.randomUUID(), session)
         }
 
-        assertEquals(HttpStatus.FORBIDDEN, exception.statusCode)
-        assertEquals("Not permitted", exception.reason)
+        assertEquals(HttpStatus.NOT_FOUND, exception.status)
+        assertEquals(ErrorMessages.ROOM_NOT_FOUND, exception.message)
     }
 
     @Test
@@ -158,12 +159,12 @@ class ChatServiceTests {
 
         val message = ReceivedMessage(UUID.randomUUID(), UUID.randomUUID(), "hello", "MESSAGE")
 
-        val ex = assertFailsWith<ResponseStatusException> {
+        val ex = assertFailsWith<ApiException> {
             chatService.broadcast(UUID.randomUUID(), message, "u")
         }
 
-        assertEquals(HttpStatus.FORBIDDEN, ex.statusCode)
-        assertEquals("Not permitted", ex.reason)
+        assertEquals(HttpStatus.NOT_FOUND, ex.status)
+        assertEquals(ErrorMessages.ROOM_NOT_FOUND, ex.message)
     }
 
     @Test
@@ -438,7 +439,7 @@ class ChatServiceTests {
 
         every { chatFlushService.saveBatch(any()) } just Runs
 
-        chatService.addMessage(ReceivedMessage(room.id,user.id,"hello","MESSAGE"), Timestamp(System.currentTimeMillis()))
+        chatService.addMessage(ReceivedMessage(room.id,user.id,"hello","MESSAGE"))
 
         chatService.shutdownFlush()
 
@@ -453,7 +454,7 @@ class ChatServiceTests {
         every { userRepository.findById(user.id) } returns Optional.of(user)
         every { roomRepository.findById(room.id) } returns Optional.of(room)
 
-        chatService.addMessage(ReceivedMessage(room.id, user.id, "hello", "MESSAGE"), Timestamp(System.currentTimeMillis()))
+        chatService.addMessage(ReceivedMessage(room.id, user.id, "hello", "MESSAGE"))
 
         val enteredSaveBatch = CountDownLatch(1)
         val releaseSaveBatch = CountDownLatch(1)
@@ -491,8 +492,8 @@ class ChatServiceTests {
         every { roomRepository.findById(room1.id) } returns Optional.of(room1)
         every { roomRepository.findById(room2.id) } returns Optional.of(room2)
 
-        chatService.addMessage(ReceivedMessage(room1.id, user.id, "one", "MESSAGE"), Timestamp(System.currentTimeMillis()))
-        chatService.addMessage(ReceivedMessage(room2.id, user.id, "two", "MESSAGE"), Timestamp(System.currentTimeMillis()))
+        chatService.addMessage(ReceivedMessage(room1.id, user.id, "one", "MESSAGE"))
+        chatService.addMessage(ReceivedMessage(room2.id, user.id, "two", "MESSAGE"))
 
         val session = mockk<WebSocketSession>(relaxed = true)
         val attrs: MutableMap<String, Any> = hashMapOf("userId" to user.id)
@@ -553,7 +554,7 @@ class ChatServiceTests {
         every { roomRepository.findById(roomId) } returns Optional.of(room)
         every { chatFlushService.saveBatch(any()) } returns Unit
 
-        chatService.addMessage(ReceivedMessage(roomId, userId, "hello", "MESSAGE"), Timestamp(System.currentTimeMillis()))
+        chatService.addMessage(ReceivedMessage(roomId, userId, "hello", "MESSAGE"))
 
         chatService.shutdownFlush()
 

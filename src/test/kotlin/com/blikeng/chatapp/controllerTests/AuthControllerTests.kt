@@ -1,6 +1,9 @@
 package com.blikeng.chatapp.controllerTests
 
 import com.blikeng.chatapp.controllers.AuthController
+import com.blikeng.chatapp.errors.ErrorMessages
+import com.blikeng.chatapp.errors.InvalidCredentialsException
+import com.blikeng.chatapp.errors.UsernameAlreadyExistsException
 import com.blikeng.chatapp.security.JwtAuthFilter
 import com.blikeng.chatapp.services.AuthService
 import com.ninjasquad.springmockk.MockkBean
@@ -10,16 +13,13 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.FilterType
-import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie
-import org.springframework.web.server.ResponseStatusException
 import kotlin.test.Test
-import kotlin.test.assertEquals
 
 @WebMvcTest(
     controllers = [AuthController::class],
@@ -73,7 +73,7 @@ class AuthControllerTests {
 
     @Test
     fun shouldFailLoginWithWrongCredentials() {
-        every { authService.loginUser("username", "password") } throws ResponseStatusException(HttpStatus.UNAUTHORIZED)
+        every { authService.loginUser("username", "password") } throws InvalidCredentialsException()
 
         mockMvc.post("/api/login") {
             contentType = MediaType.APPLICATION_JSON
@@ -85,12 +85,12 @@ class AuthControllerTests {
             """.trimIndent()
         }
             .andExpect { status { isUnauthorized()} }
-            .andExpect { content().string("Invalid credentials") }
+            .andExpect { content().string(ErrorMessages.INVALID_CREDENTIALS) }
     }
 
     @Test
     fun shouldGetConflict() {
-        every { authService.registerUser("username", "password") } throws ResponseStatusException(HttpStatus.CONFLICT)
+        every { authService.registerUser("username", "password") } throws UsernameAlreadyExistsException()
 
         mockMvc.post("/api/register") {
             contentType = MediaType.APPLICATION_JSON
@@ -102,7 +102,7 @@ class AuthControllerTests {
             """.trimIndent()
         }
             .andExpect { status { isConflict() } }
-            .andExpect { content().string("Username already exists") }
+            .andExpect { content().string(ErrorMessages.USERNAME_EXISTS) }
     }
 
     @Test

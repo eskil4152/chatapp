@@ -1,7 +1,6 @@
 package com.blikeng.chatapp.e2e
 
-import com.blikeng.chatapp.ErrorMessages.WRONG_PASSWORD
-import com.blikeng.chatapp.ErrorMessages.SHORT_PASSWORD
+import com.blikeng.chatapp.errors.ErrorMessages
 import jakarta.servlet.http.Cookie
 import org.hamcrest.CoreMatchers.containsString
 import org.hamcrest.CoreMatchers.not
@@ -45,10 +44,7 @@ class E2ETests : PostgresContainerBase() {
 
     @BeforeAll
     fun setup(@Autowired jdbcTemplate: JdbcTemplate) {
-        jdbcTemplate.execute("DELETE FROM user_rooms")
-        jdbcTemplate.execute("DELETE FROM chats")
-        jdbcTemplate.execute("DELETE FROM rooms")
-        jdbcTemplate.execute("DELETE FROM users")
+        jdbcTemplate.execute("TRUNCATE TABLE user_rooms, chats, rooms, users, friends CASCADE")
     }
 
     @Test
@@ -285,7 +281,7 @@ class E2ETests : PostgresContainerBase() {
             """.trimIndent()
         }
             .andExpect { status { isBadRequest() } }
-            .andExpect { status { reason(WRONG_PASSWORD) } }
+            .andExpect { content { ErrorMessages.WRONG_PASSWORD } }
     }
 
     @Test
@@ -302,7 +298,7 @@ class E2ETests : PostgresContainerBase() {
             """.trimIndent()
         }
             .andExpect { status { isBadRequest() } }
-            .andExpect { status { reason(SHORT_PASSWORD) } }
+            .andExpect { content { ErrorMessages.SHORT_PASSWORD } }
     }
 
     @Test
@@ -771,5 +767,56 @@ class E2ETests : PostgresContainerBase() {
         assertEquals(0, authCookie.maxAge)
 
         user1Cookie = authCookie
+    }
+
+    @Test
+    @Order(36)
+    fun shouldFailToAddNonExistingUserAsFriend(){
+        mockMvc.post("/api/friends/add") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                    "username":"not a registered username"
+                }
+            """.trimIndent()
+            user2Cookie?.let { cookie(it) }
+        }.andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    @Order(37)
+    fun shouldAddFriend(){
+        mockMvc.post("/api/friends/add") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                    "username":"username"
+                }
+            """.trimIndent()
+            user2Cookie?.let { cookie(it) }
+        }.andExpect { status { isOk() } }
+
+        mockMvc.get("/api/friends") {
+            user2Cookie?.let { cookie(it) }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$[0].username") { value("username") }
+        }
+    }
+
+    @Test
+    @Order(38)
+    fun shouldMakePrivateRoom(){
+        mockMvc.post("/api/rooms/dm") {
+            contentType = MediaType.APPLICATION_JSON
+            user2Cookie?.let { cookie(it) }
+            content = """
+                {
+                    "username":"username"
+                }
+            """.trimIndent()
+        }.andExpect {
+            status { isCreated() }
+        }
     }
 }

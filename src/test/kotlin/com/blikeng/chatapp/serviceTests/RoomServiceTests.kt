@@ -1,26 +1,20 @@
 package com.blikeng.chatapp.serviceTests
 
-import com.blikeng.chatapp.ErrorMessages.INVALID_ROOM_ID
 import com.blikeng.chatapp.dtos.RoomDTO
-import com.blikeng.chatapp.entities.RoomEntity
-import com.blikeng.chatapp.entities.RoomRole
-import com.blikeng.chatapp.entities.UserEntity
-import com.blikeng.chatapp.entities.UserRoomEntity
-import com.blikeng.chatapp.entities.UserRoomId
-import com.blikeng.chatapp.repositories.ChatRepository
+import com.blikeng.chatapp.entities.*
+import com.blikeng.chatapp.errors.ApiException
+import com.blikeng.chatapp.errors.ErrorMessages
+import com.blikeng.chatapp.errors.UserNotFoundException
 import com.blikeng.chatapp.repositories.JoinedRoom
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
+import com.blikeng.chatapp.services.FriendsService
 import com.blikeng.chatapp.services.RoomService
 import com.blikeng.chatapp.services.UserService
-import io.mockk.Runs
-import io.mockk.every
+import io.mockk.*
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
-import io.mockk.just
-import io.mockk.slot
-import io.mockk.verify
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.assertNotNull
 import org.junit.jupiter.api.assertNull
@@ -28,7 +22,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
-import org.springframework.web.server.ResponseStatusException
 import java.util.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -39,7 +32,7 @@ class RoomServiceTests {
     @MockK private lateinit var roomRepository: RoomRepository
     @MockK private lateinit var userService: UserService
     @MockK private lateinit var userRoomRepository: UserRoomRepository
-    @MockK private lateinit var chatRepository: ChatRepository
+    @MockK private lateinit var friendService: FriendsService
 
     @InjectMockKs
     lateinit var roomService: RoomService
@@ -110,12 +103,12 @@ class RoomServiceTests {
 
         every { userService.getUserById(any()) } returns null
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.makeNewRoom("r", false)
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
-        assertEquals("Invalid user", exception.reason)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.INVALID_USER, exception.message)
     }
 
     @Test
@@ -125,12 +118,12 @@ class RoomServiceTests {
 
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.makeNewRoom("", false)
         }
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
-        assertEquals("Invalid room name", exception.reason)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.INVALID_ROOM_NAME, exception.message)
     }
 
     @Test
@@ -140,12 +133,12 @@ class RoomServiceTests {
 
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.makeNewRoom(null, false)
         }
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
-        assertEquals("Invalid room name", exception.reason)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.INVALID_ROOM_NAME, exception.message)
     }
 
     @Test
@@ -155,11 +148,11 @@ class RoomServiceTests {
 
         every { userService.getUserById(any()) } returns null
 
-        val exception = assertFailsWith<ResponseStatusException> {
-            roomService.makeNewRoom("rong name", false)
+        val exception = assertFailsWith<ApiException> {
+            roomService.makeNewRoom("wrong name", false)
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test
@@ -167,22 +160,60 @@ class RoomServiceTests {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
 
-        val roomId = UUID.randomUUID()
-        val room = RoomEntity(id = roomId, name = "r")
+        val room = RoomEntity(name = "r")
         val joinedRoom = JoinedRoom(room, RoomRole.OWNER)
 
+        val secondRoom = RoomEntity(name = "r2", type = RoomType.PRIVATE)
+        val joinedRoom2 = JoinedRoom(secondRoom, RoomRole.OWNER, type = RoomType.PRIVATE)
+
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
-        every { roomRepository.findRoomsForUser(any()) } returns listOf(joinedRoom)
+        every { roomRepository.findRoomsForUser(any()) } returns listOf(joinedRoom, joinedRoom2)
+        every { userRoomRepository.findOtherUser(secondRoom.id, any()) } returns UserEntity(username = "su", password = "")
 
         val rooms = roomService.getAllUserRooms()
         assertEquals(
             listOf(
                 RoomDTO(
-                    roomId = roomId.toString(),
-                    roomName = "r",
+                    roomId = room.id.toString(),
+                    roomName = room.name,
                     encrypted = room.encrypted,
-                    role = RoomRole.OWNER
+                    role = RoomRole.OWNER,
+                    type = room.type,
+                ),
+                RoomDTO(
+                    roomId = secondRoom.id.toString(),
+                    roomName = secondRoom.name,
+                    encrypted = secondRoom.encrypted,
+                    role = RoomRole.OWNER,
+                    type = secondRoom.type,
                 )
+            ),
+            rooms
+        )
+    }
+
+    @Test
+    fun gettingPrivateRoomsWithoutOtherUserShouldNameUserError(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        val room = RoomEntity(name = "r", type = RoomType.PRIVATE)
+        val joinedRoom = JoinedRoom(room, RoomRole.OWNER, type = RoomType.PRIVATE)
+
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+        every { roomRepository.findRoomsForUser(any()) } returns listOf(joinedRoom)
+        every { userRoomRepository.findOtherUser(any(), any()) } returns null
+
+        val rooms = roomService.getAllUserRooms()
+        assertEquals(
+            listOf(
+                RoomDTO(
+                    roomId = room.id.toString(),
+                    roomName = "Error",
+                    encrypted = room.encrypted,
+                    role = RoomRole.OWNER,
+                    type = room.type,
+                ),
             ),
             rooms
         )
@@ -231,12 +262,12 @@ class RoomServiceTests {
 
         every { userService.getUserById(any()) } returns null
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.joinRoom(UUID.randomUUID().toString())
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
-        assertEquals("Invalid user", exception.reason)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.INVALID_USER, exception.message)
     }
 
     @Test
@@ -247,22 +278,22 @@ class RoomServiceTests {
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
         every { roomRepository.findById(any()) } returns Optional.empty()
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.joinRoom(UUID.randomUUID().toString())
         }
 
-        assertEquals(HttpStatus.NOT_FOUND, exception.statusCode)
-        assertEquals("Room not found", exception.reason)
+        assertEquals(HttpStatus.NOT_FOUND, exception.status)
+        assertEquals(ErrorMessages.ROOM_NOT_FOUND, exception.message)
     }
 
     @Test
     fun shouldFailToGetRoomsWhenNoAuthentication() {
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.getAllUserRooms()
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
-        assertEquals("Invalid token", exception.reason)
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
+        assertEquals(ErrorMessages.INVALID_TOKEN, exception.message)
     }
 
     @Test
@@ -272,31 +303,31 @@ class RoomServiceTests {
 
         every { userService.getUserById(any()) } returns null
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.getAllUserRooms()
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test
     fun shouldFailToMakeRoomWhenNoAuthentication() {
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.makeNewRoom("roomName", false)
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
-        assertEquals("Invalid token", exception.reason)
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
+        assertEquals(ErrorMessages.INVALID_TOKEN, exception.message)
     }
 
     @Test
     fun shouldFailToJoinRoomWhenNoAuthentication() {
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.joinRoom(UUID.randomUUID().toString())
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
-        assertEquals("Invalid token", exception.reason)
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
+        assertEquals(ErrorMessages.INVALID_TOKEN, exception.message)
     }
 
     @Test
@@ -307,12 +338,12 @@ class RoomServiceTests {
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
         every { roomRepository.findById(any()) } returns Optional.empty()
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.joinRoom("not a real UUID")
         }
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
-        assertEquals(INVALID_ROOM_ID, exception.reason)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.INVALID_UUID, exception.message)
     }
 
     @Test
@@ -334,11 +365,11 @@ class RoomServiceTests {
 
         every { userService.getUserById(any()) } returns null
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.leaveRoom(UUID.randomUUID().toString())
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test
@@ -348,11 +379,11 @@ class RoomServiceTests {
 
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.leaveRoom("")
         }
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test
@@ -363,11 +394,11 @@ class RoomServiceTests {
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns false
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.leaveRoom(UUID.randomUUID().toString())
         }
 
-        assertEquals(HttpStatus.NOT_FOUND, exception.statusCode)
+        assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
     @Test
@@ -384,7 +415,8 @@ class RoomServiceTests {
             roomId = roomId.toString(),
             roomName = "newName",
             encrypted = false,
-            role = RoomRole.OWNER
+            role = RoomRole.OWNER,
+            type = RoomType.GROUP
         )
 
         val room = RoomEntity(id = roomId, name = "r")
@@ -413,14 +445,15 @@ class RoomServiceTests {
             roomId = UUID.randomUUID().toString(),
             encrypted = false,
             roomName = null,
-            role = RoomRole.OWNER
+            role = RoomRole.OWNER,
+            type = RoomType.GROUP
         )
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.editRoom(roomDTO)
         }
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test
@@ -434,14 +467,15 @@ class RoomServiceTests {
             roomId = UUID.randomUUID().toString(),
             encrypted = false,
             roomName = "",
-            role = RoomRole.OWNER
+            role = RoomRole.OWNER,
+            type = RoomType.GROUP
         )
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.editRoom(roomDTO)
         }
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test
@@ -456,14 +490,15 @@ class RoomServiceTests {
             roomId = UUID.randomUUID().toString(),
             encrypted = false,
             roomName = "real name",
-            role = RoomRole.OWNER
+            role = RoomRole.OWNER,
+            type = RoomType.GROUP
         )
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.editRoom(roomDTO)
         }
 
-        assertEquals(HttpStatus.NOT_FOUND, exception.statusCode)
+        assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
     @Test
@@ -483,14 +518,15 @@ class RoomServiceTests {
             roomId = UUID.randomUUID().toString(),
             encrypted = false,
             roomName = "real name",
-            role = RoomRole.OWNER
+            role = RoomRole.OWNER,
+            type = RoomType.GROUP
         )
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.editRoom(roomDTO)
         }
 
-        assertEquals(HttpStatus.FORBIDDEN, exception.statusCode)
+        assertEquals(HttpStatus.FORBIDDEN, exception.status)
     }
 
     @Test
@@ -510,14 +546,15 @@ class RoomServiceTests {
             roomId = roomId.toString(),
             encrypted = false,
             roomName = "real name",
-            role = RoomRole.OWNER
+            role = RoomRole.OWNER,
+            type = RoomType.GROUP
         )
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.editRoom(roomDTO)
         }
 
-        assertEquals(HttpStatus.NOT_FOUND, exception.statusCode)
+        assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
     @Test
@@ -531,14 +568,15 @@ class RoomServiceTests {
             roomId = "not a real UUID",
             encrypted = false,
             roomName = "new room name",
-            role = RoomRole.OWNER
+            role = RoomRole.OWNER,
+            type = RoomType.GROUP
         )
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.editRoom(roomDTO)
         }
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test
@@ -548,11 +586,11 @@ class RoomServiceTests {
 
         every { userService.getUserById(any()) } returns null
 
-        val exception = assertFailsWith<ResponseStatusException> {
-            roomService.editRoom(RoomDTO(UUID.randomUUID().toString(), "new room name", false, RoomRole.OWNER))
+        val exception = assertFailsWith<ApiException> {
+            roomService.editRoom(RoomDTO(UUID.randomUUID().toString(), "new room name", false, RoomRole.OWNER, RoomType.GROUP))
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test
@@ -589,11 +627,11 @@ class RoomServiceTests {
         every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
         every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns null
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.deleteRoom(roomId.toString())
         }
 
-        assertEquals(HttpStatus.NOT_FOUND, exception.statusCode)
+        assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
     @Test
@@ -607,11 +645,11 @@ class RoomServiceTests {
         every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
         every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.MEMBER)
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.deleteRoom(roomId.toString())
         }
 
-        assertEquals(HttpStatus.FORBIDDEN, exception.statusCode)
+        assertEquals(HttpStatus.FORBIDDEN, exception.status)
     }
 
     @Test
@@ -623,11 +661,11 @@ class RoomServiceTests {
 
         every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.deleteRoom("not a real UUID")
         }
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test
@@ -637,10 +675,124 @@ class RoomServiceTests {
 
         every { userService.getUserById(any()) } returns null
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             roomService.deleteRoom(UUID.randomUUID().toString())
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+    }
+
+    @Test
+    fun shouldMakePrivateMessageRoom(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+        every { friendService.getFriendEntity("us", any()) } returns UserEntity(username = "us", password = "")
+        every { roomRepository.findById(any()) } returns Optional.empty()
+
+        every { roomRepository.save(any()) } answers { firstArg() }
+        every { userRoomRepository.save(any()) } answers { firstArg() }
+
+        val roomId = roomService.getOrStartPrivateMessage("us")
+
+        assertNotNull(roomId)
+        verify(exactly = 1) {roomRepository.save(any())}
+        verify(exactly = 2) {userRoomRepository.save(any())}
+    }
+
+    @Test
+    fun shouldGetPrivateMessageRoom(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+        every { friendService.getFriendEntity("us", any()) } returns UserEntity(username = "us", password = "")
+        every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "room"))
+
+        every { roomRepository.save(any()) } answers { firstArg() }
+        every { userRoomRepository.save(any()) } answers { firstArg() }
+
+        val roomId = roomService.getOrStartPrivateMessage("us")
+
+        assertNotNull(roomId)
+        verify(exactly = 0) {roomRepository.save(any())}
+        verify(exactly = 0) {userRoomRepository.save(any())}
+    }
+
+    @Test
+    fun shouldFailToGetPrivateMessagesWhenInvalidUser(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns null
+
+        val exception = assertFailsWith<ApiException> {
+            roomService.getOrStartPrivateMessage("some user")
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+    }
+
+    @Test
+    fun shouldFailToGetPrivateMessagesWhenFriendNotFound(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+        every { friendService.getFriendEntity("some user", any()) } throws UserNotFoundException()
+
+        val exception = assertFailsWith<ApiException> {
+            roomService.getOrStartPrivateMessage("some user")
+        }
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.status)
+    }
+
+    @Test
+    fun shouldFailToGetPrivateMessagesWithYourself(){
+        val user = UserEntity(username = "u", password = "")
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(user.id, null, emptyList())
+
+        every { userService.getUserById(user.id) } returns user
+        every { friendService.getFriendEntity("u", any()) } returns user
+        every { roomRepository.findById(any()) } returns Optional.empty()
+
+        val exception = assertFailsWith<ApiException> {
+            roomService.getOrStartPrivateMessage("u")
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+    }
+
+    @Test
+    fun shouldGenerateSamePrivateRoomForBothUserOrders() {
+        val low = UUID.fromString("00000000-0000-0000-0000-000000000001")
+        val high = UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff")
+
+        val userLow = UserEntity(id = low, username = "low", password = "")
+        val userHigh = UserEntity(id = high, username = "high", password = "")
+
+        every { userService.getUserById(low) } returns userLow
+        every { userService.getUserById(high) } returns userHigh
+
+        every { friendService.getFriendEntity("high", low) } returns userHigh
+        every { friendService.getFriendEntity("low", high) } returns userLow
+
+        every { roomRepository.findById(any()) } returns Optional.empty()
+        every { roomRepository.save(any()) } answers { firstArg() }
+        every { userRoomRepository.save(any()) } answers { firstArg() }
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(low, null, emptyList())
+        val roomId1 = roomService.getOrStartPrivateMessage("high")
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(high, null, emptyList())
+        val roomId2 = roomService.getOrStartPrivateMessage("low")
+
+        assertEquals(roomId1, roomId2)
     }
 }

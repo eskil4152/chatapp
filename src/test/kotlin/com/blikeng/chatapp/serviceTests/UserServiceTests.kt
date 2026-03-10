@@ -1,10 +1,10 @@
 package com.blikeng.chatapp.serviceTests
 
-import com.blikeng.chatapp.ErrorMessages.WRONG_PASSWORD
-import com.blikeng.chatapp.ErrorMessages.SHORT_PASSWORD
 import com.blikeng.chatapp.dtos.ChangeUserDTO
 import com.blikeng.chatapp.dtos.EditPasswordDTO
 import com.blikeng.chatapp.entities.UserEntity
+import com.blikeng.chatapp.errors.ApiException
+import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.security.PasswordService
@@ -20,7 +20,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
-import org.springframework.web.server.ResponseStatusException
 import java.util.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -73,33 +72,33 @@ class UserServiceTests {
     }
 
     @Test
-    fun shouldNotGetSelfWhenNoUser(){
+    fun shouldNotGetSelfWhenInvalidUser(){
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
 
         every { userRepository.findById(any()) } returns Optional.empty()
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             userService.getSelf()
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
-        assertEquals("User not found", exception.reason)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.INVALID_USER, exception.message)
     }
 
     @Test
-    fun shouldFailToUpdateUserWhenNoUser(){
+    fun shouldFailToUpdateUserWhenInvalidUser(){
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
 
         every { userRepository.findById(any()) } returns Optional.empty()
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             userService.editProfile(ChangeUserDTO("","","",""))
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
-        assertEquals("Invalid user", exception.reason)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.INVALID_USER, exception.message)
     }
 
     @Test
@@ -181,7 +180,7 @@ class UserServiceTests {
 
         every { userRepository.findById(any()) } returns Optional.empty()
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             userService.editPassword(
                 EditPasswordDTO(
                     oldPassword = "old password",
@@ -190,8 +189,8 @@ class UserServiceTests {
             )
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
-        assertEquals("Invalid user", exception.reason)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.INVALID_USER, exception.message)
 
         verify(exactly = 0) { userRepository.save(any()) }
     }
@@ -211,7 +210,7 @@ class UserServiceTests {
         every { userRepository.findById(userId) } returns Optional.of(user)
         every { passwordService.checkPassword(any(), any()) } returns false
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             userService.editPassword(
                 EditPasswordDTO(
                     oldPassword = "old passworded",
@@ -220,8 +219,8 @@ class UserServiceTests {
             )
         }
 
-        assertEquals(exception.statusCode, HttpStatus.BAD_REQUEST)
-        assertEquals(exception.reason, WRONG_PASSWORD)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.WRONG_PASSWORD, exception.message)
 
         verify(exactly = 0) { userRepository.save(any()) }
     }
@@ -241,7 +240,7 @@ class UserServiceTests {
         every { userRepository.findById(userId) } returns Optional.of(user)
         every { passwordService.checkPassword(any(), any()) } returns true
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             userService.editPassword(
                 EditPasswordDTO(
                     oldPassword = "oldPassword",
@@ -250,39 +249,39 @@ class UserServiceTests {
             )
         }
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
-        assertEquals(SHORT_PASSWORD, exception.reason)
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.SHORT_PASSWORD, exception.message)
 
         verify(exactly = 0) { userRepository.save(any()) }
     }
 
     @Test
     fun shouldFailToGetUserWithoutAuthentication() {
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             userService.getSelf()
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
-        assertEquals("Invalid token", exception.reason)
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
+        assertEquals(ErrorMessages.INVALID_TOKEN, exception.message)
     }
 
     @Test
     fun shouldFailToEditUserWithoutAuthentication() {
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             userService.editProfile(ChangeUserDTO("", "", "", ""))
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
-        assertEquals("Invalid token", exception.reason)
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
+        assertEquals(ErrorMessages.INVALID_TOKEN, exception.message)
     }
 
     @Test
     fun shouldFailToEditPasswordWithoutAuthentication() {
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertFailsWith<ApiException> {
             userService.editPassword(EditPasswordDTO("oldPassword", "newPassword"))
         }
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
-        assertEquals("Invalid token", exception.reason)
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
+        assertEquals(ErrorMessages.INVALID_TOKEN, exception.message)
     }
 }

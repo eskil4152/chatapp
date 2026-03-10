@@ -1,9 +1,9 @@
 package com.blikeng.chatapp.controllerTests
 
-import com.blikeng.chatapp.ErrorMessages.WRONG_PASSWORD
-import com.blikeng.chatapp.ErrorMessages.INVALID_TOKEN
 import com.blikeng.chatapp.controllers.UserController
 import com.blikeng.chatapp.dtos.UserDTO
+import com.blikeng.chatapp.errors.InvalidTokenException
+import com.blikeng.chatapp.errors.WrongPasswordException
 import com.blikeng.chatapp.security.JwtAuthFilter
 import com.blikeng.chatapp.services.UserService
 import com.ninjasquad.springmockk.MockkBean
@@ -13,14 +13,12 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.FilterType
-import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.patch
 import org.springframework.test.web.servlet.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
-import org.springframework.web.server.ResponseStatusException
 import java.sql.Date
 import kotlin.test.Test
 
@@ -99,7 +97,7 @@ class UserControllerTests {
 
     @Test
     fun shouldReturnABadRequest(){
-        every { userService.editPassword(any()) } throws ResponseStatusException(HttpStatus.BAD_REQUEST, WRONG_PASSWORD)
+        every { userService.editPassword(any()) } throws WrongPasswordException()
 
         mockMvc.patch("/api/user/edit/password") {
             contentType = MediaType.APPLICATION_JSON
@@ -111,12 +109,12 @@ class UserControllerTests {
             """.trimIndent()
         }
             .andExpect { status { isBadRequest() } }
-            .andExpect { status { reason(WRONG_PASSWORD) } }
+            .andExpect { content { string("Wrong password") } }
     }
 
     @Test
     fun shouldReturnUnauthorized(){
-        every { userService.editPassword(any()) } throws ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_TOKEN)
+        every { userService.editPassword(any()) } throws InvalidTokenException()
 
         mockMvc.patch("/api/user/edit/password") {
             contentType = MediaType.APPLICATION_JSON
@@ -128,6 +126,6 @@ class UserControllerTests {
             """.trimIndent()
         }
             .andExpect { status { isUnauthorized() } }
-            .andExpect { status { reason(INVALID_TOKEN) } }
+            .andExpect { content { string("Invalid token") } }
     }
 }
