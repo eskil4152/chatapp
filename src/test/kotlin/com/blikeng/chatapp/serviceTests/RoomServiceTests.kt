@@ -173,7 +173,8 @@ class RoomServiceTests {
                     roomId = roomId.toString(),
                     roomName = "r",
                     encrypted = room.encrypted,
-                    role = RoomRole.OWNER
+                    role = RoomRole.OWNER,
+                    type = RoomType.GROUP
                 )
             ),
             rooms
@@ -376,7 +377,8 @@ class RoomServiceTests {
             roomId = roomId.toString(),
             roomName = "newName",
             encrypted = false,
-            role = RoomRole.OWNER
+            role = RoomRole.OWNER,
+            type = RoomType.GROUP
         )
 
         val room = RoomEntity(id = roomId, name = "r")
@@ -405,7 +407,8 @@ class RoomServiceTests {
             roomId = UUID.randomUUID().toString(),
             encrypted = false,
             roomName = null,
-            role = RoomRole.OWNER
+            role = RoomRole.OWNER,
+            type = RoomType.GROUP
         )
 
         val exception = assertFailsWith<ApiException> {
@@ -426,7 +429,8 @@ class RoomServiceTests {
             roomId = UUID.randomUUID().toString(),
             encrypted = false,
             roomName = "",
-            role = RoomRole.OWNER
+            role = RoomRole.OWNER,
+            type = RoomType.GROUP
         )
 
         val exception = assertFailsWith<ApiException> {
@@ -448,7 +452,8 @@ class RoomServiceTests {
             roomId = UUID.randomUUID().toString(),
             encrypted = false,
             roomName = "real name",
-            role = RoomRole.OWNER
+            role = RoomRole.OWNER,
+            type = RoomType.GROUP
         )
 
         val exception = assertFailsWith<ApiException> {
@@ -475,7 +480,8 @@ class RoomServiceTests {
             roomId = UUID.randomUUID().toString(),
             encrypted = false,
             roomName = "real name",
-            role = RoomRole.OWNER
+            role = RoomRole.OWNER,
+            type = RoomType.GROUP
         )
 
         val exception = assertFailsWith<ApiException> {
@@ -502,7 +508,8 @@ class RoomServiceTests {
             roomId = roomId.toString(),
             encrypted = false,
             roomName = "real name",
-            role = RoomRole.OWNER
+            role = RoomRole.OWNER,
+            type = RoomType.GROUP
         )
 
         val exception = assertFailsWith<ApiException> {
@@ -523,7 +530,8 @@ class RoomServiceTests {
             roomId = "not a real UUID",
             encrypted = false,
             roomName = "new room name",
-            role = RoomRole.OWNER
+            role = RoomRole.OWNER,
+            type = RoomType.GROUP
         )
 
         val exception = assertFailsWith<ApiException> {
@@ -541,7 +549,7 @@ class RoomServiceTests {
         every { userService.getUserById(any()) } returns null
 
         val exception = assertFailsWith<ApiException> {
-            roomService.editRoom(RoomDTO(UUID.randomUUID().toString(), "new room name", false, RoomRole.OWNER))
+            roomService.editRoom(RoomDTO(UUID.randomUUID().toString(), "new room name", false, RoomRole.OWNER, RoomType.GROUP))
         }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)

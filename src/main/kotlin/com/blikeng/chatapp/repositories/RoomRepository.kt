@@ -24,4 +24,8 @@ interface RoomRepository: JpaRepository<RoomEntity, UUID> {
     fun findRoomsForUser(@Param("userId") userId: UUID): List<JoinedRoom>
 }
 
-data class JoinedRoom(val room: RoomEntity, val role: RoomRole, val type: RoomType)
+data class JoinedRoom(
+    val room: RoomEntity,
+    val role: RoomRole,
+    val type: RoomType = RoomType.GROUP,
+)

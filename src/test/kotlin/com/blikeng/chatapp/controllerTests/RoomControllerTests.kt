@@ -3,6 +3,7 @@ package com.blikeng.chatapp.controllerTests
 import com.blikeng.chatapp.controllers.RoomController
 import com.blikeng.chatapp.dtos.RoomDTO
 import com.blikeng.chatapp.entities.RoomRole
+import com.blikeng.chatapp.entities.RoomType
 import com.blikeng.chatapp.errors.InvalidRoomNameException
 import com.blikeng.chatapp.errors.InvalidTokenException
 import com.blikeng.chatapp.errors.RoomNotFoundException
@@ -37,7 +38,7 @@ class RoomControllerTests {
 
     @Test
     fun shouldGetAllRooms(){
-        val room = RoomDTO(roomId = UUID.randomUUID().toString(), encrypted = false, roomName = "r", role = RoomRole.OWNER)
+        val room = RoomDTO(roomId = UUID.randomUUID().toString(), encrypted = false, roomName = "r", role = RoomRole.OWNER, type = RoomType.GROUP)
         every { roomService.getAllUserRooms() } returns listOf(room)
 
         val rooms = mockMvc.get("/api/rooms") {
