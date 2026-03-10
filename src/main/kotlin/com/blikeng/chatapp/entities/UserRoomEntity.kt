@@ -11,7 +11,10 @@ class UserRoomEntity (
     val id: UserRoomId,
 
     @Enumerated(EnumType.STRING)
-    val role: RoomRole
+    val role: RoomRole,
+
+    @Enumerated(EnumType.STRING)
+    val type: RoomType,
 )
 
 @Embeddable

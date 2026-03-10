@@ -1,31 +1,38 @@
 package com.blikeng.chatapp.controllers
 
+import com.blikeng.chatapp.dtos.FriendDTO
+import com.blikeng.chatapp.dtos.UsernameDTO
+import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.services.FriendsService
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
-@RestController("/api/friends")
-class FriendsController(private val friendsService: FriendsService) {
+@RestController
+@RequestMapping("/api/friends")
+class FriendsController(@Autowired private val friendsService: FriendsService) {
 
     @GetMapping("")
-    fun getFriends(){
-        friendsService.getFriends();
+    fun getFriends(): ResponseEntity<List<FriendDTO>> {
+        val friends = friendsService.getFriends();
+
+        return ResponseEntity.ok(friends)
     }
 
     @PostMapping("/add")
     fun addFriend(
-        @RequestBody username: String
+        @RequestBody usernameDTO: UsernameDTO
     ) : ResponseEntity<String> {
-        friendsService.addFriend(username)
+        friendsService.addFriend(usernameDTO.username)
 
         return ResponseEntity.ok("Added friend successfully")
     }
 
     @DeleteMapping("/remove")
     fun removeFriend(
-        @RequestBody username: String
+        @RequestBody usernameDTO: UsernameDTO
     ) : ResponseEntity<String> {
-        friendsService.removeFriend(username)
+        friendsService.removeFriend(usernameDTO.username)
 
         return ResponseEntity.ok("Removed friend successfully")
     }

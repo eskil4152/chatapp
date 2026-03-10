@@ -3,12 +3,14 @@ package com.blikeng.chatapp.services
 import com.blikeng.chatapp.dtos.RoomDTO
 import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.entities.RoomRole
+import com.blikeng.chatapp.entities.RoomType
 import com.blikeng.chatapp.entities.UserRoomEntity
 import com.blikeng.chatapp.entities.UserRoomId
 import com.blikeng.chatapp.errors.*
 import com.blikeng.chatapp.tools.getId
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
+import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
@@ -22,6 +24,12 @@ class RoomService(
     @Autowired private val userService: UserService,
 ) {
     @Autowired
+    private lateinit var userRepository: UserRepository
+
+    @Autowired
+    private lateinit var friendsService: FriendsService
+
+    @Autowired
     private lateinit var chatRepository: ChatRepository
 
     fun makeNewRoom(roomName: String?, encrypted: Boolean?) {
@@ -34,10 +42,11 @@ class RoomService(
             RoomEntity(
                 name = roomName,
                 encrypted = encrypted == true,
-                keyVersion = if (encrypted == true) 1 else null
+                keyVersion = if (encrypted == true) 1 else null,
+                type = RoomType.GROUP,
             ))
 
-        val userRoom = UserRoomEntity(UserRoomId(userId, room.id), RoomRole.OWNER)
+        val userRoom = UserRoomEntity(UserRoomId(userId, room.id), RoomRole.OWNER, RoomType.GROUP)
         userRoomRepository.save(userRoom)
     }
 
@@ -48,7 +57,11 @@ class RoomService(
         val joinedRooms = roomRepository.findRoomsForUser(userId)
 
         val roomDtos = joinedRooms.map { room ->
-            RoomDTO(roomId = room.room.id.toString(), roomName = room.room.name, encrypted = room.room.encrypted, role = room.role)
+            if (room.type == RoomType.PRIVATE) {
+                val otherUser = userRoomRepository.findOtherUser(room.room.id, userId)
+                room.room.name = otherUser?.username ?: "Error"
+            }
+            RoomDTO(roomId = room.room.id.toString(), roomName = room.room.name, encrypted = room.room.encrypted, role = room.role, type = room.type)
         }
 
         return roomDtos
@@ -66,7 +79,7 @@ class RoomService(
 
         roomRepository.findById(roomUUID).orElse(null) ?: throw RoomNotFoundException()
 
-        val userRoom = UserRoomEntity(UserRoomId(userId, roomUUID), RoomRole.MEMBER)
+        val userRoom = UserRoomEntity(UserRoomId(userId, roomUUID), RoomRole.MEMBER, RoomType.GROUP)
         userRoomRepository.save(userRoom)
     }
 
@@ -138,5 +151,58 @@ class RoomService(
 
         userRoomRepository.deleteAllByIdRoomId(roomUUID)
         roomRepository.deleteById(roomUUID)
+    }
+
+    fun getOrStartPrivateMessage(username: String): UUID {
+        val userId = getId()
+        userService.getUserById(userId) ?: throw InvalidUserException()
+
+        val friend = friendsService.verifyFriendship(username, userId)
+
+        val roomId = generatePrivateRoomId(friend.id, userId)
+        val roomExists = roomRepository.findById(roomId).orElse(null)
+        if (roomExists != null) {
+            return roomExists.id
+        }
+
+        val room = roomRepository.save(
+            RoomEntity(
+                id = roomId,
+                name = "",
+                type = RoomType.PRIVATE,
+                encrypted = false,
+                keyVersion = null
+            )
+        )
+
+        userRoomRepository.save(
+            UserRoomEntity(
+                id = UserRoomId(userId, room.id),
+                role = RoomRole.MEMBER,
+                type = RoomType.PRIVATE,
+            )
+        )
+
+        userRoomRepository.save(
+            UserRoomEntity(
+                id = UserRoomId(friend.id, room.id),
+                role = RoomRole.MEMBER,
+                type = RoomType.PRIVATE,
+            )
+        )
+
+        return room.id
+    }
+
+    private fun generatePrivateRoomId(user1: UUID, user2: UUID): UUID {
+        if (user1 == user2) throw FriendYourselfException()
+
+        val ordered = if (user1 < user2) {
+            "${user1}:${user2}"
+        } else {
+            "${user2}:${user1}"
+        }
+
+        return UUID.nameUUIDFromBytes(ordered.toByteArray())
     }
 }

@@ -12,10 +12,11 @@ import java.util.*
 @Repository
 interface FriendsRepository: JpaRepository<FriendsEntity, FriendsId> {
     @Query("""
-        SELECT 
-            CASE WHEN f.userA.id = :userId THEN f.userB ELSE f.userA END 
-        FROM FriendsEntity f 
-        WHERE f.userA.id = :userId OR f.userB.id = :userId
+        select f
+        from FriendsEntity f
+        join fetch f.userA
+        join fetch f.userB
+        where f.userA.id = :userId or f.userB.id = :userId
     """)
-    fun findFriendsForUser(@Param("userId") userId: UUID): List<UserEntity>
+    fun findFriendsForUser(@Param("userId") userId: UUID): List<FriendsEntity>
 }

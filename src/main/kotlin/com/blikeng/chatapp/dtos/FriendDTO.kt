@@ -3,7 +3,7 @@ package com.blikeng.chatapp.dtos
 import java.util.*
 
 data class FriendDTO (
-    val username: String,
+    val username: String?,
     val bio: String?,
     val email: String?,
     val fullName: String?,

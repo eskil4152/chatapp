@@ -1,10 +1,13 @@
 package com.blikeng.chatapp.controllers
 
+import com.blikeng.chatapp.dtos.FriendDTO
 import com.blikeng.chatapp.dtos.RoomDTO
+import com.blikeng.chatapp.dtos.UsernameDTO
 import com.blikeng.chatapp.services.RoomService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import java.util.UUID
 
 @RestController
 @RequestMapping("/api/rooms")
@@ -62,5 +65,12 @@ class RoomController(
         roomService.deleteRoom(roomDTO.roomId)
 
         return ResponseEntity.ok("Deleted room successfully")
+    }
+
+    @PostMapping("/dm")
+    fun privateMessage(
+        @RequestBody usernameDTO: UsernameDTO
+    ) : ResponseEntity<String> {
+        return ResponseEntity.ok(roomService.getOrStartPrivateMessage(usernameDTO.username).toString());
     }
 }
