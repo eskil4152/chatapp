@@ -64,7 +64,7 @@ class ChatFlushConsumer(
         }
     }
 
-    @Scheduled(fixedDelayString = "\${chat.flush.fixedDelayMs:1000}")
+    @Scheduled(fixedDelayString = "\${chat.flush.fixedDelayMs:10000}")
     fun flushOnTimeout() {
         flushPending()
     }

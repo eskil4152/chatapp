@@ -31,7 +31,7 @@ spring:
 
 chat:
   flush:
-    fixedDelayMs: 5000
+    fixedDelayMs: 10000
 
 server:
   port: ${PORT:5050}
