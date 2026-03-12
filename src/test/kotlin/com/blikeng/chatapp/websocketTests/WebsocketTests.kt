@@ -2,6 +2,7 @@ package com.blikeng.chatapp.websocketTests
 
 import com.blikeng.chatapp.services.ChatService
 import com.blikeng.chatapp.websocket.ChatWebSocketHandler
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.*
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
@@ -14,7 +15,6 @@ import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
-import tools.jackson.module.kotlin.jacksonObjectMapper
 import java.util.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -28,12 +28,15 @@ class WebsocketTests {
     @MockK
     private lateinit var session: WebSocketSession
 
+    @MockK
+    private lateinit var objectMapper: ObjectMapper
+
     @InjectMockKs
     private lateinit var handler: ChatWebSocketHandler
 
     @BeforeEach
     fun setup() {
-        handler = ChatWebSocketHandler(chatService)
+        handler = ChatWebSocketHandler(chatService, objectMapper)
     }
 
     @Test
@@ -114,7 +117,7 @@ class WebsocketTests {
 
     @Test
     fun shouldSendJoinMessage(){
-        val payload = TextMessage((jacksonObjectMapper().createObjectNode()
+        val payload = TextMessage((objectMapper.createObjectNode()
             .put("type", "JOIN")
             .put("message", "m" )
             .put("roomId", UUID.randomUUID().toString())).toString())
@@ -137,7 +140,7 @@ class WebsocketTests {
 
     @Test
     fun shouldSendMessage(){
-        val payload = TextMessage((jacksonObjectMapper().createObjectNode()
+        val payload = TextMessage((objectMapper.createObjectNode()
             .put("type", "MESSAGE")
             .put("message", "m" )
             .put("roomId", UUID.randomUUID().toString())).toString())
@@ -159,7 +162,7 @@ class WebsocketTests {
 
     @Test
     fun shouldSendLeaveMessage(){
-        val payload = TextMessage((jacksonObjectMapper().createObjectNode()
+        val payload = TextMessage((objectMapper.createObjectNode()
             .put("type", "LEAVE")
             .put("message", "m" )
             .put("roomId", UUID.randomUUID().toString())).toString())
@@ -183,7 +186,7 @@ class WebsocketTests {
     @Test
     fun shouldSendErrorWithoutUsername() {
         val payload = TextMessage(
-            jacksonObjectMapper().createObjectNode()
+            objectMapper.createObjectNode()
                 .put("type", "JOIN")
                 .put("roomId", UUID.randomUUID().toString())
                 .toString()
@@ -203,10 +206,10 @@ class WebsocketTests {
 
         verify(exactly = 1) { session.sendMessage(any()) }
 
-        val json = jacksonObjectMapper().readTree(msgSlot.captured.payload)
-        assertEquals("ERROR", json["type"].asString())
+        val json = objectMapper.readTree(msgSlot.captured.payload)
+        assertEquals("ERROR", json["type"].asText())
         assertEquals(401, json["code"].asInt())
-        assertEquals("No username found", json["message"].asString())
+        assertEquals("No username found", json["message"].asText())
 
         verify(exactly = 0) { chatService.joinRoom(any(), any()) }
         verify(exactly = 0) { chatService.broadcast(any(), any(), any()) }
@@ -215,7 +218,7 @@ class WebsocketTests {
 
     @Test
     fun shouldFailToSendMessageWithoutUserId(){
-        val payload = TextMessage((jacksonObjectMapper().createObjectNode()
+        val payload = TextMessage((objectMapper.createObjectNode()
             .put("type", "JOIN")
             .put("message", "m" )
             .put("roomId", UUID.randomUUID().toString())).toString())
@@ -232,10 +235,10 @@ class WebsocketTests {
 
         handler.handleMessage(session, payload)
 
-        val json = jacksonObjectMapper().readTree(msgSlot.captured.payload)
-        assertEquals("ERROR", json["type"].asString())
+        val json = objectMapper.readTree(msgSlot.captured.payload)
+        assertEquals("ERROR", json["type"].asText())
         assertEquals(401, json["code"].asInt())
-        assertEquals("No User ID found", json["message"].asString())
+        assertEquals("No User ID found", json["message"].asText())
 
         verify (exactly = 0) { chatService.joinRoom(any(), any()) }
         verify (exactly = 0) { chatService.broadcast(any(), any(), any()) }
@@ -244,7 +247,7 @@ class WebsocketTests {
 
     @Test
     fun shouldFailToSendMessageWithInvalidType(){
-        val payload = TextMessage((jacksonObjectMapper().createObjectNode()
+        val payload = TextMessage((objectMapper.createObjectNode()
             .put("type", "")
             .put("message", "m" )
             .put("roomId", UUID.randomUUID().toString())).toString())
@@ -262,10 +265,10 @@ class WebsocketTests {
 
         handler.handleMessage(session, payload)
 
-        val json = jacksonObjectMapper().readTree(msgSlot.captured.payload)
-        assertEquals("ERROR", json["type"].asString())
+        val json = objectMapper.readTree(msgSlot.captured.payload)
+        assertEquals("ERROR", json["type"].asText())
         assertEquals(400, json["code"].asInt())
-        assertEquals("Invalid message type", json["message"].asString())
+        assertEquals("Invalid message type", json["message"].asText())
 
         verify (exactly = 0) { chatService.joinRoom(any(), any()) }
         verify (exactly = 0) { chatService.broadcast(any(), any(), any()) }
@@ -274,7 +277,7 @@ class WebsocketTests {
 
     @Test
     fun shouldReceivePing(){
-        val payload = TextMessage((jacksonObjectMapper().createObjectNode()
+        val payload = TextMessage((objectMapper.createObjectNode()
             .put("type", "PING")
             .put("message", "" ))
             .toString())
@@ -298,7 +301,7 @@ class WebsocketTests {
         val roomId = UUID.randomUUID().toString()
 
         val payload = TextMessage(
-            jacksonObjectMapper().createObjectNode()
+            objectMapper.createObjectNode()
                 .put("type", "JOIN")
                 .put("roomId", roomId)
                 .toString()
@@ -321,10 +324,10 @@ class WebsocketTests {
 
         verify(exactly = 1) { session.sendMessage(any()) }
 
-        val json = jacksonObjectMapper().readTree(msgSlot.captured.payload)
-        assertEquals("ERROR", json["type"].asString())
+        val json = objectMapper.readTree(msgSlot.captured.payload)
+        assertEquals("ERROR", json["type"].asText())
         assertEquals(403, json["code"].asInt())
-        assertEquals("Not permitted", json["message"].asString())
+        assertEquals("Not permitted", json["message"].asText())
 
         verify(exactly = 0) { chatService.broadcast(any(), any(), any()) }
     }
@@ -332,7 +335,7 @@ class WebsocketTests {
     @Test
     fun shouldSendErrorForIllegalArgumentException() {
         val payload = TextMessage(
-            jacksonObjectMapper().createObjectNode()
+            objectMapper.createObjectNode()
                 .put("type", "MESSAGE")
                 .put("roomId", UUID.randomUUID().toString())
                 .put("message", "m")
@@ -356,16 +359,16 @@ class WebsocketTests {
 
         verify(exactly = 1) { session.sendMessage(any()) }
 
-        val json = jacksonObjectMapper().readTree(msgSlot.captured.payload)
-        assertEquals("ERROR", json["type"].asString())
+        val json = objectMapper.readTree(msgSlot.captured.payload)
+        assertEquals("ERROR", json["type"].asText())
         assertEquals(400, json["code"].asInt())
-        assertEquals("Bad request X", json["message"].asString())
+        assertEquals("Bad request X", json["message"].asText())
     }
 
     @Test
     fun shouldSendErrorForUnknownException() {
         val payload = TextMessage(
-            jacksonObjectMapper().createObjectNode()
+            objectMapper.createObjectNode()
                 .put("type", "MESSAGE")
                 .put("roomId", UUID.randomUUID().toString())
                 .put("message", "m")
@@ -389,16 +392,16 @@ class WebsocketTests {
 
         verify(exactly = 1) { session.sendMessage(any()) }
 
-        val json = jacksonObjectMapper().readTree(msgSlot.captured.payload)
-        assertEquals("ERROR", json["type"].asString())
+        val json = objectMapper.readTree(msgSlot.captured.payload)
+        assertEquals("ERROR", json["type"].asText())
         assertEquals(500, json["code"].asInt())
-        assertEquals("Internal error", json["message"].asString())
+        assertEquals("Internal error", json["message"].asText())
     }
 
     @Test
     fun shouldNotSendErrorWhenSessionClosed() {
         val payload = TextMessage(
-            jacksonObjectMapper().createObjectNode()
+            objectMapper.createObjectNode()
                 .put("type", "MESSAGE")
                 .put("roomId", UUID.randomUUID().toString())
                 .put("message", "m")
@@ -425,7 +428,7 @@ class WebsocketTests {
     @Test
     fun shouldUseExceptionMessageWhenReasonIsNull() {
         val payload = TextMessage(
-            jacksonObjectMapper().createObjectNode()
+            objectMapper.createObjectNode()
                 .put("type", "JOIN")
                 .put("roomId", UUID.randomUUID().toString())
                 .toString()
@@ -447,17 +450,17 @@ class WebsocketTests {
 
         handler.handleMessage(session, payload)
 
-        val json = jacksonObjectMapper().readTree(msgSlot.captured.payload)
+        val json = objectMapper.readTree(msgSlot.captured.payload)
 
-        assertEquals("ERROR", json["type"].asString())
+        assertEquals("ERROR", json["type"].asText())
         assertEquals(400, json["code"].asInt())
-        assertTrue(json["message"].asString().contains("400 BAD_REQUEST"))
+        assertTrue(json["message"].asText().contains("400 BAD_REQUEST"))
     }
 
     @Test
     fun shouldFallbackToRequestFailedWhenReasonAndMessageNull() {
         val payload = TextMessage(
-            jacksonObjectMapper().createObjectNode()
+            objectMapper.createObjectNode()
                 .put("type", "JOIN")
                 .put("roomId", UUID.randomUUID().toString())
                 .toString()
@@ -479,16 +482,16 @@ class WebsocketTests {
 
         handler.handleMessage(session, payload)
 
-        val json = jacksonObjectMapper().readTree(msgSlot.captured.payload)
+        val json = objectMapper.readTree(msgSlot.captured.payload)
 
-        assertEquals("ERROR", json["type"].asString())
+        assertEquals("ERROR", json["type"].asText())
         assertEquals(400, json["code"].asInt())
     }
 
     @Test
     fun shouldFallbackToBadRequestWhenIllegalArgumentMessageNull() {
         val payload = TextMessage(
-            jacksonObjectMapper().createObjectNode()
+            objectMapper.createObjectNode()
                 .put("type", "MESSAGE")
                 .put("message", "m")
                 .put("roomId", UUID.randomUUID().toString())
@@ -510,10 +513,10 @@ class WebsocketTests {
 
         handler.handleMessage(session, payload)
 
-        val json = jacksonObjectMapper().readTree(msgSlot.captured.payload)
+        val json = objectMapper.readTree(msgSlot.captured.payload)
 
-        assertEquals("ERROR", json["type"].asString())
+        assertEquals("ERROR", json["type"].asText())
         assertEquals(400, json["code"].asInt())
-        assertEquals("Bad request", json["message"].asString())
+        assertEquals("Bad request", json["message"].asText())
     }
 }

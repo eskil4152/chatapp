@@ -3,95 +3,73 @@ package com.blikeng.chatapp.services
 import com.blikeng.chatapp.config.configureAad
 import com.blikeng.chatapp.dtos.WsChat
 import com.blikeng.chatapp.dtos.WsJoined
-import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.errors.InvalidTokenException
 import com.blikeng.chatapp.errors.RoomNotFoundException
+import com.blikeng.chatapp.buffer.RabbitMessage
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
-import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.ChatEncrypt
-import jakarta.annotation.PreDestroy
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.data.redis.core.RedisTemplate
-import org.springframework.scheduling.annotation.EnableScheduling
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
-import tools.jackson.module.kotlin.jacksonObjectMapper
 import java.sql.Timestamp
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CopyOnWriteArraySet
-import java.util.concurrent.atomic.AtomicBoolean
 
 @Service
-@EnableScheduling
-class ChatService(
+class ChatService (
     private val chatRepository: ChatRepository,
     private val roomRepository: RoomRepository,
-    private val userRepository: UserRepository,
     private val userRoomRepository: UserRoomRepository,
-    private val chatFlushService: ChatFlushService,
     private val encrypt: ChatEncrypt,
-    private val redisTemplate: RedisTemplate<String, String>
+    private val redisTemplate: RedisTemplate<String, String>,
+    private val rabbitTemplate: RabbitTemplate,
+    private val objectMapper: ObjectMapper,
 ) {
     val rooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
     val users = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
 
-    private val buffer = ConcurrentLinkedQueue<ChatEntity>()
-    private val flushing = AtomicBoolean(false)
-
-    @Scheduled(fixedDelayString = "\${chat.flush.fixedDelayMs:120000}")
-    fun scheduledFlush() {
-        flushNow()
-    }
-
-    @PreDestroy
-    fun shutdownFlush() {
-        flushNow()
-    }
-
-    private fun flushNow() {
-        if (!flushing.compareAndSet(false, true)) return
-        try {
-            val batch = ArrayList<ChatEntity>(1024)
-            while (true) {
-                val item = buffer.poll() ?: break
-                batch.add(item)
-            }
-            if (batch.isNotEmpty()) chatFlushService.saveBatch(batch)
-        } finally {
-            flushing.set(false)
-        }
-    }
-
-    fun addMessage(message: ReceivedMessage){
-        val user = userRepository.findById(message.userId).orElseThrow()
+    fun addMessage(message: ReceivedMessage, username: String){
         val room = roomRepository.findById(message.roomId).orElseThrow()
 
-        val entity = ChatEntity(
-            user = user,
-            roomId = room.id,
-        )
+        val messageId = UUID.randomUUID()
 
-        if (!room.encrypted) {
-            entity.message = message.content
-        } else {
+        val rabbitMessage = if (room.encrypted) {
             val v = room.keyVersion
             val enc = encrypt.encrypt(
                 plaintext = message.content,
-                aad = configureAad(room.id, entity.id, user.id),
+                aad = configureAad(room.id, messageId, message.userId),
                 keyVersion = v!!
             )
 
-            entity.ciphertext = enc.ciphertext
-            entity.nonce = enc.nonce
-            entity.keyVersion = v
+            RabbitMessage(
+                id = messageId,
+                roomId = room.id,
+                userId = message.userId,
+                username = username,
+                ciphertext = enc.ciphertext,
+                nonce = enc.nonce,
+                keyVersion = v
+            )
+        } else {
+            RabbitMessage(
+                id = messageId,
+                username = username,
+                roomId = room.id,
+                userId = message.userId,
+                message = message.content
+            )
         }
 
-        buffer.add(entity)
+        val json = objectMapper.writeValueAsString(rabbitMessage)
+
+        rabbitTemplate.convertAndSend("chat.buffer", rabbitMessage)
+        redisTemplate.opsForList().rightPush("chat.peek.${message.roomId}", json)
     }
 
     fun registerSession(userId: UUID, session: WebSocketSession) {
@@ -118,7 +96,7 @@ class ChatService(
         val room = roomRepository.findById(roomId).orElseThrow()
         session.sendMessage(
             TextMessage(
-                jacksonObjectMapper().writeValueAsString(
+                objectMapper.writeValueAsString(
                     WsJoined(
                         roomId = roomId,
                         roomName = room.name,
@@ -128,30 +106,52 @@ class ChatService(
             )
         )
 
-        val persisted = chatRepository.getAllChatsByRoomId(roomId)
-        val buffered = buffer.asSequence().filter { it.roomId == roomId }.toList()
+        val persisted = chatRepository.getAllChatsByRoomId(roomId).map { message ->
+            SendMessage(
+                id = message.id,
+                roomId = message.roomId,
+                userId = message.user.id,
+                username = message.user.username,
+                message = message.message,
+                nonce = message.nonce,
+                ciphertext = message.ciphertext,
+                timestamp = message.timestamp
+            )
+        }
+
+        val buffered = getPendingMessages(roomId).map { message ->
+            SendMessage(
+                id = message.id,
+                roomId = message.roomId,
+                userId = message.userId,
+                username = message.username,
+                message = message.message,
+                nonce = message.nonce,
+                ciphertext = message.ciphertext,
+                timestamp = message.timestamp)
+        }
 
         val allMessages = (persisted + buffered).sortedBy { it.timestamp }
         fetchAllMessages(allMessages, session)
     }
 
-    fun fetchAllMessages(messages: List<ChatEntity>, session: WebSocketSession){
+    fun fetchAllMessages(messages: List<SendMessage>, session: WebSocketSession){
         for (m in messages) {
             val content = if (m.ciphertext == null) {
                 m.message ?: ""
             } else {
                 encrypt.decrypt(
-                    ciphertext = m.ciphertext!!,
+                    ciphertext = m.ciphertext,
                     nonce = m.nonce!!,
-                    aad = configureAad(m.roomId, m.id, m.user.id),
+                    aad = configureAad(m.roomId, m.id, m.userId),
                     keyVersion = m.keyVersion!!
                 )
             }
 
             session.sendMessage(
                 TextMessage(
-                    jacksonObjectMapper().writeValueAsString(
-                        WsChat(content = content, username = m.user.username, timestamp = m.timestamp)
+                    objectMapper.writeValueAsString(
+                        WsChat(content = content, username = m.username, timestamp = m.timestamp)
                     )
                 )
             )
@@ -166,7 +166,7 @@ class ChatService(
         val timestamp = Timestamp(System.currentTimeMillis())
         if (!userRoomRepository.existsByIdUserIdAndIdRoomId(message.userId, roomId)) throw RoomNotFoundException()
 
-        if (message.type == "MESSAGE" && rooms[roomId] != null) addMessage(message)
+        if (message.type == "MESSAGE") addMessage(message, username)
 
         val sendMessage = if (message.type == "MESSAGE") {
             WsChat(content = message.content, username = username, type = message.type, timestamp = timestamp)
@@ -174,10 +174,53 @@ class ChatService(
             WsChat(content = message.content, username = "Server", type = message.type, timestamp = timestamp)
         }
 
-        val json = jacksonObjectMapper().writeValueAsString(sendMessage)
+        val json = objectMapper.writeValueAsString(sendMessage)
 
         redisTemplate.convertAndSend("room:${roomId}", json)
+    }
+
+    private fun getPendingMessages(roomId: UUID): List<RabbitMessage> {
+        return redisTemplate.opsForList()
+            .range("chat.peek.$roomId", 0, -1)
+            ?.mapNotNull { objectMapper.readValue(it, RabbitMessage::class.java) }
+            ?: emptyList()
     }
 }
 
 data class ReceivedMessage(val roomId: UUID, val userId: UUID, val content: String, val type: String)
+
+data class SendMessage(
+    val id: UUID,
+    val roomId: UUID,
+    val userId: UUID,
+    val username: String,
+    val message: String?,
+    val nonce: ByteArray?,
+    val ciphertext: ByteArray?,
+    val timestamp: Timestamp,
+    val keyVersion: Int? = null
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as SendMessage
+
+        if (username != other.username) return false
+        if (message != other.message) return false
+        if (!nonce.contentEquals(other.nonce)) return false
+        if (!ciphertext.contentEquals(other.ciphertext)) return false
+        if (timestamp != other.timestamp) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = username.hashCode()
+        result = 31 * result + (message?.hashCode() ?: 0)
+        result = 31 * result + (nonce?.contentHashCode() ?: 0)
+        result = 31 * result + (ciphertext?.contentHashCode() ?: 0)
+        result = 31 * result + timestamp.hashCode()
+        return result
+    }
+}

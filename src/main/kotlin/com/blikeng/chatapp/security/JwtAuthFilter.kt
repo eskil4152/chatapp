@@ -25,10 +25,10 @@ class JwtAuthFilter(
         if (!token.isNullOrBlank() && SecurityContextHolder.getContext().authentication == null) {
             val principal = jwtService.validateToken(token)
             if (principal != null) {
-                val (_, userId) = principal
+                val (username, userId) = principal
                 val auth = UsernamePasswordAuthenticationToken(
                     userId,
-                    null,
+                    username,
                     emptyList()
                 )
                 SecurityContextHolder.getContext().authentication = auth

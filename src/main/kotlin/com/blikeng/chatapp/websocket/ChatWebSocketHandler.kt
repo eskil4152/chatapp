@@ -3,6 +3,7 @@ package com.blikeng.chatapp.websocket
 import com.blikeng.chatapp.dtos.WsError
 import com.blikeng.chatapp.services.ChatService
 import com.blikeng.chatapp.services.ReceivedMessage
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
 import org.springframework.web.server.ResponseStatusException
@@ -10,12 +11,13 @@ import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import org.springframework.web.socket.handler.TextWebSocketHandler
-import tools.jackson.module.kotlin.jacksonObjectMapper
 import java.util.*
 
 @Component
-class ChatWebSocketHandler(private val chatService: ChatService) : TextWebSocketHandler() {
-    val mapper = jacksonObjectMapper()
+class ChatWebSocketHandler(
+    private val chatService: ChatService,
+    private val objectMapper: ObjectMapper
+) : TextWebSocketHandler() {
     override fun afterConnectionEstablished(session: WebSocketSession) {
         val id: UUID = (session.attributes["userId"]
             ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No userID found")) as UUID
@@ -25,9 +27,9 @@ class ChatWebSocketHandler(private val chatService: ChatService) : TextWebSocket
 
     override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
         try {
-            val json = mapper.readTree(message.payload)
+            val json = objectMapper.readTree(message.payload)
 
-            val typeString = json["type"].asString()
+            val typeString = json["type"].asText()
             val type = try {
                 MessageType.valueOf(typeString)
             } catch (e: IllegalArgumentException) {
@@ -39,7 +41,7 @@ class ChatWebSocketHandler(private val chatService: ChatService) : TextWebSocket
 
             when (type) {
                 MessageType.JOIN -> {
-                    val roomId = UUID.fromString(json["roomId"].asString())
+                    val roomId = UUID.fromString(json["roomId"].asText())
                     chatService.joinRoom(roomId, session)
 
                     val msg = ReceivedMessage(roomId, userId, "$username joined the room", "JOIN")
@@ -47,14 +49,14 @@ class ChatWebSocketHandler(private val chatService: ChatService) : TextWebSocket
                 }
 
                 MessageType.MESSAGE -> {
-                    val roomId = UUID.fromString(json["roomId"].asString())
+                    val roomId = UUID.fromString(json["roomId"].asText())
 
-                    val message = ReceivedMessage(roomId, userId, json["message"].asString(), "MESSAGE")
+                    val message = ReceivedMessage(roomId, userId, json["message"].asText(), "MESSAGE")
                     chatService.broadcast(roomId, message, username)
                 }
 
                 MessageType.LEAVE -> {
-                    val roomId = UUID.fromString(json["roomId"].asString())
+                    val roomId = UUID.fromString(json["roomId"].asText())
                     chatService.leaveRoom(roomId, session)
 
                     val message = ReceivedMessage(roomId, userId, "$username left the room", "LEAVE")
@@ -86,7 +88,7 @@ class ChatWebSocketHandler(private val chatService: ChatService) : TextWebSocket
             else -> 500 to "Internal error"
         }
 
-        val payload = mapper.writeValueAsString(
+        val payload = objectMapper.writeValueAsString(
             WsError(code = code, message = msg)
         )
 
