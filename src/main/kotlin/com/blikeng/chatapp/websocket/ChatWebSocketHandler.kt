@@ -2,7 +2,7 @@ package com.blikeng.chatapp.websocket
 
 import com.blikeng.chatapp.dtos.WsError
 import com.blikeng.chatapp.services.ChatService
-import com.blikeng.chatapp.services.ReceivedMessage
+import com.blikeng.chatapp.dtos.ReceivedMessageDTO
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
@@ -44,14 +44,14 @@ class ChatWebSocketHandler(
                     val roomId = UUID.fromString(json["roomId"].asText())
                     chatService.joinRoom(roomId, session)
 
-                    val msg = ReceivedMessage(roomId, userId, "$username joined the room", "JOIN")
+                    val msg = ReceivedMessageDTO(roomId, userId, "$username joined the room", "JOIN")
                     chatService.broadcast(roomId, msg, username)
                 }
 
                 MessageType.MESSAGE -> {
                     val roomId = UUID.fromString(json["roomId"].asText())
 
-                    val message = ReceivedMessage(roomId, userId, json["message"].asText(), "MESSAGE")
+                    val message = ReceivedMessageDTO(roomId, userId, json["message"].asText(), "MESSAGE")
                     chatService.broadcast(roomId, message, username)
                 }
 
@@ -59,7 +59,7 @@ class ChatWebSocketHandler(
                     val roomId = UUID.fromString(json["roomId"].asText())
                     chatService.leaveRoom(roomId, session)
 
-                    val message = ReceivedMessage(roomId, userId, "$username left the room", "LEAVE")
+                    val message = ReceivedMessageDTO(roomId, userId, "$username left the room", "LEAVE")
 
                     chatService.broadcast(roomId, message, username)
                 }

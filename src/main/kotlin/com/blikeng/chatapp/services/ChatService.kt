@@ -1,11 +1,13 @@
 package com.blikeng.chatapp.services
 
 import com.blikeng.chatapp.config.configureAad
+import com.blikeng.chatapp.dtos.ReceivedMessageDTO
+import com.blikeng.chatapp.dtos.SendMessageDTO
 import com.blikeng.chatapp.dtos.WsChat
 import com.blikeng.chatapp.dtos.WsJoined
 import com.blikeng.chatapp.errors.InvalidTokenException
 import com.blikeng.chatapp.errors.RoomNotFoundException
-import com.blikeng.chatapp.messaging.rabbit.RabbitMessage
+import com.blikeng.chatapp.dtos.RabbitMessageDTO
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
@@ -34,7 +36,7 @@ class ChatService (
     val rooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
     val users = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
 
-    fun addMessage(message: ReceivedMessage, username: String){
+    fun addMessage(message: ReceivedMessageDTO, username: String){
         val room = roomRepository.findById(message.roomId).orElseThrow()
 
         val messageId = UUID.randomUUID()
@@ -47,7 +49,7 @@ class ChatService (
                 keyVersion = v!!
             )
 
-            RabbitMessage(
+            RabbitMessageDTO(
                 id = messageId,
                 roomId = room.id,
                 userId = message.userId,
@@ -57,7 +59,7 @@ class ChatService (
                 keyVersion = v
             )
         } else {
-            RabbitMessage(
+            RabbitMessageDTO(
                 id = messageId,
                 username = username,
                 roomId = room.id,
@@ -80,6 +82,16 @@ class ChatService (
         users[userId]?.remove(session)
         if (users[userId]?.isEmpty() == true) {
             users.remove(userId)
+        }
+
+        rooms.values.forEach { it.remove(session) }
+        rooms.entries.removeIf { it.value.isEmpty() }
+    }
+
+    fun leaveRoom(roomId: UUID, session: WebSocketSession) {
+        rooms[roomId]?.remove(session)
+        if (rooms[roomId]?.isEmpty() == true) {
+            rooms.remove(roomId)
         }
     }
 
@@ -107,7 +119,7 @@ class ChatService (
         )
 
         val persisted = chatRepository.getAllChatsByRoomId(roomId).map { message ->
-            SendMessage(
+            SendMessageDTO(
                 id = message.id,
                 roomId = message.roomId,
                 userId = message.user.id,
@@ -115,12 +127,13 @@ class ChatService (
                 message = message.message,
                 nonce = message.nonce,
                 ciphertext = message.ciphertext,
-                timestamp = message.timestamp
+                timestamp = message.timestamp,
+                keyVersion = message.keyVersion
             )
         }
 
         val buffered = getPendingMessages(roomId).map { message ->
-            SendMessage(
+            SendMessageDTO(
                 id = message.id,
                 roomId = message.roomId,
                 userId = message.userId,
@@ -128,14 +141,16 @@ class ChatService (
                 message = message.message,
                 nonce = message.nonce,
                 ciphertext = message.ciphertext,
-                timestamp = message.timestamp)
+                timestamp = message.timestamp,
+                keyVersion = message.keyVersion
+            )
         }
 
         val allMessages = (persisted + buffered).sortedBy { it.timestamp }
         fetchAllMessages(allMessages, session)
     }
 
-    fun fetchAllMessages(messages: List<SendMessage>, session: WebSocketSession){
+    fun fetchAllMessages(messages: List<SendMessageDTO>, session: WebSocketSession){
         for (m in messages) {
             val content = if (m.ciphertext == null) {
                 m.message ?: ""
@@ -158,11 +173,7 @@ class ChatService (
         }
     }
 
-    fun leaveRoom(roomId: UUID, session: WebSocketSession){
-        rooms[roomId]?.remove(session)
-    }
-
-    fun broadcast(roomId: UUID, message: ReceivedMessage, username: String) {
+    fun broadcast(roomId: UUID, message: ReceivedMessageDTO, username: String) {
         val timestamp = Timestamp(System.currentTimeMillis())
         if (!userRoomRepository.existsByIdUserIdAndIdRoomId(message.userId, roomId)) throw RoomNotFoundException()
 
@@ -179,48 +190,11 @@ class ChatService (
         redisTemplate.convertAndSend("room:${roomId}", json)
     }
 
-    private fun getPendingMessages(roomId: UUID): List<RabbitMessage> {
+    private fun getPendingMessages(roomId: UUID): List<RabbitMessageDTO> {
         return redisTemplate.opsForList()
             .range("chat.peek.$roomId", 0, -1)
-            ?.mapNotNull { objectMapper.readValue(it, RabbitMessage::class.java) }
+            ?.mapNotNull { objectMapper.readValue(it, RabbitMessageDTO::class.java) }
             ?: emptyList()
     }
 }
 
-data class ReceivedMessage(val roomId: UUID, val userId: UUID, val content: String, val type: String)
-
-data class SendMessage(
-    val id: UUID,
-    val roomId: UUID,
-    val userId: UUID,
-    val username: String,
-    val message: String?,
-    val nonce: ByteArray?,
-    val ciphertext: ByteArray?,
-    val timestamp: Timestamp,
-    val keyVersion: Int? = null
-) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as SendMessage
-
-        if (username != other.username) return false
-        if (message != other.message) return false
-        if (!nonce.contentEquals(other.nonce)) return false
-        if (!ciphertext.contentEquals(other.ciphertext)) return false
-        if (timestamp != other.timestamp) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = username.hashCode()
-        result = 31 * result + (message?.hashCode() ?: 0)
-        result = 31 * result + (nonce?.contentHashCode() ?: 0)
-        result = 31 * result + (ciphertext?.contentHashCode() ?: 0)
-        result = 31 * result + timestamp.hashCode()
-        return result
-    }
-}

@@ -490,7 +490,7 @@ class E2ETests : PostgresContainerBase() {
     @Order(27)
     fun shouldEnterRoomAndGetMessages() {
         val received = CopyOnWriteArrayList<String>()
-        val latch = CountDownLatch(2)
+        val latch = CountDownLatch(3)
 
         val handler = object : TextWebSocketHandler() {
             override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
@@ -626,7 +626,7 @@ class E2ETests : PostgresContainerBase() {
     @Order(31)
     fun shouldEnterEncryptedRoomAndGetMessages() {
         val received = CopyOnWriteArrayList<String>()
-        val latch = CountDownLatch(2)
+        val latch = CountDownLatch(3)
 
         val handler = object : TextWebSocketHandler() {
             override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {

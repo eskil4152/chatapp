@@ -1,5 +1,6 @@
 package com.blikeng.chatapp.messaging.rabbit
 
+import com.blikeng.chatapp.dtos.RabbitMessageDTO
 import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.errors.UserNotFoundException
 import com.blikeng.chatapp.repositories.UserRepository
@@ -29,7 +30,7 @@ class ChatFlushConsumer(
     }
 
     data class PendingRabbitMessage(
-        val payload: RabbitMessage,
+        val payload: RabbitMessageDTO,
         val channel: Channel,
         val deliveryTag: Long
     )
@@ -39,7 +40,7 @@ class ChatFlushConsumer(
         containerFactory = "rabbitListenerContainerFactory"
     )
     fun onMessage(
-        payload: RabbitMessage,
+        payload: RabbitMessageDTO,
         message: Message,
         channel: Channel
     ) {
@@ -106,7 +107,7 @@ class ChatFlushConsumer(
 
             val entities = validMessages.map { pendingMessage ->
                 val msg = pendingMessage.payload
-                val user = users[msg.userId] ?: throw UserNotFoundException()
+                val user = users.getValue(msg.userId)
 
                 ChatEntity(
                     id = msg.id,

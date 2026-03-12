@@ -3,6 +3,7 @@ package com.blikeng.chatapp.websocketTests
 import com.blikeng.chatapp.services.ChatService
 import com.blikeng.chatapp.websocket.ChatWebSocketHandler
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.mockk.*
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
@@ -28,10 +29,7 @@ class WebsocketTests {
     @MockK
     private lateinit var session: WebSocketSession
 
-    @MockK
-    private lateinit var objectMapper: ObjectMapper
-
-    @InjectMockKs
+    private val objectMapper = jacksonObjectMapper()
     private lateinit var handler: ChatWebSocketHandler
 
     @BeforeEach

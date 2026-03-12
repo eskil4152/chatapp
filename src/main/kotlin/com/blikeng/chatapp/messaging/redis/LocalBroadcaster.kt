@@ -16,7 +16,6 @@ class LocalBroadcaster(
                     session.sendMessage(TextMessage(payload))
                 } catch (e: Exception) {
                     chatService.leaveRoom(roomId, session)
-                    chatService.removeSession(roomId, session)
                 }
             }
         }
