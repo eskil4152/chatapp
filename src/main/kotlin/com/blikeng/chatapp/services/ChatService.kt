@@ -5,7 +5,7 @@ import com.blikeng.chatapp.dtos.WsChat
 import com.blikeng.chatapp.dtos.WsJoined
 import com.blikeng.chatapp.errors.InvalidTokenException
 import com.blikeng.chatapp.errors.RoomNotFoundException
-import com.blikeng.chatapp.buffer.RabbitMessage
+import com.blikeng.chatapp.messaging.rabbit.RabbitMessage
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository

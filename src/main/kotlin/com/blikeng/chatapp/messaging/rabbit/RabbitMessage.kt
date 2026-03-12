@@ -1,4 +1,4 @@
-package com.blikeng.chatapp.buffer
+package com.blikeng.chatapp.messaging.rabbit
 
 import java.sql.Timestamp
 import java.util.UUID

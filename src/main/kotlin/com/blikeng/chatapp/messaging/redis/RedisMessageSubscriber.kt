@@ -1,4 +1,4 @@
-package com.blikeng.chatapp.redis;
+package com.blikeng.chatapp.messaging.redis
 
 import jakarta.annotation.PostConstruct
 import org.springframework.data.redis.connection.Message

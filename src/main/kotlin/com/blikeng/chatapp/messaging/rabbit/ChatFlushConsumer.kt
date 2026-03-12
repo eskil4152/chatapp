@@ -1,4 +1,4 @@
-package com.blikeng.chatapp.buffer
+package com.blikeng.chatapp.messaging.rabbit
 
 import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.errors.UserNotFoundException

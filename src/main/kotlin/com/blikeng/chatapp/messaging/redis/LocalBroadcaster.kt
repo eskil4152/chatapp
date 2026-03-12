@@ -1,4 +1,4 @@
-package com.blikeng.chatapp.redis
+package com.blikeng.chatapp.messaging.redis
 
 import com.blikeng.chatapp.services.ChatService
 import org.springframework.stereotype.Component
