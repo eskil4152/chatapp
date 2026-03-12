@@ -56,7 +56,8 @@ class RoomServiceTests {
                 id = UUID.randomUUID(),
                 name = r.name,
                 encrypted = r.encrypted,
-                keyVersion = r.keyVersion
+                keyVersion = r.keyVersion,
+                type = RoomType.GROUP
             )
         }
         every { userRoomRepository.save(any()) } answers { firstArg() }
@@ -83,7 +84,8 @@ class RoomServiceTests {
                 id = UUID.randomUUID(),
                 name = r.name,
                 encrypted = r.encrypted,
-                keyVersion = r.keyVersion
+                keyVersion = r.keyVersion,
+                type = RoomType.GROUP
             )
         }
         every { userRoomRepository.save(any()) } answers { firstArg() }
@@ -160,7 +162,7 @@ class RoomServiceTests {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
 
-        val room = RoomEntity(name = "r")
+        val room = RoomEntity(name = "r", type = RoomType.GROUP)
         val joinedRoom = JoinedRoom(room, RoomRole.OWNER)
 
         val secondRoom = RoomEntity(name = "r2", type = RoomType.PRIVATE)
@@ -235,7 +237,8 @@ class RoomServiceTests {
 
         val room = RoomEntity(
             id = roomId,
-            name = "r"
+            name = "r",
+            type = RoomType.GROUP
         )
 
         every { userService.getUserById(userId) } returns user
@@ -419,10 +422,10 @@ class RoomServiceTests {
             type = RoomType.GROUP
         )
 
-        val room = RoomEntity(id = roomId, name = "r")
+        val room = RoomEntity(id = roomId, name = "r", type = RoomType.GROUP)
 
         every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns
-                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.OWNER)
+                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.OWNER, type = RoomType.GROUP)
 
         every { roomRepository.findById(roomId) } returns Optional.of(room)
         every { roomRepository.save(any()) } answers { firstArg() }
@@ -510,7 +513,7 @@ class RoomServiceTests {
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
 
         every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns
-                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.MEMBER)
+                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.MEMBER, type = RoomType.GROUP)
 
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
 
@@ -538,7 +541,7 @@ class RoomServiceTests {
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
 
         every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns
-                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.OWNER)
+                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.OWNER, type = RoomType.GROUP)
         every { roomRepository.findById(roomId) } returns Optional.empty()
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
 
@@ -603,7 +606,7 @@ class RoomServiceTests {
 
         every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
         every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns
-                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.OWNER)
+                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.OWNER, type = RoomType.GROUP)
 
         every { roomRepository.deleteById(roomId) } just Runs
         every { userRoomRepository.deleteAllByIdRoomId(roomId) } just Runs
@@ -642,8 +645,10 @@ class RoomServiceTests {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(userId, null, emptyList())
 
-        every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
-        every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.MEMBER)
+        every { userService.getUserById(userId) } returns
+                UserEntity(username = "u", password = "")
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns
+                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.MEMBER, type = RoomType.GROUP)
 
         val exception = assertFailsWith<ApiException> {
             roomService.deleteRoom(roomId.toString())
@@ -708,7 +713,7 @@ class RoomServiceTests {
 
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
         every { friendService.getFriendEntity("us", any()) } returns UserEntity(username = "us", password = "")
-        every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "room"))
+        every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "room", type = RoomType.GROUP))
 
         every { roomRepository.save(any()) } answers { firstArg() }
         every { userRoomRepository.save(any()) } answers { firstArg() }

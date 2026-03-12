@@ -12,6 +12,7 @@ import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.ChatEncrypt
 import jakarta.annotation.PreDestroy
+import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
@@ -33,10 +34,11 @@ class ChatService(
     private val userRepository: UserRepository,
     private val userRoomRepository: UserRoomRepository,
     private val chatFlushService: ChatFlushService,
-    private val encrypt: ChatEncrypt
+    private val encrypt: ChatEncrypt,
+    private val redisTemplate: RedisTemplate<String, String>
 ) {
     val rooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
-    val users = ConcurrentHashMap<UUID, WebSocketSession>()
+    val users = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
 
     private val buffer = ConcurrentLinkedQueue<ChatEntity>()
     private val flushing = AtomicBoolean(false)
@@ -93,12 +95,14 @@ class ChatService(
     }
 
     fun registerSession(userId: UUID, session: WebSocketSession) {
-        users[userId] = session
+        users.computeIfAbsent(userId) { CopyOnWriteArraySet() }.add(session)
     }
 
-    fun removeSession(userId: UUID, session: WebSocketSession){
-        users.remove(userId)
-        rooms.values.forEach { it.remove(session) }
+    fun removeSession(userId: UUID, session: WebSocketSession) {
+        users[userId]?.remove(session)
+        if (users[userId]?.isEmpty() == true) {
+            users.remove(userId)
+        }
     }
 
     fun joinRoom(roomId: UUID, session: WebSocketSession) {
@@ -160,9 +164,9 @@ class ChatService(
 
     fun broadcast(roomId: UUID, message: ReceivedMessage, username: String) {
         val timestamp = Timestamp(System.currentTimeMillis())
-        if (message.type == "MESSAGE" && rooms[roomId] != null) addMessage(message)
-
         if (!userRoomRepository.existsByIdUserIdAndIdRoomId(message.userId, roomId)) throw RoomNotFoundException()
+
+        if (message.type == "MESSAGE" && rooms[roomId] != null) addMessage(message)
 
         val sendMessage = if (message.type == "MESSAGE") {
             WsChat(content = message.content, username = username, type = message.type, timestamp = timestamp)
@@ -171,7 +175,8 @@ class ChatService(
         }
 
         val json = jacksonObjectMapper().writeValueAsString(sendMessage)
-        rooms[roomId]?.forEach { it.sendMessage(TextMessage(json)) }
+
+        redisTemplate.convertAndSend("room:${roomId}", json)
     }
 }
 

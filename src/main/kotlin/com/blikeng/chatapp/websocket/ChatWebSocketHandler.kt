@@ -87,7 +87,7 @@ class ChatWebSocketHandler(private val chatService: ChatService) : TextWebSocket
         }
 
         val payload = mapper.writeValueAsString(
-            WsError(code = code, message = msg.toString())
+            WsError(code = code, message = msg)
         )
 
         synchronized(session) {

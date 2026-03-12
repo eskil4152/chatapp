@@ -25,7 +25,6 @@ class SecurityConfig(
                 authRequest.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 authRequest.requestMatchers("/api/login").permitAll()
                 authRequest.requestMatchers("/api/register").permitAll()
-                authRequest.requestMatchers("/ws/**").permitAll()
                 authRequest.requestMatchers("/error").permitAll()
                 authRequest.anyRequest().authenticated()
             }
