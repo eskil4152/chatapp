@@ -3,6 +3,7 @@ package com.blikeng.chatapp.websocket
 import com.blikeng.chatapp.dtos.ReceivedMessageDTO
 import com.blikeng.chatapp.dtos.WsError
 import com.blikeng.chatapp.services.ChatService
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
@@ -13,56 +14,39 @@ import org.springframework.web.socket.WebSocketSession
 import org.springframework.web.socket.handler.TextWebSocketHandler
 import java.util.*
 
+
+// ==========================
+// Handles authenticated WebSocket chat connections.
+// Registers and removes user sessions, routes incoming WebSocket messages
+// to chat room actions, and sends structured WebSocket error responses
+// when message handling fails.
+// ==========================
 @Component
 class ChatWebSocketHandler(
     private val chatService: ChatService,
     private val objectMapper: ObjectMapper
 ) : TextWebSocketHandler() {
-    override fun afterConnectionEstablished(session: WebSocketSession) {
-        val id: UUID = (session.attributes["userId"]
-            ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No userID found")) as UUID
 
-        chatService.registerSession(id, session)
+    // ==========================
+    // Connection lifecycle
+    // ==========================
+    override fun afterConnectionEstablished(session: WebSocketSession) {
+        val userId = getUserId(session)
+        chatService.registerSession(userId, session)
     }
 
-    override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
+    // ==========================
+    // Message handling
+    // ==========================
+    override fun handleTextMessage(session: WebSocketSession, wsMessage: TextMessage) {
         try {
-            val json = objectMapper.readTree(message.payload)
-
-            val typeString = json["type"].asText()
-            val type = try {
-                MessageType.valueOf(typeString)
-            } catch (_: IllegalArgumentException) {
-                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid message type")
-            }
-
-            val username = (session.attributes["username"] ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No username found")) as String
-            val userId = (session.attributes["userId"] ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No User ID found")) as UUID
+            val json = objectMapper.readTree(wsMessage.payload)
+            val type = parseMessageType(json)
 
             when (type) {
-                MessageType.JOIN -> {
-                    val roomId = UUID.fromString(json["roomId"].asText())
-                    chatService.joinRoom(roomId, session)
-
-                    val msg = ReceivedMessageDTO(roomId, userId, "$username joined the room", "JOIN")
-                    chatService.broadcast(roomId, msg, username)
-                }
-
-                MessageType.MESSAGE -> {
-                    val roomId = UUID.fromString(json["roomId"].asText())
-
-                    val message = ReceivedMessageDTO(roomId, userId, json["message"].asText(), "MESSAGE")
-                    chatService.broadcast(roomId, message, username)
-                }
-
-                MessageType.LEAVE -> {
-                    val roomId = UUID.fromString(json["roomId"].asText())
-                    chatService.leaveRoom(roomId, session)
-
-                    val message = ReceivedMessageDTO(roomId, userId, "$username left the room", "LEAVE")
-                    chatService.broadcast(roomId, message, username)
-                }
-
+                MessageType.JOIN -> handleJoin(session, json)
+                MessageType.MESSAGE -> handleChatMessage(session, json)
+                MessageType.LEAVE -> handleLeave(session, json)
                 MessageType.PING -> Unit
             }
         } catch (e: Exception) {
@@ -70,14 +54,84 @@ class ChatWebSocketHandler(
         }
     }
 
+    // ==========================
+    // Connection cleanup
+    // ==========================
     override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
-        val id: UUID = (session.attributes["userId"] ?:
-            throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No userID found")) as UUID
-        chatService.removeSession(id, session)
+        val userId = getUserId(session)
+        chatService.removeSession(userId, session)
     }
 
     enum class MessageType {
         MESSAGE, JOIN, LEAVE, PING
+    }
+
+    // ==========================
+    // Internal helpers
+    // ==========================
+    private fun handleJoin(session: WebSocketSession, json: JsonNode) {
+        val roomId = getRoomId(json)
+        val userId = getUserId(session)
+        val username = getUsername(session)
+
+        chatService.joinRoom(roomId, session)
+
+        val message = ReceivedMessageDTO(roomId, userId, "$username joined the room", "JOIN")
+        chatService.broadcast(roomId, message, username)
+    }
+
+    private fun handleChatMessage(session: WebSocketSession, json: JsonNode) {
+        val roomId = getRoomId(json)
+        val userId = getUserId(session)
+        val username = getUsername(session)
+
+        val message = ReceivedMessageDTO(
+            roomId,
+            userId,
+            json["message"].asText(),
+            "MESSAGE"
+        )
+
+        chatService.broadcast(roomId, message, username)
+    }
+
+    private fun handleLeave(session: WebSocketSession, json: JsonNode) {
+        val roomId = getRoomId(json)
+        val userId = getUserId(session)
+        val username = getUsername(session)
+
+        chatService.leaveRoom(roomId, session)
+
+        val message = ReceivedMessageDTO(roomId, userId, "$username left the room", "LEAVE")
+        chatService.broadcast(roomId, message, username)
+    }
+
+    private fun parseMessageType(json: JsonNode): MessageType {
+        val typeString = json["type"].asText()
+
+        return try {
+            MessageType.valueOf(typeString)
+        } catch (_: IllegalArgumentException) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid message type")
+        }
+    }
+
+    private fun getRoomId(json: JsonNode): UUID {
+        return try {
+            UUID.fromString(json["roomId"].asText())
+        } catch (_: IllegalArgumentException) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid room ID")
+        }
+    }
+
+    private fun getUserId(session: WebSocketSession): UUID {
+        return (session.attributes["userId"]
+            ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No userID found")) as UUID
+    }
+
+    private fun getUsername(session: WebSocketSession): String {
+        return (session.attributes["username"]
+            ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No username found")) as String
     }
 
     private fun sendWsError(session: WebSocketSession, e: Exception) {
@@ -92,7 +146,9 @@ class ChatWebSocketHandler(
         )
 
         synchronized(session) {
-            if (session.isOpen) session.sendMessage(TextMessage(payload))
+            if (session.isOpen) {
+                session.sendMessage(TextMessage(payload))
+            }
         }
     }
 }

@@ -7,6 +7,10 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
+// ==========================
+// Exposes friend management endpoints for retrieving friends,
+// adding and removing friends, and fetching friend profile information.
+// ==========================
 @RestController
 @RequestMapping("/api/friends")
 class FriendsController(@Autowired private val friendsService: FriendsService) {

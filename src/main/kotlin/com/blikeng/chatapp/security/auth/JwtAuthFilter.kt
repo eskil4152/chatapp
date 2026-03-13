@@ -1,4 +1,4 @@
-package com.blikeng.chatapp.security
+package com.blikeng.chatapp.security.auth
 
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
@@ -8,6 +8,10 @@ import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
 
+// ==========================
+// Extracts the AUTH cookie from incoming requests, validates the JWT,
+// and populates the Spring Security context when authentication is valid.
+// ==========================
 @Component
 class JwtAuthFilter(
     private val jwtService: JwtService,

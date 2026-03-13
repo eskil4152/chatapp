@@ -1,7 +1,7 @@
 package com.blikeng.chatapp.securityTests
 
-import com.blikeng.chatapp.security.AuthHandshakeInterceptor
-import com.blikeng.chatapp.security.JwtService
+import com.blikeng.chatapp.security.auth.AuthHandshakeInterceptor
+import com.blikeng.chatapp.security.auth.JwtService
 import io.mockk.Called
 import io.mockk.every
 import io.mockk.impl.annotations.MockK

@@ -1,18 +1,25 @@
 package com.blikeng.chatapp.messaging.rabbit
 
-import com.blikeng.chatapp.dtos.RabbitMessageDTO
+import com.blikeng.chatapp.dtos.websocket.RabbitMessageDTO
 import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.services.ChatFlushService
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.rabbitmq.client.Channel
-import org.slf4j.LoggerFactory
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory.getLogger
 import org.springframework.amqp.core.Message
 import org.springframework.amqp.rabbit.annotation.RabbitListener
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 
+// ==========================
+// Consumes queued chat messages from RabbitMQ and persists them in batches.
+// Valid messages are written to the database, removed from Redis pending storage,
+// and acknowledged manually. Invalid messages are dropped and acknowledged.
+// Failed batches are nacked for retry.
+// ==========================
 @Component
 class ChatFlushConsumer(
     private val userRepository: UserRepository,
@@ -20,7 +27,7 @@ class ChatFlushConsumer(
     private val redisTemplate: RedisTemplate<String, String>,
     private val objectMapper: ObjectMapper,
 ) {
-    private val log = LoggerFactory.getLogger(ChatFlushConsumer::class.java)
+    private val log: Logger = getLogger(ChatFlushConsumer::class.java)
     private val lock = Any()
     private val pending = mutableListOf<PendingRabbitMessage>()
 
@@ -34,6 +41,9 @@ class ChatFlushConsumer(
         val deliveryTag: Long
     )
 
+    // ==========================
+    // RabbitMQ intake
+    // ==========================
     @RabbitListener(
         queues = ["chat.buffer"],
         containerFactory = "rabbitListenerContainerFactory"
@@ -64,6 +74,9 @@ class ChatFlushConsumer(
         }
     }
 
+    // ==========================
+    // Batch flushing
+    // =========================
     @Scheduled(fixedDelayString = "\${chat.flush.fixedDelayMs:10000}")
     fun flushOnTimeout() {
         flushPending()

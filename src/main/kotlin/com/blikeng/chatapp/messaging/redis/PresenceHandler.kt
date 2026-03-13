@@ -4,6 +4,10 @@ import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Component
 import java.util.*
 
+// ==========================
+// Tracks user and room presence in Redis.
+// Stores online user counts per user and room membership sets per room.
+// ==========================
 @Component
 class PresenceHandler(
     private val redisTemplate: RedisTemplate<String, String>

@@ -1,8 +1,12 @@
-package com.blikeng.chatapp.security
+package com.blikeng.chatapp.security.auth
 
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 
+// ==========================
+// Wraps password hashing and password verification using the configured
+// Spring Security PasswordEncoder.
+// ==========================
 @Service
 class PasswordService(private val passwordEncoder: PasswordEncoder) {
 

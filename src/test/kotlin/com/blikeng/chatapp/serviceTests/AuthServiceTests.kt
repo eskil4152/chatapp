@@ -4,8 +4,8 @@ import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.repositories.AuthRepository
-import com.blikeng.chatapp.security.JwtService
-import com.blikeng.chatapp.security.PasswordService
+import com.blikeng.chatapp.security.auth.JwtService
+import com.blikeng.chatapp.security.auth.PasswordService
 import com.blikeng.chatapp.services.AuthService
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs

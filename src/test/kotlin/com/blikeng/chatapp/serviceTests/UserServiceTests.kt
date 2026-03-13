@@ -7,7 +7,7 @@ import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
-import com.blikeng.chatapp.security.PasswordService
+import com.blikeng.chatapp.security.auth.PasswordService
 import com.blikeng.chatapp.services.UserService
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs

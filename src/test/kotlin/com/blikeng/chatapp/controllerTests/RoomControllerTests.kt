@@ -7,7 +7,7 @@ import com.blikeng.chatapp.entities.RoomType
 import com.blikeng.chatapp.errors.InvalidRoomNameException
 import com.blikeng.chatapp.errors.InvalidTokenException
 import com.blikeng.chatapp.errors.RoomNotFoundException
-import com.blikeng.chatapp.security.JwtAuthFilter
+import com.blikeng.chatapp.security.auth.JwtAuthFilter
 import com.blikeng.chatapp.services.RoomService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every

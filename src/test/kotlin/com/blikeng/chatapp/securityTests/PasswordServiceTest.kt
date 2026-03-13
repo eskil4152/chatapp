@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.securityTests
 
-import com.blikeng.chatapp.security.PasswordService
+import com.blikeng.chatapp.security.auth.PasswordService
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import kotlin.test.Test
 

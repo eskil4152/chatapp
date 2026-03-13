@@ -8,6 +8,10 @@ import org.springframework.data.redis.listener.RedisMessageListenerContainer
 import org.springframework.stereotype.Component
 import java.util.*
 
+// ==========================
+// Subscribes to Redis room Pub/Sub channels and forwards incoming
+// messages to the local WebSocket broadcaster for this instance.
+// ==========================
 @Component
 class RedisMessageSubscriber (
     private val localBroadcaster: LocalBroadcaster,

@@ -8,6 +8,11 @@ import org.springframework.http.ResponseCookie
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
+// ==========================
+// Exposes authentication endpoints for user registration, login,
+// logout, and simple authorization checks. Sets and clears the
+// AUTH cookie used for JWT-based authentication.
+// ==========================
 @RestController
 @RequestMapping("/api")
 class AuthController(

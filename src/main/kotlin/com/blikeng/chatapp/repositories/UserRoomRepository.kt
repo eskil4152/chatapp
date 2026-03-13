@@ -18,6 +18,7 @@ interface UserRoomRepository: JpaRepository<UserRoomEntity, UserRoomId> {
 
     fun deleteAllByIdRoomId(roomId: UUID)
 
+    // Finds the other participant in a private room by excluding the current user.
     @Query("""
     SELECT u
     FROM UserEntity u

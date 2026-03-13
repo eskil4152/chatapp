@@ -1,4 +1,4 @@
-package com.blikeng.chatapp.security
+package com.blikeng.chatapp.security.crypto
 
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
@@ -9,6 +9,11 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
+// ==========================
+// Encrypts and decrypts chat message content using AES-GCM.
+// Uses additional authenticated data (AAD) to bind ciphertext
+// to a specific room, message, and sender.
+// ==========================
 @Component
 class ChatEncrypt(
     @Value("\${app.crypto.messageKeyV1B64}")
@@ -38,4 +43,3 @@ class ChatEncrypt(
     }
 }
 
-data class Encrypted(val ciphertext: ByteArray, val nonce: ByteArray)

@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.config
 
-import com.blikeng.chatapp.security.JwtAuthFilter
+import com.blikeng.chatapp.security.auth.JwtAuthFilter
 import jakarta.servlet.DispatcherType
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.context.annotation.Bean
@@ -11,6 +11,10 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 
+// ==========================
+// Configures application security, password encoding, JWT-based authentication,
+// and access rules for public and protected endpoints.
+// ==========================
 @Configuration
 class SecurityConfig(
     private val jwtAuthFilter: JwtAuthFilter

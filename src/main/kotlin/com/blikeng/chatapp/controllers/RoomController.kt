@@ -7,6 +7,11 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
+// ==========================
+// Exposes room management endpoints for listing rooms, creating rooms,
+// joining and leaving rooms, editing and deleting rooms,
+// and starting private message rooms.
+// ==========================
 @RestController
 @RequestMapping("/api/rooms")
 class RoomController(

@@ -8,6 +8,10 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
+// ==========================
+// Exposes user profile endpoints for retrieving the authenticated user,
+// updating profile information, and changing the account password.
+// ==========================
 @RestController
 @RequestMapping("/api/user")
 class UserController(@Autowired private val userService: UserService) {

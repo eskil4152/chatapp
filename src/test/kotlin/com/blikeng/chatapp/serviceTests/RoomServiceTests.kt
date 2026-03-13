@@ -5,7 +5,7 @@ import com.blikeng.chatapp.entities.*
 import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.errors.UserNotFoundException
-import com.blikeng.chatapp.repositories.JoinedRoom
+import com.blikeng.chatapp.dtos.JoinedRoomDTO
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.services.FriendsService
@@ -176,13 +176,13 @@ class RoomServiceTests {
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
 
         val room = RoomEntity(name = "r", type = RoomType.GROUP)
-        val joinedRoom = JoinedRoom(room, RoomRole.OWNER)
+        val joinedRoomDTO = JoinedRoomDTO(room, RoomRole.OWNER)
 
         val secondRoom = RoomEntity(name = "r2", type = RoomType.PRIVATE)
-        val joinedRoom2 = JoinedRoom(secondRoom, RoomRole.OWNER, type = RoomType.PRIVATE)
+        val joinedRoomDTO2 = JoinedRoomDTO(secondRoom, RoomRole.OWNER, type = RoomType.PRIVATE)
 
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
-        every { roomRepository.findRoomsForUser(any()) } returns listOf(joinedRoom, joinedRoom2)
+        every { roomRepository.findRoomsForUser(any()) } returns listOf(joinedRoomDTO, joinedRoomDTO2)
         every { userRoomRepository.findOtherUser(secondRoom.id, any()) } returns UserEntity(username = "su", password = "")
 
         val rooms = roomService.getAllUserRooms()
@@ -795,10 +795,10 @@ class RoomServiceTests {
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
 
         val room = RoomEntity(name = "r", type = RoomType.PRIVATE)
-        val joinedRoom = JoinedRoom(room, RoomRole.OWNER, type = RoomType.PRIVATE)
+        val joinedRoomDTO = JoinedRoomDTO(room, RoomRole.OWNER, type = RoomType.PRIVATE)
 
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
-        every { roomRepository.findRoomsForUser(any()) } returns listOf(joinedRoom)
+        every { roomRepository.findRoomsForUser(any()) } returns listOf(joinedRoomDTO)
         every { userRoomRepository.findOtherUser(any(), any()) } returns null
 
         val rooms = roomService.getAllUserRooms()

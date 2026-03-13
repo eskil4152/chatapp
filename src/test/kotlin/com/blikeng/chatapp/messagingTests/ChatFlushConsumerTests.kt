@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.messagingTests
 
-import com.blikeng.chatapp.dtos.RabbitMessageDTO
+import com.blikeng.chatapp.dtos.websocket.RabbitMessageDTO
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.messaging.rabbit.ChatFlushConsumer
 import com.blikeng.chatapp.repositories.UserRepository

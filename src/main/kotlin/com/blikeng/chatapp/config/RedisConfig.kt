@@ -5,6 +5,9 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.data.redis.connection.RedisConnectionFactory
 import org.springframework.data.redis.listener.RedisMessageListenerContainer
 
+// ==========================
+// Configures the Redis message listener container used for Pub/Sub room fanout.
+// ==========================
 @Configuration
 class RedisConfig {
     @Bean

@@ -1,7 +1,7 @@
-package com.blikeng.chatapp.dtos
+package com.blikeng.chatapp.dtos.websocket
 
 import java.sql.Timestamp
-import java.util.*
+import java.util.UUID
 
 @Suppress("ArrayInDataClass")
 data class RabbitMessageDTO(

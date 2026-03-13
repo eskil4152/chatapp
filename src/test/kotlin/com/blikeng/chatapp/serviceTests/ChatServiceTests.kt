@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.serviceTests
 
-import com.blikeng.chatapp.dtos.RabbitMessageDTO
+import com.blikeng.chatapp.dtos.websocket.RabbitMessageDTO
 import com.blikeng.chatapp.dtos.ReceivedMessageDTO
 import com.blikeng.chatapp.dtos.SendMessageDTO
 import com.blikeng.chatapp.entities.ChatEntity
@@ -14,8 +14,8 @@ import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
-import com.blikeng.chatapp.security.ChatEncrypt
-import com.blikeng.chatapp.security.Encrypted
+import com.blikeng.chatapp.security.crypto.ChatEncrypt
+import com.blikeng.chatapp.security.crypto.Encrypted
 import com.blikeng.chatapp.services.ChatService
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.mockk.*

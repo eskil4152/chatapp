@@ -10,9 +10,13 @@ import org.springframework.amqp.support.converter.JacksonJsonMessageConverter
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
+// ==========================
+// Configures RabbitMQ infrastructure for chat persistence.
+// Registers the durable chat buffer queue, JSON message conversion,
+// and a manually acknowledged single-consumer listener setup.
+// ==========================
 @Configuration
 class RabbitConfig {
-
     @Bean
     fun chatBufferQueue(): Queue {
         return QueueBuilder.durable("chat.buffer").build()

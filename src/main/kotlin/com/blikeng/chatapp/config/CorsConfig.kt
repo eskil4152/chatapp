@@ -1,9 +1,13 @@
-package com.blikeng.chatapp.security
+package com.blikeng.chatapp.config
 
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.servlet.config.annotation.CorsRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 
+// ==========================
+// Configures allowed CORS origins, methods, and headers
+// for browser clients accessing the API.
+// ==========================
 @Configuration
 class CorsConfig: WebMvcConfigurer {
     override fun addCorsMappings(registry: CorsRegistry) {

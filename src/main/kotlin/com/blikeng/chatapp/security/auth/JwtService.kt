@@ -1,19 +1,27 @@
-package com.blikeng.chatapp.security
+package com.blikeng.chatapp.security.auth
 
 import com.blikeng.chatapp.entities.UserEntity
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.security.Keys
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory.getLogger
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.util.*
 import javax.crypto.SecretKey
 
+// ==========================
+// Generates and validates JWT tokens used for cookie-based authentication.
+// Tokens store the authenticated user's ID and username.
+// ==========================
 @Service
 class JwtService(
     @Value("\${app.jwt.secret}")
     private val secret: String
 ) {
+    private val logger: Logger = getLogger(this::class.java)
+
     private fun key(): SecretKey =
         Keys.hmacShaKeyFor(secret.toByteArray())
 
@@ -39,7 +47,7 @@ class JwtService(
 
             return Pair(username, id)
         } catch (e: Exception){
-            print("Caught Exception: $e")
+            logger.error("Invalid token: $e")
             null
         }
     }

@@ -5,7 +5,7 @@ import com.blikeng.chatapp.dtos.FriendDTO
 import com.blikeng.chatapp.errors.AlreadyFriendsException
 import com.blikeng.chatapp.errors.InvalidUserException
 import com.blikeng.chatapp.errors.UserNotFoundException
-import com.blikeng.chatapp.security.JwtAuthFilter
+import com.blikeng.chatapp.security.auth.JwtAuthFilter
 import com.blikeng.chatapp.services.FriendsService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every

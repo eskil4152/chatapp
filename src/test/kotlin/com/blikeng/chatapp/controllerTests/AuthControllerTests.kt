@@ -4,7 +4,7 @@ import com.blikeng.chatapp.controllers.AuthController
 import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.errors.InvalidCredentialsException
 import com.blikeng.chatapp.errors.UsernameAlreadyExistsException
-import com.blikeng.chatapp.security.JwtAuthFilter
+import com.blikeng.chatapp.security.auth.JwtAuthFilter
 import com.blikeng.chatapp.services.AuthService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every

@@ -2,13 +2,14 @@ package com.blikeng.chatapp.services
 
 import com.blikeng.chatapp.config.configureAad
 import com.blikeng.chatapp.dtos.*
+import com.blikeng.chatapp.dtos.websocket.RabbitMessageDTO
 import com.blikeng.chatapp.errors.InvalidTokenException
 import com.blikeng.chatapp.errors.RoomNotFoundException
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
-import com.blikeng.chatapp.security.ChatEncrypt
+import com.blikeng.chatapp.security.crypto.ChatEncrypt
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.data.redis.core.RedisTemplate
@@ -20,6 +21,11 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
 
+// ==========================
+// Handles chat session tracking, room membership, message publishing,
+// message history retrieval, Redis-backed pending message loading,
+// and real-time room fanout coordination.
+// ==========================
 @Service
 class ChatService (
     private val chatRepository: ChatRepository,
@@ -34,44 +40,9 @@ class ChatService (
     val rooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
     val users = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
 
-    fun addMessage(message: ReceivedMessageDTO, username: String){
-        val room = roomRepository.findById(message.roomId).orElseThrow()
-
-        val messageId = UUID.randomUUID()
-
-        val rabbitMessage = if (room.encrypted) {
-            val v = room.keyVersion
-            val enc = encrypt.encrypt(
-                plaintext = message.content,
-                aad = configureAad(room.id, messageId, message.userId),
-                keyVersion = v!!
-            )
-
-            RabbitMessageDTO(
-                id = messageId,
-                roomId = room.id,
-                userId = message.userId,
-                username = username,
-                ciphertext = enc.ciphertext,
-                nonce = enc.nonce,
-                keyVersion = v
-            )
-        } else {
-            RabbitMessageDTO(
-                id = messageId,
-                username = username,
-                roomId = room.id,
-                userId = message.userId,
-                message = message.content
-            )
-        }
-
-        val json = objectMapper.writeValueAsString(rabbitMessage)
-
-        rabbitTemplate.convertAndSend("chat.buffer", rabbitMessage)
-        redisTemplate.opsForList().rightPush("chat.peek.${message.roomId}", json)
-    }
-
+    // ==========================
+    // Session handling
+    // ==========================
     fun registerSession(userId: UUID, session: WebSocketSession) {
         users.computeIfAbsent(userId) { CopyOnWriteArraySet() }.add(session)
         presenceHandler.userConnected(userId)
@@ -106,6 +77,9 @@ class ChatService (
         presenceHandler.userDisconnected(userId)
     }
 
+    // ==========================
+    // Room membership
+    // ==========================
     fun leaveRoom(roomId: UUID, session: WebSocketSession) {
         val userId = session.attributes["userId"] as? UUID
 
@@ -182,6 +156,64 @@ class ChatService (
         fetchAllMessages(allMessages, session)
     }
 
+    // ==========================
+    // Message publishing and fetching
+    // ==========================
+    fun broadcast(roomId: UUID, message: ReceivedMessageDTO, username: String) {
+        val timestamp = Timestamp(System.currentTimeMillis())
+        if (!userRoomRepository.existsByIdUserIdAndIdRoomId(message.userId, roomId)) throw RoomNotFoundException()
+
+        if (message.type == "MESSAGE") addMessage(message, username)
+
+        val sendMessage = if (message.type == "MESSAGE") {
+            WsChat(content = message.content, username = username, type = message.type, timestamp = timestamp)
+        } else {
+            WsChat(content = message.content, username = "Server", type = message.type, timestamp = timestamp)
+        }
+
+        val json = objectMapper.writeValueAsString(sendMessage)
+
+        redisTemplate.convertAndSend("room:${roomId}", json)
+    }
+
+    fun addMessage(message: ReceivedMessageDTO, username: String){
+        val room = roomRepository.findById(message.roomId).orElseThrow()
+
+        val messageId = UUID.randomUUID()
+
+        val rabbitMessage = if (room.encrypted) {
+            val v = room.keyVersion
+            val enc = encrypt.encrypt(
+                plaintext = message.content,
+                aad = configureAad(room.id, messageId, message.userId),
+                keyVersion = v!!
+            )
+
+            RabbitMessageDTO(
+                id = messageId,
+                roomId = room.id,
+                userId = message.userId,
+                username = username,
+                ciphertext = enc.ciphertext,
+                nonce = enc.nonce,
+                keyVersion = v
+            )
+        } else {
+            RabbitMessageDTO(
+                id = messageId,
+                username = username,
+                roomId = room.id,
+                userId = message.userId,
+                message = message.content
+            )
+        }
+
+        val json = objectMapper.writeValueAsString(rabbitMessage)
+
+        rabbitTemplate.convertAndSend("chat.buffer", rabbitMessage)
+        redisTemplate.opsForList().rightPush("chat.peek.${message.roomId}", json)
+    }
+
     fun fetchAllMessages(messages: List<SendMessageDTO>, session: WebSocketSession){
         for (m in messages) {
             val content = if (m.ciphertext == null) {
@@ -203,23 +235,6 @@ class ChatService (
                 )
             )
         }
-    }
-
-    fun broadcast(roomId: UUID, message: ReceivedMessageDTO, username: String) {
-        val timestamp = Timestamp(System.currentTimeMillis())
-        if (!userRoomRepository.existsByIdUserIdAndIdRoomId(message.userId, roomId)) throw RoomNotFoundException()
-
-        if (message.type == "MESSAGE") addMessage(message, username)
-
-        val sendMessage = if (message.type == "MESSAGE") {
-            WsChat(content = message.content, username = username, type = message.type, timestamp = timestamp)
-        } else {
-            WsChat(content = message.content, username = "Server", type = message.type, timestamp = timestamp)
-        }
-
-        val json = objectMapper.writeValueAsString(sendMessage)
-
-        redisTemplate.convertAndSend("room:${roomId}", json)
     }
 
     private fun getPendingMessages(roomId: UUID): List<RabbitMessageDTO> {

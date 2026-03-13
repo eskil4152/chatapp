@@ -4,7 +4,7 @@ import com.blikeng.chatapp.controllers.UserController
 import com.blikeng.chatapp.dtos.UserDTO
 import com.blikeng.chatapp.errors.InvalidTokenException
 import com.blikeng.chatapp.errors.WrongPasswordException
-import com.blikeng.chatapp.security.JwtAuthFilter
+import com.blikeng.chatapp.security.auth.JwtAuthFilter
 import com.blikeng.chatapp.services.UserService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every

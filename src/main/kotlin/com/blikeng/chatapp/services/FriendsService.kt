@@ -14,6 +14,10 @@ import com.blikeng.chatapp.tools.getId
 import org.springframework.stereotype.Service
 import java.util.*
 
+// ==========================
+// Handles friend relationships, friend lookups, and friend profile retrieval.
+// Validates friendship existence and enforces deterministic friendship ordering.
+// ==========================
 @Service
 class FriendsService(
     private val friendsRepository: FriendsRepository,
@@ -99,6 +103,9 @@ class FriendsService(
         return friend
     }
 
+    // ==========================
+    // Internal helpers
+    // ==========================
     private fun generateFriendshipId(user1: UUID, user2: UUID): FriendsId {
         if (user1 == user2) throw FriendYourselfException()
 

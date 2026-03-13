@@ -1,6 +1,5 @@
 package com.blikeng.chatapp.dtos
 
-import com.blikeng.chatapp.repositories.JoinedRoom
 import java.util.*
 
 data class UserDTO (
@@ -11,6 +10,5 @@ data class UserDTO (
     val avatarUrl: String?,
     val birthday: Date?,
     val createdAt: Date?,
-    val rooms: List<JoinedRoom>,
-    //val friends: MutableSet<UserFriendEntity>
+    val rooms: List<JoinedRoomDTO>,
 )

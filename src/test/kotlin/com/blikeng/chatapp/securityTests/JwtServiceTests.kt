@@ -1,7 +1,7 @@
 package com.blikeng.chatapp.securityTests
 
 import com.blikeng.chatapp.entities.UserEntity
-import com.blikeng.chatapp.security.JwtService
+import com.blikeng.chatapp.security.auth.JwtService
 import org.junit.jupiter.api.assertNull
 import java.util.*
 import kotlin.test.Test

@@ -1,7 +1,7 @@
 package com.blikeng.chatapp.securityTests
 
 import com.blikeng.chatapp.config.configureAad
-import com.blikeng.chatapp.security.ChatEncrypt
+import com.blikeng.chatapp.security.crypto.ChatEncrypt
 import java.util.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
