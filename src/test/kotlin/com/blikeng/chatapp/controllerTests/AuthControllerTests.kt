@@ -32,9 +32,21 @@ import kotlin.test.Test
 )
 @AutoConfigureMockMvc(addFilters = false)
 class AuthControllerTests {
+    // ==========================
+    // Tests for AuthController. Verifies:
+    // - User registration
+    // - User login
+    // - User logout
+    // - Authentication status endpoint
+    // - HTTP error mapping for service exceptions
+    // ==========================
+
     @MockkBean private lateinit var authService: AuthService
     @Autowired private lateinit var mockMvc: MockMvc
 
+    // ==========================
+    // Register
+    // ==========================
     @Test
     fun shouldRegisterUserAndSetCookie() {
         every { authService.registerUser("username", "password") } returns "token"
@@ -53,6 +65,9 @@ class AuthControllerTests {
             .andExpect { cookie().exists("AUTH") }
     }
 
+    // ==========================
+    // Login
+    // ==========================
     @Test
     fun shouldLoginUserAndSetCookie() {
         every { authService.loginUser("username", "password") } returns "token"
@@ -88,23 +103,9 @@ class AuthControllerTests {
             .andExpect { content().string(ErrorMessages.INVALID_CREDENTIALS) }
     }
 
-    @Test
-    fun shouldGetConflict() {
-        every { authService.registerUser("username", "password") } throws UsernameAlreadyExistsException()
-
-        mockMvc.post("/api/register") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """
-                {
-                    "username":"username",
-                    "password":"password"
-                }
-            """.trimIndent()
-        }
-            .andExpect { status { isConflict() } }
-            .andExpect { content().string(ErrorMessages.USERNAME_EXISTS) }
-    }
-
+    // ==========================
+    // Logout
+    // ==========================
     @Test
     fun shouldLogOutUser() {
         val res = mockMvc.post("/api/logout") {
@@ -120,10 +121,33 @@ class AuthControllerTests {
         )
     }
 
+    // ==========================
+    // Auth
+    // ==========================
     @Test
     fun shouldReturnOkForAuthEndpoint() {
         mockMvc.get("/api/auth") {
         }
             .andExpect { status { isOk() } }
+    }
+
+    // ==========================
+    // HTTP error mapping
+    // ==========================
+    @Test
+    fun shouldGetConflict() {
+        every { authService.registerUser("username", "password") } throws UsernameAlreadyExistsException()
+
+        mockMvc.post("/api/register") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                    "username":"username",
+                    "password":"password"
+                }
+            """.trimIndent()
+        }
+            .andExpect { status { isConflict() } }
+            .andExpect { content().string(ErrorMessages.USERNAME_EXISTS) }
     }
 }

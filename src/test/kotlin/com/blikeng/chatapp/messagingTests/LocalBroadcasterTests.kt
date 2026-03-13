@@ -20,7 +20,13 @@ import kotlin.test.assertEquals
 
 @ExtendWith(MockKExtension::class)
 class LocalBroadcasterTests {
-
+    // ==========================
+    // Tests for LocalBroadcaster. Verifies:
+    // - Messages are broadcast to all open sessions in a room
+    // - Closed WebSocket sessions are skipped
+    // - Sessions are removed when message sending fails
+    // - No action occurs when the room does not exist on the instance
+    // ==========================
     @MockK lateinit var chatService: ChatService
 
     @InjectMockKs lateinit var broadcaster: LocalBroadcaster

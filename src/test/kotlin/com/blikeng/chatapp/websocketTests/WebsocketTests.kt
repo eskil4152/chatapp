@@ -21,6 +21,15 @@ import kotlin.test.assertFailsWith
 
 @ExtendWith(MockKExtension::class)
 class WebsocketTests {
+    // ==========================
+    // Tests for ChatWebSocketHandler.
+    // Covers:
+    // - Connection lifecycle callbacks
+    // - WebSocket message routing
+    // - Validation failures and missing session attributes
+    // - Exception-to-error-message mapping
+    // ==========================
+
     @MockK
     private lateinit var chatService: ChatService
 
@@ -35,6 +44,9 @@ class WebsocketTests {
         handler = ChatWebSocketHandler(chatService, objectMapper)
     }
 
+    // ==========================
+    // Connection lifecycle
+    // ==========================
     @Test
     fun connectionEstablishedShouldRegisterSession() {
         val userId = UUID.randomUUID()
@@ -111,6 +123,9 @@ class WebsocketTests {
         verify(exactly = 0) { chatService.removeSession(any(), any()) }
     }
 
+    // ==========================
+    // Message routing
+    // ==========================
     @Test
     fun shouldSendJoinMessage(){
         val payload = TextMessage((objectMapper.createObjectNode()
@@ -180,6 +195,30 @@ class WebsocketTests {
     }
 
     @Test
+    fun shouldReceivePing(){
+        val payload = TextMessage((objectMapper.createObjectNode()
+            .put("type", "PING")
+            .put("message", "" ))
+            .toString())
+
+        val attributes: MutableMap<String, Any> = mutableMapOf(
+            "username" to "u",
+            "userId" to UUID.randomUUID()
+        )
+
+        every { session.attributes } returns attributes
+
+        handler.handleMessage(session, payload)
+
+        verify (exactly = 0) { chatService.joinRoom(any(), any()) }
+        verify (exactly = 0) { chatService.broadcast(any(), any(), any()) }
+        verify (exactly = 0) { chatService.leaveRoom(any(), any()) }
+    }
+
+    // ==========================
+    // Validation and missing attributes
+    // ==========================
+    @Test
     fun shouldSendErrorWithoutUsername() {
         val payload = TextMessage(
             objectMapper.createObjectNode()
@@ -195,7 +234,7 @@ class WebsocketTests {
         every { session.attributes } returns attributes
         every { session.isOpen } returns true
 
-        val msgSlot = io.mockk.slot<TextMessage>()
+        val msgSlot = slot<TextMessage>()
         every { session.sendMessage(capture(msgSlot)) } just Runs
 
         handler.handleMessage(session, payload)
@@ -226,7 +265,7 @@ class WebsocketTests {
         every { session.attributes } returns attributes
         every { session.isOpen } returns true
 
-        val msgSlot = io.mockk.slot<TextMessage>()
+        val msgSlot = slot<TextMessage>()
         every { session.sendMessage(capture(msgSlot)) } just Runs
 
         handler.handleMessage(session, payload)
@@ -256,7 +295,7 @@ class WebsocketTests {
         every { session.attributes } returns attributes
         every { session.isOpen } returns true
 
-        val msgSlot = io.mockk.slot<TextMessage>()
+        val msgSlot = slot<TextMessage>()
         every { session.sendMessage(capture(msgSlot)) } just Runs
 
         handler.handleMessage(session, payload)
@@ -271,27 +310,9 @@ class WebsocketTests {
         verify (exactly = 0) { chatService.leaveRoom(any(), any()) }
     }
 
-    @Test
-    fun shouldReceivePing(){
-        val payload = TextMessage((objectMapper.createObjectNode()
-            .put("type", "PING")
-            .put("message", "" ))
-            .toString())
-
-        val attributes: MutableMap<String, Any> = mutableMapOf(
-            "username" to "u",
-            "userId" to UUID.randomUUID()
-        )
-
-        every { session.attributes } returns attributes
-
-        handler.handleMessage(session, payload)
-
-        verify (exactly = 0) { chatService.joinRoom(any(), any()) }
-        verify (exactly = 0) { chatService.broadcast(any(), any(), any()) }
-        verify (exactly = 0) { chatService.leaveRoom(any(), any()) }
-    }
-
+    // ==========================
+    // Exception mapping
+    // ==========================
     @Test
     fun shouldSendErrorForResponseStatusException() {
         val roomId = UUID.randomUUID().toString()

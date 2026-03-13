@@ -7,7 +7,14 @@ import java.util.*
 import kotlin.test.Test
 
 class JwtServiceTests {
-    private var jwtService = JwtService("superSecretKeyForTheTestsWhichIsAbsolutelySecureEnoughAndFarEnoughBitsToBeAbleToBeMadeIntoASecureEnoughKey")
+    // ==========================
+    // Tests for JwtService. Verifies:
+    // - Generation of JWT tokens
+    // - Validation of JWT tokens
+    // - Extraction of username and userId from valid tokens
+    // - Handling of invalid tokens
+    // ==========================
+    private val jwtService = JwtService("superSecretKeyForTheTestsWhichIsAbsolutelySecureEnoughAndFarEnoughBitsToBeAbleToBeMadeIntoASecureEnoughKey")
 
     @Test
     fun shouldGenerateToken(){

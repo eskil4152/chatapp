@@ -23,6 +23,15 @@ import java.util.*
 
 @ExtendWith(MockKExtension::class)
 class ChatFlushConsumerTests {
+    // ==========================
+    // Tests for ChatFlushConsumer.
+    // Verifies that the consumer:
+    // - Flushes queued chat batches on timeout or when batch size is reached
+    // - Persists valid messages and clears them from Redis
+    // - Acknowledges invalid messages without persisting them
+    // - Nacks messages when persistence fails
+    // - Continues safely if nack handling itself fails
+    // ==========================
 
     @MockK lateinit var userRepository: UserRepository
     @MockK lateinit var chatFlushService: ChatFlushService
@@ -66,6 +75,36 @@ class ChatFlushConsumerTests {
         verify(exactly = 1) { chatFlushService.saveBatch(any()) }
         verify(exactly = 1) { channel.basicAck(10L, false) }
         verify(exactly = 1) { listOps.remove("chat.peek.$roomId", 1, "{}") }
+    }
+
+    @Test
+    fun shouldFlushImmediatelyWhenBatchSizeReached() {
+        val userId = UUID.randomUUID()
+        val roomId = UUID.randomUUID()
+        val user = UserEntity(id = userId, username = "u", password = "")
+
+        every { userRepository.findAllById(any<Set<UUID>>()) } returns listOf(user)
+        every { chatFlushService.saveBatch(any()) } just Runs
+
+        val channel = mockk<Channel>()
+        every { channel.basicAck(any(), false) } just Runs
+
+        repeat(50) { i ->
+            val payload = RabbitMessageDTO(
+                roomId = roomId,
+                userId = userId,
+                username = "u",
+                message = "hello-$i"
+            )
+
+            val props = MessageProperties().apply { deliveryTag = i.toLong() + 1 }
+            val message = Message("{}".toByteArray(), props)
+
+            consumer.onMessage(payload, message, channel)
+        }
+
+        verify(exactly = 1) { chatFlushService.saveBatch(match { it.size == 50 }) }
+        verify(exactly = 50) { channel.basicAck(any(), false) }
     }
 
     @Test
@@ -119,36 +158,6 @@ class ChatFlushConsumerTests {
         consumer.flushOnTimeout()
 
         verify(exactly = 1) { channel.basicNack(10L, false, true) }
-    }
-
-    @Test
-    fun shouldFlushImmediatelyWhenBatchSizeReached() {
-        val userId = UUID.randomUUID()
-        val roomId = UUID.randomUUID()
-        val user = UserEntity(id = userId, username = "u", password = "")
-
-        every { userRepository.findAllById(any<Set<UUID>>()) } returns listOf(user)
-        every { chatFlushService.saveBatch(any()) } just Runs
-
-        val channel = mockk<Channel>()
-        every { channel.basicAck(any(), false) } just Runs
-
-        repeat(50) { i ->
-            val payload = RabbitMessageDTO(
-                roomId = roomId,
-                userId = userId,
-                username = "u",
-                message = "hello-$i"
-            )
-
-            val props = MessageProperties().apply { deliveryTag = i.toLong() + 1 }
-            val message = Message("{}".toByteArray(), props)
-
-            consumer.onMessage(payload, message, channel)
-        }
-
-        verify(exactly = 1) { chatFlushService.saveBatch(match { it.size == 50 }) }
-        verify(exactly = 50) { channel.basicAck(any(), false) }
     }
 
     @Test

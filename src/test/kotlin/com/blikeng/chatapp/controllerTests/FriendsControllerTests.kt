@@ -34,6 +34,15 @@ import java.time.Instant
 )
 @AutoConfigureMockMvc(addFilters = false)
 class FriendsControllerTests {
+    // ==========================
+    // Tests for FriendsController. Verifies:
+    // - Retrieving friends
+    // - Adding friends
+    // - Removing friends
+    // - Retrieving friend information
+    // - HTTP error mapping for service exceptions
+    // ==========================
+
     @MockkBean private lateinit var friendsService: FriendsService
 
     @Autowired
@@ -108,6 +117,9 @@ class FriendsControllerTests {
             }
     }
 
+    // ==========================
+    // HTTP error mapping
+    // ==========================
     @Test
     fun shouldGetBadRequestFromInvalidUser(){
         every { friendsService.getFriends() } throws InvalidUserException()

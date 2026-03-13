@@ -33,6 +33,17 @@ import java.util.concurrent.TimeUnit
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class E2ETests : PostgresContainerBase() {
+    // ==========================
+    // E2E tests covering the full expected lifecycle of a user session. Tests cover:
+    // - Failed login and registration attempts
+    // - Successful registration and access to protected endpoints
+    // - Room listing and room creation
+    // - User profile retrieval and updates
+    // - Multi-user interactions
+    // - Room access, messaging, and persistence
+    // - Room changes and DELETE endpoints
+    // - Friend management
+    // ==========================
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var objectMapper: ObjectMapper
 

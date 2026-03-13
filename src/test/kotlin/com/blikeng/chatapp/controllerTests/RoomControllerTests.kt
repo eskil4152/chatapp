@@ -33,6 +33,17 @@ import kotlin.test.Test
 )
 @AutoConfigureMockMvc(addFilters = false)
 class RoomControllerTests {
+    // ==========================
+    // Tests for RoomController. Verifies:
+    // - Retrieving user rooms
+    // - Creating rooms
+    // - Joining rooms
+    // - Updating room names
+    // - Deleting rooms
+    // - Creating private message rooms
+    // - HTTP error mapping for service exceptions
+    // ==========================
+
     @MockkBean private lateinit var roomService: RoomService
     @Autowired private lateinit var mockMvc: MockMvc
 
@@ -133,6 +144,9 @@ class RoomControllerTests {
             .andExpect { status { isCreated() } }
     }
 
+    // ==========================
+    // HTTP error mapping
+    // ==========================
     @Test
     fun shouldGetUnauthorized(){
         every { roomService.makeNewRoom(any(), any()) } throws InvalidTokenException()

@@ -19,6 +19,13 @@ import kotlin.test.assertFailsWith
 
 @ExtendWith(MockKExtension::class)
 class AuthServiceTests {
+    // ==========================
+    // Tests for AuthService. Verifies:
+    // - User registration
+    // - Registration failure cases
+    // - User login
+    // - Login failure cases
+    // ==========================
     @MockK private lateinit var authRepository: AuthRepository
     @MockK private lateinit var passwordService: PasswordService
     @MockK private lateinit var jwtService: JwtService
@@ -75,6 +82,16 @@ class AuthServiceTests {
     }
 
     @Test
+    fun shouldLoginSuccessfully(){
+        every { authRepository.findByUsername(any()) } returns UserEntity(username = "u", password = "")
+        every { passwordService.checkPassword("p", any()) } returns true
+        every { jwtService.generateToken(any()) } returns "TOKEN"
+
+        val res = authService.loginUser("u", "p")
+        assert(res == "TOKEN")
+    }
+
+    @Test
     fun shouldFailLoginOnNonExistingUser(){
         every { authRepository.findByUsername(any()) } returns null
 
@@ -97,15 +114,5 @@ class AuthServiceTests {
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
         assertEquals(ErrorMessages.INVALID_CREDENTIALS, exception.message)
-    }
-
-    @Test
-    fun shouldLoginSuccessfully(){
-        every { authRepository.findByUsername(any()) } returns UserEntity(username = "u", password = "")
-        every { passwordService.checkPassword("p", any()) } returns true
-        every { jwtService.generateToken(any()) } returns "TOKEN"
-
-        val res = authService.loginUser("u", "p")
-        assert(res == "TOKEN")
     }
 }

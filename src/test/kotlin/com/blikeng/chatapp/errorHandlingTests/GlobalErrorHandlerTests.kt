@@ -26,11 +26,11 @@ import org.springframework.web.bind.annotation.RestController
 )
 @Import(GlobalExceptionHandler::class)
 class GlobalErrorHandlerTests {
-
+    // ==========================
+    // Tests for covering custom exception. Handmade controller to assert custom exceptions throws correctly
+    // ==========================
     @Autowired
     lateinit var mockMvc: MockMvc
-
-
 
     @Test
     fun shouldHandleApiException() {

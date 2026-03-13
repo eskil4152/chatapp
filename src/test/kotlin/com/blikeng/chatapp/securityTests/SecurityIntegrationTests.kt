@@ -15,6 +15,10 @@ import kotlin.test.Test
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class SecurityIntegrationTests {
+    // ==========================
+    // Security integration tests.
+    // Verifies that all protected endpoints return 401 when no cookie or invalid cookie is present.
+    // ==========================
     @Autowired
     lateinit var mockMvc: MockMvc
 

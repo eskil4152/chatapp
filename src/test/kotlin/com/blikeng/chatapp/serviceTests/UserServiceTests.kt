@@ -16,6 +16,8 @@ import io.mockk.junit5.MockKExtension
 import io.mockk.slot
 import io.mockk.verify
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.assertNotNull
+import org.junit.jupiter.api.assertNull
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
@@ -27,6 +29,13 @@ import kotlin.test.assertFailsWith
 
 @ExtendWith(MockKExtension::class)
 class UserServiceTests {
+    // ==========================
+    // Tests for UserService. Verifies:
+    // - User lookup and self-retrieval
+    // - Profile updates
+    // - Password updates
+    // - Failure cases for invalid users, invalid passwords, and missing authentication
+    // ==========================
     @MockK private lateinit var userRepository: UserRepository
     @MockK private lateinit var roomRepository: RoomRepository
     @MockK private lateinit var passwordService: PasswordService
@@ -48,7 +57,7 @@ class UserServiceTests {
 
         val user = userService.getUserById(UUID.randomUUID())
 
-        assert(user != null)
+        assertNotNull(user)
     }
 
     @Test
@@ -57,7 +66,7 @@ class UserServiceTests {
 
         val user = userService.getUserById(UUID.randomUUID())
 
-        assert(user == null)
+        assertNull(user)
     }
 
     @Test
@@ -68,7 +77,8 @@ class UserServiceTests {
         every { roomRepository.findRoomsForUser(any()) } returns emptyList()
         every { userRepository.findById(any()) } returns Optional.of(UserEntity(username = "u", password = ""))
 
-        userService.getSelf()
+        val self = userService.getSelf()
+        assertEquals("u", self.username)
     }
 
     @Test

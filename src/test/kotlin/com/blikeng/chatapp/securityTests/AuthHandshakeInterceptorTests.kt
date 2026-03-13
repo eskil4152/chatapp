@@ -24,6 +24,15 @@ import kotlin.test.assertTrue
 
 @ExtendWith(MockKExtension::class)
 class AuthHandshakeInterceptorTests {
+    // ==========================
+    // Tests for AuthHandshakeInterceptor.
+    // Verifies that the interceptor:
+    // - Extracts the JWT token from the request cookies
+    // - Validates the token using the JwtService
+    // - Adds the user ID and username to the WebSocket handshake attributes
+    // - Fail condition: Gets wrong cookie, no cookie, invalid cookie
+    // ==========================
+
     @MockK
     lateinit var jwtService: JwtService
 
@@ -107,7 +116,7 @@ class AuthHandshakeInterceptorTests {
     }
 
     @Test
-    fun shouldFailWithInvalidToken() {
+    fun shouldFailWithInvalidCookie() {
         val cookiesList: Array<Cookie> = arrayOf(Cookie("AUTH", "fake_token"))
 
         every { jwtService.validateToken("fake_token") } returns null

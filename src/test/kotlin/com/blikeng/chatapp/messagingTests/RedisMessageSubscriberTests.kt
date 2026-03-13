@@ -18,6 +18,12 @@ import org.springframework.data.redis.connection.MessageListener
 
 @ExtendWith(MockKExtension::class)
 class RedisMessageSubscriberTests {
+    // ==========================
+    // Tests for RedisMessageSubscriber.
+    // Verifies that the Redis listener is registered on the correct
+    // room pattern topic and that incoming Redis messages are
+    // forwarded to the LocalBroadcaster.
+    // ==========================
 
     @MockK lateinit var localBroadcaster: LocalBroadcaster
     @MockK lateinit var container: RedisMessageListenerContainer

@@ -29,6 +29,17 @@ import kotlin.test.assertFailsWith
 
 @ExtendWith(MockKExtension::class)
 class RoomServiceTests {
+    // ==========================
+    // Tests for RoomService. Verifies:
+    // - Creating normal and encrypted rooms
+    // - Retrieving a user's rooms
+    // - Joining and leaving rooms
+    // - Editing and deleting rooms
+    // - Creating and retrieving private message rooms
+    // - Failure cases for invalid users, invalid room data,
+    //   invalid room IDs, missing membership, and missing authentication
+    // ==========================
+
     @MockK private lateinit var roomRepository: RoomRepository
     @MockK private lateinit var userService: UserService
     @MockK private lateinit var userRoomRepository: UserRoomRepository
@@ -42,6 +53,9 @@ class RoomServiceTests {
         SecurityContextHolder.clearContext()
     }
 
+    // ==========================
+    // Create rooms
+    // ==========================
     @Test
     fun shouldMakeNewRoom(){
         SecurityContextHolder.getContext().authentication =
@@ -144,19 +158,18 @@ class RoomServiceTests {
     }
 
     @Test
-    fun shouldFailToMakeRoomWhenInvalidUser() {
-        SecurityContextHolder.getContext().authentication =
-            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
-
-        every { userService.getUserById(any()) } returns null
-
+    fun shouldFailToMakeRoomWhenNoAuthentication() {
         val exception = assertFailsWith<ApiException> {
-            roomService.makeNewRoom("wrong name", false)
+            roomService.makeNewRoom("roomName", false)
         }
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
+        assertEquals(ErrorMessages.INVALID_TOKEN, exception.message)
     }
 
+    // ==========================
+    // Get user rooms
+    // ==========================
     @Test
     fun shouldGetAllRooms(){
         SecurityContextHolder.getContext().authentication =
@@ -195,32 +208,32 @@ class RoomServiceTests {
     }
 
     @Test
-    fun gettingPrivateRoomsWithoutOtherUserShouldNameUserError(){
+    fun shouldFailToGetRoomsWhenNoAuthentication() {
+        val exception = assertFailsWith<ApiException> {
+            roomService.getAllUserRooms()
+        }
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
+        assertEquals(ErrorMessages.INVALID_TOKEN, exception.message)
+    }
+
+    @Test
+    fun shouldFailToGetRoomsWhenInvalidUser() {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
 
-        val room = RoomEntity(name = "r", type = RoomType.PRIVATE)
-        val joinedRoom = JoinedRoom(room, RoomRole.OWNER, type = RoomType.PRIVATE)
+        every { userService.getUserById(any()) } returns null
 
-        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
-        every { roomRepository.findRoomsForUser(any()) } returns listOf(joinedRoom)
-        every { userRoomRepository.findOtherUser(any(), any()) } returns null
+        val exception = assertFailsWith<ApiException> {
+            roomService.getAllUserRooms()
+        }
 
-        val rooms = roomService.getAllUserRooms()
-        assertEquals(
-            listOf(
-                RoomDTO(
-                    roomId = room.id.toString(),
-                    roomName = "Error",
-                    encrypted = room.encrypted,
-                    role = RoomRole.OWNER,
-                    type = room.type,
-                ),
-            ),
-            rooms
-        )
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
+    // ==========================
+    // Join and leave rooms
+    // ==========================
     @Test
     fun shouldJoinRoom() {
         val roomId = UUID.randomUUID()
@@ -287,40 +300,6 @@ class RoomServiceTests {
 
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
         assertEquals(ErrorMessages.ROOM_NOT_FOUND, exception.message)
-    }
-
-    @Test
-    fun shouldFailToGetRoomsWhenNoAuthentication() {
-        val exception = assertFailsWith<ApiException> {
-            roomService.getAllUserRooms()
-        }
-
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
-        assertEquals(ErrorMessages.INVALID_TOKEN, exception.message)
-    }
-
-    @Test
-    fun shouldFailToGetRoomsWhenInvalidUser() {
-        SecurityContextHolder.getContext().authentication =
-            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
-
-        every { userService.getUserById(any()) } returns null
-
-        val exception = assertFailsWith<ApiException> {
-            roomService.getAllUserRooms()
-        }
-
-        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-    }
-
-    @Test
-    fun shouldFailToMakeRoomWhenNoAuthentication() {
-        val exception = assertFailsWith<ApiException> {
-            roomService.makeNewRoom("roomName", false)
-        }
-
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
-        assertEquals(ErrorMessages.INVALID_TOKEN, exception.message)
     }
 
     @Test
@@ -404,6 +383,9 @@ class RoomServiceTests {
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
+    // ==========================
+    // Edit rooms
+    // ==========================
     @Test
     fun shouldEditRoomName(){
         val userId = UUID.randomUUID()
@@ -596,6 +578,9 @@ class RoomServiceTests {
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
+    // ==========================
+    // Delete rooms
+    // ==========================
     @Test
     fun shouldDeleteRoom(){
         val userId = UUID.randomUUID()
@@ -687,8 +672,11 @@ class RoomServiceTests {
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
+    // ==========================
+    // Private message rooms
+    // ==========================
     @Test
-    fun shouldMakePrivateMessageRoom(){
+    fun shouldCreatePrivateMessageRoom(){
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
 
@@ -799,5 +787,32 @@ class RoomServiceTests {
         val roomId2 = roomService.getOrStartPrivateMessage("low")
 
         assertEquals(roomId1, roomId2)
+    }
+
+    @Test
+    fun shouldNamePrivateRoomAsErrorWhenOtherUserIsMissing(){
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        val room = RoomEntity(name = "r", type = RoomType.PRIVATE)
+        val joinedRoom = JoinedRoom(room, RoomRole.OWNER, type = RoomType.PRIVATE)
+
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+        every { roomRepository.findRoomsForUser(any()) } returns listOf(joinedRoom)
+        every { userRoomRepository.findOtherUser(any(), any()) } returns null
+
+        val rooms = roomService.getAllUserRooms()
+        assertEquals(
+            listOf(
+                RoomDTO(
+                    roomId = room.id.toString(),
+                    roomName = "Error",
+                    encrypted = room.encrypted,
+                    role = RoomRole.OWNER,
+                    type = room.type,
+                ),
+            ),
+            rooms
+        )
     }
 }

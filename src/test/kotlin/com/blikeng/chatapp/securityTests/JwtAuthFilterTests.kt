@@ -20,6 +20,14 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 class JwtAuthFilterTests {
+    // ==========================
+    // Tests for JwtAuthFilter. Verifies:
+    // - Extraction of the JWT token from request cookies
+    // - Validation of the token through JwtService
+    // - Population of the SecurityContext on valid authentication
+    // - Existing authentication is not overridden
+    // - Failure cases: missing AUTH cookie, wrong cookie name, invalid token, empty cookie, and whitespace-only cookie
+    // ==========================
     private val jwtService = mockk<JwtService>()
     private val filter = JwtAuthFilter(jwtService)
 
@@ -68,7 +76,7 @@ class JwtAuthFilterTests {
     }
 
     @Test
-    fun shouldSetUserId() {
+    fun shouldSetAuthenticationWhenTokenIsValid() {
         val userId = UUID.randomUUID()
         every { jwtService.validateToken("good") } returns ("u" to userId)
 

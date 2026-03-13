@@ -33,6 +33,14 @@ import kotlin.test.Test
 )
 @AutoConfigureMockMvc(addFilters = false)
 class UserControllerTests {
+    // ==========================
+    // Tests for UserController. Verifies:
+    // - Retrieving the current user
+    // - Updating user profile information
+    // - Updating user password
+    // - HTTP error mapping for service exceptions
+    // ==========================
+
     @MockkBean private lateinit var userService: UserService
     @Autowired private lateinit var mockMvc: MockMvc
 
@@ -95,6 +103,9 @@ class UserControllerTests {
             .andExpect { content { string("Password changed successfully") } }
     }
 
+    // ==========================
+    // HTTP error mapping
+    // ==========================
     @Test
     fun shouldReturnABadRequest(){
         every { userService.editPassword(any()) } throws WrongPasswordException()

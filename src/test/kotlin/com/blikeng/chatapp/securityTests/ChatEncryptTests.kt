@@ -9,6 +9,11 @@ import kotlin.test.assertFails
 import kotlin.test.assertFailsWith
 
 class ChatEncryptTests {
+    // ==========================
+    // Encryption tests. Verifies:
+    // - Encryption and decryption of messages.
+    // - Fail conditions: Empty nonce, wrong AAD, invalid base64, invalid key.
+    // ==========================
     private var encrypt = ChatEncrypt("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
 
     @Test
