@@ -1,5 +1,6 @@
 package com.blikeng.chatapp.messaging.redis
 
+import com.blikeng.chatapp.tools.getId
 import jakarta.annotation.PostConstruct
 import org.springframework.data.redis.connection.Message
 import org.springframework.data.redis.connection.MessageListener

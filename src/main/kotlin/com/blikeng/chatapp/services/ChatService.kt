@@ -8,6 +8,7 @@ import com.blikeng.chatapp.dtos.WsJoined
 import com.blikeng.chatapp.errors.InvalidTokenException
 import com.blikeng.chatapp.errors.RoomNotFoundException
 import com.blikeng.chatapp.dtos.RabbitMessageDTO
+import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
@@ -32,6 +33,7 @@ class ChatService (
     private val redisTemplate: RedisTemplate<String, String>,
     private val rabbitTemplate: RabbitTemplate,
     private val objectMapper: ObjectMapper,
+    private val presenceHandler: PresenceHandler,
 ) {
     val rooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
     val users = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
@@ -76,6 +78,7 @@ class ChatService (
 
     fun registerSession(userId: UUID, session: WebSocketSession) {
         users.computeIfAbsent(userId) { CopyOnWriteArraySet() }.add(session)
+        presenceHandler.userConnected(userId)
     }
 
     fun removeSession(userId: UUID, session: WebSocketSession) {
@@ -84,12 +87,43 @@ class ChatService (
             users.remove(userId)
         }
 
-        rooms.values.forEach { it.remove(session) }
-        rooms.entries.removeIf { it.value.isEmpty() }
+        val affectedRoomIds = rooms
+            .filterValues { it.contains(session) }
+            .keys
+            .toList()
+
+        affectedRoomIds.forEach { roomId ->
+            rooms[roomId]?.remove(session)
+
+            val stillPresentInRoom = rooms[roomId]
+                ?.any { it.attributes["userId"] == userId } == true
+
+            if (!stillPresentInRoom) {
+                presenceHandler.userLeftRoom(roomId, userId)
+            }
+
+            if (rooms[roomId]?.isEmpty() == true) {
+                rooms.remove(roomId)
+            }
+        }
+
+        presenceHandler.userDisconnected(userId)
     }
 
     fun leaveRoom(roomId: UUID, session: WebSocketSession) {
+        val userId = session.attributes["userId"] as? UUID
+
         rooms[roomId]?.remove(session)
+
+        if (userId != null) {
+            val stillPresentInRoom = rooms[roomId]
+                ?.any { (it.attributes["userId"] as? UUID) == userId } == true
+
+            if (!stillPresentInRoom) {
+                presenceHandler.userLeftRoom(roomId, userId)
+            }
+        }
+
         if (rooms[roomId]?.isEmpty() == true) {
             rooms.remove(roomId)
         }
@@ -103,9 +137,11 @@ class ChatService (
             throw RoomNotFoundException()
         }
 
-        rooms.computeIfAbsent(roomId) { CopyOnWriteArraySet() }.add(session)
-
         val room = roomRepository.findById(roomId).orElseThrow()
+
+        rooms.computeIfAbsent(roomId) { CopyOnWriteArraySet() }.add(session)
+        presenceHandler.userJoinedRoom(roomId, userId)
+
         session.sendMessage(
             TextMessage(
                 objectMapper.writeValueAsString(

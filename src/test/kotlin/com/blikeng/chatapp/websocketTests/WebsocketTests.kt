@@ -2,10 +2,8 @@ package com.blikeng.chatapp.websocketTests
 
 import com.blikeng.chatapp.services.ChatService
 import com.blikeng.chatapp.websocket.ChatWebSocketHandler
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.mockk.*
-import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import junit.framework.TestCase.assertTrue

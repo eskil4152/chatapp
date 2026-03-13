@@ -60,7 +60,6 @@ class ChatWebSocketHandler(
                     chatService.leaveRoom(roomId, session)
 
                     val message = ReceivedMessageDTO(roomId, userId, "$username left the room", "LEAVE")
-
                     chatService.broadcast(roomId, message, username)
                 }
 

@@ -6,13 +6,17 @@ import io.mockk.*
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertDoesNotThrow
+import org.junit.jupiter.api.assertNull
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
+import kotlin.test.assertEquals
 
 @ExtendWith(MockKExtension::class)
 class LocalBroadcasterTests {
@@ -80,7 +84,17 @@ class LocalBroadcasterTests {
     }
 
     @Test
-    fun shouldFailToSendMessageIfUserDoesNotExist(){
+    fun shouldDoNothingIfRoomIsNotPresentInInstance() {
+        val roomId = UUID.randomUUID()
 
+        val rooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
+
+        every { chatService.rooms } returns rooms
+
+        assertDoesNotThrow {
+            broadcaster.broadcastRaw(roomId, "hello")
+        }
+
+        assertTrue(rooms.isEmpty())
     }
 }
