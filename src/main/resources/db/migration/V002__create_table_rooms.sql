@@ -4,5 +4,6 @@ CREATE TABLE rooms
     name VARCHAR(48) NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
     encrypted BOOLEAN NOT NULL DEFAULT FALSE,
-    key_version INT
+    key_version INT,
+    type VARCHAR(16) CHECK (type IN ('GROUP', 'PRIVATE'))
 );
