@@ -1,4 +1,4 @@
-package com.blikeng.chatapp.dtos
+package com.blikeng.chatapp.dtos.websocket
 
 import java.util.*
 

@@ -1,4 +1,4 @@
-package com.blikeng.chatapp.tools
+package com.blikeng.chatapp.security.auth
 
 import com.blikeng.chatapp.errors.InvalidTokenException
 import org.springframework.security.core.context.SecurityContextHolder

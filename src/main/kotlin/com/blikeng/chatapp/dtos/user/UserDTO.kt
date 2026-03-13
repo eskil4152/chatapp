@@ -1,5 +1,6 @@
-package com.blikeng.chatapp.dtos
+package com.blikeng.chatapp.dtos.user
 
+import com.blikeng.chatapp.dtos.room.JoinedRoomDTO
 import java.util.*
 
 data class UserDTO (

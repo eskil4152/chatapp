@@ -1,4 +1,4 @@
-package com.blikeng.chatapp.dtos
+package com.blikeng.chatapp.dtos.room
 
 import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.entities.RoomRole

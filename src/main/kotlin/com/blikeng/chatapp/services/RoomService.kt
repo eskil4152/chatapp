@@ -1,12 +1,12 @@
 package com.blikeng.chatapp.services
 
-import com.blikeng.chatapp.dtos.RoomDTO
+import com.blikeng.chatapp.dtos.room.RoomDTO
 import com.blikeng.chatapp.entities.*
 import com.blikeng.chatapp.errors.*
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
-import com.blikeng.chatapp.tools.getId
+import com.blikeng.chatapp.security.auth.getId
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional

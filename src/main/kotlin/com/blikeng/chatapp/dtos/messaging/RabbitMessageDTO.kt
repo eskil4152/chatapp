@@ -1,4 +1,4 @@
-package com.blikeng.chatapp.dtos.websocket
+package com.blikeng.chatapp.dtos.messaging
 
 import java.sql.Timestamp
 import java.util.UUID

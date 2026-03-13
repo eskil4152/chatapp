@@ -1,7 +1,7 @@
 package com.blikeng.chatapp.controllerTests
 
 import com.blikeng.chatapp.controllers.RoomController
-import com.blikeng.chatapp.dtos.RoomDTO
+import com.blikeng.chatapp.dtos.room.RoomDTO
 import com.blikeng.chatapp.entities.RoomRole
 import com.blikeng.chatapp.entities.RoomType
 import com.blikeng.chatapp.errors.InvalidRoomNameException

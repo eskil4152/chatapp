@@ -2,7 +2,11 @@ package com.blikeng.chatapp.services
 
 import com.blikeng.chatapp.config.configureAad
 import com.blikeng.chatapp.dtos.*
-import com.blikeng.chatapp.dtos.websocket.RabbitMessageDTO
+import com.blikeng.chatapp.dtos.messaging.RabbitMessageDTO
+import com.blikeng.chatapp.dtos.messaging.SendMessageDTO
+import com.blikeng.chatapp.dtos.websocket.ReceivedMessageDTO
+import com.blikeng.chatapp.dtos.websocket.WsChat
+import com.blikeng.chatapp.dtos.websocket.WsJoined
 import com.blikeng.chatapp.errors.InvalidTokenException
 import com.blikeng.chatapp.errors.RoomNotFoundException
 import com.blikeng.chatapp.messaging.redis.PresenceHandler

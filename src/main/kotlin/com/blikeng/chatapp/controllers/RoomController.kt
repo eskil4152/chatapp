@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.controllers
 
-import com.blikeng.chatapp.dtos.RoomDTO
+import com.blikeng.chatapp.dtos.room.RoomDTO
 import com.blikeng.chatapp.dtos.UsernameDTO
 import com.blikeng.chatapp.services.RoomService
 import org.springframework.beans.factory.annotation.Autowired

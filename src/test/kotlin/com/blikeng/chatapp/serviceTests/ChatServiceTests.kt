@@ -1,8 +1,8 @@
 package com.blikeng.chatapp.serviceTests
 
-import com.blikeng.chatapp.dtos.websocket.RabbitMessageDTO
-import com.blikeng.chatapp.dtos.ReceivedMessageDTO
-import com.blikeng.chatapp.dtos.SendMessageDTO
+import com.blikeng.chatapp.dtos.messaging.RabbitMessageDTO
+import com.blikeng.chatapp.dtos.websocket.ReceivedMessageDTO
+import com.blikeng.chatapp.dtos.messaging.SendMessageDTO
 import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.entities.RoomType

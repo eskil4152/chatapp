@@ -1,7 +1,7 @@
 package com.blikeng.chatapp.controllerTests
 
 import com.blikeng.chatapp.controllers.FriendsController
-import com.blikeng.chatapp.dtos.FriendDTO
+import com.blikeng.chatapp.dtos.friends.FriendDTO
 import com.blikeng.chatapp.errors.AlreadyFriendsException
 import com.blikeng.chatapp.errors.InvalidUserException
 import com.blikeng.chatapp.errors.UserNotFoundException

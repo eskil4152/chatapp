@@ -1,7 +1,7 @@
 package com.blikeng.chatapp.websocket
 
-import com.blikeng.chatapp.dtos.ReceivedMessageDTO
-import com.blikeng.chatapp.dtos.WsError
+import com.blikeng.chatapp.dtos.websocket.ReceivedMessageDTO
+import com.blikeng.chatapp.dtos.websocket.WsError
 import com.blikeng.chatapp.services.ChatService
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper

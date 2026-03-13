@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.controllers
 
-import com.blikeng.chatapp.dtos.LoginDto
+import com.blikeng.chatapp.dtos.auth.LoginDto
 import com.blikeng.chatapp.services.AuthService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpHeaders

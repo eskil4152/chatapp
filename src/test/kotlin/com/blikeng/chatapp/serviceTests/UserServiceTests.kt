@@ -1,7 +1,7 @@
 package com.blikeng.chatapp.serviceTests
 
-import com.blikeng.chatapp.dtos.ChangeUserDTO
-import com.blikeng.chatapp.dtos.EditPasswordDTO
+import com.blikeng.chatapp.dtos.user.ChangeUserDTO
+import com.blikeng.chatapp.dtos.user.EditPasswordDTO
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.errors.ErrorMessages

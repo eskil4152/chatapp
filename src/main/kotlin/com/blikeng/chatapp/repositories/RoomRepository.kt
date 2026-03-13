@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.repositories
 
-import com.blikeng.chatapp.dtos.JoinedRoomDTO
+import com.blikeng.chatapp.dtos.room.JoinedRoomDTO
 import com.blikeng.chatapp.entities.RoomEntity
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
@@ -17,7 +17,7 @@ interface RoomRepository: JpaRepository<RoomEntity, UUID> {
     // Retrieves all rooms a user is a member of together with the user's role
     // and room type, returned as a JoinedRoomDTO projection.
     @Query("""
-    select new com.blikeng.chatapp.dtos.JoinedRoomDTO(r, ur.role, ur.type)
+    select new com.blikeng.chatapp.dtos.room.JoinedRoomDTO(r, ur.role, ur.type)
     from RoomEntity r
     join UserRoomEntity ur on ur.id.roomId = r.id
     where ur.id.userId = :userId

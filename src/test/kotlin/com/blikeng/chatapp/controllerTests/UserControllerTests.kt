@@ -1,7 +1,7 @@
 package com.blikeng.chatapp.controllerTests
 
 import com.blikeng.chatapp.controllers.UserController
-import com.blikeng.chatapp.dtos.UserDTO
+import com.blikeng.chatapp.dtos.user.UserDTO
 import com.blikeng.chatapp.errors.InvalidTokenException
 import com.blikeng.chatapp.errors.WrongPasswordException
 import com.blikeng.chatapp.security.auth.JwtAuthFilter
