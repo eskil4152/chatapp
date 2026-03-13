@@ -64,12 +64,6 @@ class FriendsServiceTests {
         userB = user2
     )
 
-    val friendship = FriendsEntity(
-        id = FriendsId(user1.id, user2.id),
-        userA = user1,
-        userB = user2
-    )
-
     // ==========================
     // Get friends
     // ==========================
@@ -202,8 +196,6 @@ class FriendsServiceTests {
     fun shouldFailToAddFriendWhenAlreadyFriends(){
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
-
-        val slot = slot<FriendsEntity>()
 
         every { userService.getUserById(user1.id) } returns user1
         every { userRepository.getUserByUsername("username2") } returns user2

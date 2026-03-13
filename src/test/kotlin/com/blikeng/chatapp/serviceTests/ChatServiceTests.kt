@@ -1,12 +1,15 @@
 package com.blikeng.chatapp.serviceTests
 
+import com.blikeng.chatapp.dtos.RabbitMessageDTO
+import com.blikeng.chatapp.dtos.ReceivedMessageDTO
+import com.blikeng.chatapp.dtos.SendMessageDTO
 import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.entities.RoomType
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.errors.ErrorMessages
-import com.blikeng.chatapp.dtos.RabbitMessageDTO
+import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
@@ -14,9 +17,6 @@ import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.ChatEncrypt
 import com.blikeng.chatapp.security.Encrypted
 import com.blikeng.chatapp.services.ChatService
-import com.blikeng.chatapp.dtos.ReceivedMessageDTO
-import com.blikeng.chatapp.dtos.SendMessageDTO
-import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.mockk.*
 import io.mockk.impl.annotations.InjectMockKs

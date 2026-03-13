@@ -1,8 +1,8 @@
 package com.blikeng.chatapp.messagingTests
 
+import com.blikeng.chatapp.dtos.RabbitMessageDTO
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.messaging.rabbit.ChatFlushConsumer
-import com.blikeng.chatapp.dtos.RabbitMessageDTO
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.services.ChatFlushService
 import com.fasterxml.jackson.databind.ObjectMapper

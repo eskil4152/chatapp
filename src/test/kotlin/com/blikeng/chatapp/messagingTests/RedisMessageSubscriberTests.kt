@@ -6,15 +6,14 @@ import io.mockk.*
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.data.redis.connection.Message
+import org.springframework.data.redis.connection.MessageListener
 import org.springframework.data.redis.listener.PatternTopic
 import org.springframework.data.redis.listener.RedisMessageListenerContainer
 import java.util.*
 import kotlin.test.assertEquals
-import org.springframework.data.redis.connection.MessageListener
 
 @ExtendWith(MockKExtension::class)
 class RedisMessageSubscriberTests {

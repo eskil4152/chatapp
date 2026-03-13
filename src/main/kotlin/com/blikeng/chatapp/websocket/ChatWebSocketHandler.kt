@@ -1,8 +1,8 @@
 package com.blikeng.chatapp.websocket
 
+import com.blikeng.chatapp.dtos.ReceivedMessageDTO
 import com.blikeng.chatapp.dtos.WsError
 import com.blikeng.chatapp.services.ChatService
-import com.blikeng.chatapp.dtos.ReceivedMessageDTO
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
@@ -32,7 +32,7 @@ class ChatWebSocketHandler(
             val typeString = json["type"].asText()
             val type = try {
                 MessageType.valueOf(typeString)
-            } catch (e: IllegalArgumentException) {
+            } catch (_: IllegalArgumentException) {
                 throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid message type")
             }
 

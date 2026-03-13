@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.messaging.redis
 
-import java.util.UUID
+import java.util.*
 
 object PresenceKeys {
     fun userPresence(userId: UUID): String = "presence:user:$userId"

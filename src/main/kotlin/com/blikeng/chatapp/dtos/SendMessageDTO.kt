@@ -1,7 +1,7 @@
 package com.blikeng.chatapp.dtos
 
 import java.sql.Timestamp
-import java.util.UUID
+import java.util.*
 
 @Suppress("ArrayInDataClass")
 data class SendMessageDTO(

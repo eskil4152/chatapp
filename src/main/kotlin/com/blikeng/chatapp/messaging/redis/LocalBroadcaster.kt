@@ -3,7 +3,7 @@ package com.blikeng.chatapp.messaging.redis
 import com.blikeng.chatapp.services.ChatService
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.TextMessage
-import java.util.UUID
+import java.util.*
 
 @Component
 class LocalBroadcaster(
@@ -14,7 +14,7 @@ class LocalBroadcaster(
             if (session.isOpen) {
                 try {
                     session.sendMessage(TextMessage(payload))
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     chatService.leaveRoom(roomId, session)
                 }
             }
