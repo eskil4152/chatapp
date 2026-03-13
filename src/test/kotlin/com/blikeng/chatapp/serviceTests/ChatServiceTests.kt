@@ -185,6 +185,66 @@ class ChatServiceTests {
         assertNull(chatService.users[userId])
     }
 
+    @Test
+    fun shouldNotRemoveRoomIfOtherUsersArePresentInRoom(){
+        every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
+        every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
+        every { presenceHandler.userConnected(any()) } just Runs
+        every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
+        every { presenceHandler.userLeftRoom(any(), any()) } just Runs
+        every { presenceHandler.userDisconnected(any()) } just Runs
+
+        val userId = UUID.randomUUID()
+        val userId2 = UUID.randomUUID()
+
+        val roomId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>()
+        val session2 = mockk<WebSocketSession>()
+
+        val attrs: MutableMap<String, Any> = hashMapOf("userId" to userId)
+        val attrs2: MutableMap<String, Any> = hashMapOf("userId" to userId2)
+
+        every { session.attributes } returns attrs
+        every { session.sendMessage(any()) } just Runs
+
+        every { session2.attributes } returns attrs2
+        every { session2.sendMessage(any()) } just Runs
+
+        chatService.registerSession(userId, session)
+        chatService.joinRoom(roomId, session)
+
+        chatService.registerSession(userId2, session2)
+        chatService.joinRoom(roomId, session2)
+
+        chatService.removeSession(userId, session)
+
+        assertNull(chatService.users[userId])
+        assertNotNull(chatService.rooms[roomId])
+    }
+
+    @Test
+    fun shouldKeepPresenceWhenUserStillHasSessionInRoom() {
+        every { presenceHandler.userDisconnected(any()) } just Runs
+        every { presenceHandler.userLeftRoom(any(), any()) } just Runs
+
+        val userId = UUID.randomUUID()
+        val roomId = UUID.randomUUID()
+
+        val session1 = mockk<WebSocketSession>()
+        val session2 = mockk<WebSocketSession>()
+
+        every { session1.attributes } returns hashMapOf("userId" to userId)
+        every { session2.attributes } returns hashMapOf("userId" to userId)
+
+        chatService.users[userId] = mutableSetOf(session1, session2)
+        chatService.rooms[roomId] = mutableSetOf(session1, session2)
+
+        chatService.removeSession(userId, session1)
+
+        verify(exactly = 0) { presenceHandler.userLeftRoom(roomId, userId) }
+    }
+
     // ==========================
     // Room join and leave
     // ==========================
@@ -281,6 +341,88 @@ class ChatServiceTests {
 
         assertNull(chatService.rooms[roomId])
         chatService.leaveRoom(roomId, session)
+    }
+
+    @Test
+    fun shouldLeaveRoomEvenWhenUserIdIsNotPresentInSessionAttributes(){
+        every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
+        every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
+        every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
+        every { presenceHandler.userLeftRoom(any(), any()) } just Runs
+
+        val roomId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>()
+        val attrs: MutableMap<String, Any> = hashMapOf("userId" to "")
+
+        every { session.attributes } returns attrs
+        every { session.sendMessage(any()) } just Runs
+
+        chatService.leaveRoom(roomId, session)
+        assertNull(chatService.rooms[roomId])
+    }
+
+    @Test
+    fun shouldLeaveRoomOnlyFromOneSessionIfMultipleSessionsExist() {
+        every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
+        every { roomRepository.findById(any()) } returns Optional.of(
+            RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP)
+        )
+        every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
+        every { presenceHandler.userLeftRoom(any(), any()) } just Runs
+
+        val roomId = UUID.randomUUID()
+        val userId = UUID.randomUUID()
+
+        val session1 = mockk<WebSocketSession>()
+        val session2 = mockk<WebSocketSession>()
+
+        val attrs: MutableMap<String, Any> = hashMapOf("userId" to userId)
+
+        every { session1.attributes } returns attrs
+        every { session2.attributes } returns attrs
+        every { session1.sendMessage(any()) } just Runs
+        every { session2.sendMessage(any()) } just Runs
+
+        chatService.joinRoom(roomId, session1)
+        chatService.joinRoom(roomId, session2)
+
+        assertNotNull(chatService.rooms[roomId])
+        assertEquals(2, chatService.rooms[roomId]?.size)
+        assertTrue(chatService.rooms[roomId]?.contains(session1) == true)
+        assertTrue(chatService.rooms[roomId]?.contains(session2) == true)
+
+        chatService.leaveRoom(roomId, session1)
+
+        assertNotNull(chatService.rooms[roomId])
+        assertEquals(1, chatService.rooms[roomId]?.size)
+        assertFalse(chatService.rooms[roomId]?.contains(session1) == true)
+        assertTrue(chatService.rooms[roomId]?.contains(session2) == true)
+    }
+
+    @Test
+    fun shouldRemoveUserPresenceWhenRemainingRoomSessionHasInvalidUserIdType() {
+        every { presenceHandler.userLeftRoom(any(), any()) } just Runs
+
+        val roomId = UUID.randomUUID()
+        val userId = UUID.randomUUID()
+
+        val leavingSession = mockk<WebSocketSession>()
+        val invalidSession = mockk<WebSocketSession>()
+
+        every { leavingSession.attributes } returns hashMapOf("userId" to userId)
+        every { invalidSession.attributes } returns hashMapOf("userId" to "not-a-uuid")
+
+        chatService.rooms[roomId] =
+            java.util.concurrent.CopyOnWriteArraySet(mutableSetOf(leavingSession, invalidSession))
+
+        chatService.leaveRoom(roomId, leavingSession)
+
+        verify(exactly = 1) { presenceHandler.userLeftRoom(roomId, userId) }
+        assertNotNull(chatService.rooms[roomId])
+        assertEquals(1, chatService.rooms[roomId]?.size)
+        assertTrue(chatService.rooms[roomId]?.contains(invalidSession) == true)
     }
 
     // ==========================

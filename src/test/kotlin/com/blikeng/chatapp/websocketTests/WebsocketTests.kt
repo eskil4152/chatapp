@@ -273,7 +273,7 @@ class WebsocketTests {
         val json = objectMapper.readTree(msgSlot.captured.payload)
         assertEquals("ERROR", json["type"].asText())
         assertEquals(401, json["code"].asInt())
-        assertEquals("No User ID found", json["message"].asText())
+        assertEquals("No userID found", json["message"].asText())
 
         verify (exactly = 0) { chatService.joinRoom(any(), any()) }
         verify (exactly = 0) { chatService.broadcast(any(), any(), any()) }
@@ -304,6 +304,36 @@ class WebsocketTests {
         assertEquals("ERROR", json["type"].asText())
         assertEquals(400, json["code"].asInt())
         assertEquals("Invalid message type", json["message"].asText())
+
+        verify (exactly = 0) { chatService.joinRoom(any(), any()) }
+        verify (exactly = 0) { chatService.broadcast(any(), any(), any()) }
+        verify (exactly = 0) { chatService.leaveRoom(any(), any()) }
+    }
+
+    @Test
+    fun shouldFailToSendMessageWithInvalidRoomId(){
+        val payload = TextMessage((objectMapper.createObjectNode()
+            .put("type", "MESSAGE")
+            .put("message", "m" )
+            .put("roomId", "")).toString())
+
+        val attributes: MutableMap<String, Any> = mutableMapOf(
+            "username" to "u",
+            "userId" to UUID.randomUUID()
+        )
+
+        every { session.attributes } returns attributes
+        every { session.isOpen } returns true
+
+        val msgSlot = slot<TextMessage>()
+        every { session.sendMessage(capture(msgSlot)) } just Runs
+
+        handler.handleMessage(session, payload)
+
+        val json = objectMapper.readTree(msgSlot.captured.payload)
+        assertEquals("ERROR", json["type"].asText())
+        assertEquals(400, json["code"].asInt())
+        assertEquals("Invalid room ID", json["message"].asText())
 
         verify (exactly = 0) { chatService.joinRoom(any(), any()) }
         verify (exactly = 0) { chatService.broadcast(any(), any(), any()) }

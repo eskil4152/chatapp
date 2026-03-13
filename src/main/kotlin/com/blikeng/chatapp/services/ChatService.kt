@@ -63,16 +63,19 @@ class ChatService (
             .toList()
 
         affectedRoomIds.forEach { roomId ->
-            rooms[roomId]?.remove(session)
+            val roomSessions = rooms[roomId] ?: return@forEach
 
-            val stillPresentInRoom = rooms[roomId]
-                ?.any { it.attributes["userId"] == userId } == true
+            roomSessions.remove(session)
+
+            val stillPresentInRoom = roomSessions.any {
+                it.attributes["userId"] == userId
+            }
 
             if (!stillPresentInRoom) {
                 presenceHandler.userLeftRoom(roomId, userId)
             }
 
-            if (rooms[roomId]?.isEmpty() == true) {
+            if (roomSessions.isEmpty()) {
                 rooms.remove(roomId)
             }
         }
