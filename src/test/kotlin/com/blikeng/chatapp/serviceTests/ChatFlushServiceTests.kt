@@ -1,3 +1,5 @@
+package com.blikeng.chatapp.serviceTests
+
 import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.services.ChatFlushService
@@ -7,6 +9,11 @@ import io.mockk.verify
 import kotlin.test.Test
 
 class ChatFlushServiceTests {
+    // ==========================
+    // Tests for ChatFlushService.
+    // Verifies that chat batches are persisted by delegating to ChatRepository.
+    // ==========================
+
     private val chatRepository = mockk<ChatRepository>()
     private val service = ChatFlushService(chatRepository)
 

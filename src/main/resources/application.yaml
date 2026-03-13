@@ -16,9 +16,28 @@ spring:
   web:
     error:
       include-message: always
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      username: ${SPRING_DATA_REDIS_USERNAME:}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
+      timeout: 10000
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:guest}
+    password: ${SPRING_RABBITMQ_PASSWORD:guest}
+    virtual-host: ${SPRING_RABBITMQ_VHOST:}
+    ssl:
+      enabled: ${SPRING_RABBITMQ_SSL:false}
+
+chat:
+  flush:
+    fixedDelayMs: 10000
 
 server:
-  port: '5050'
+  port: ${PORT:5050}
 
 app:
   crypto:

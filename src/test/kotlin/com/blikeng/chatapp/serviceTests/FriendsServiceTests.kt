@@ -26,6 +26,15 @@ import kotlin.test.assertFailsWith
 
 @ExtendWith(MockKExtension::class)
 class FriendsServiceTests {
+    // ==========================
+    // Tests for FriendsService. Verifies:
+    // - Retrieving a user's friends
+    // - Adding and removing friends
+    // - Retrieving friend information
+    // - Failure cases for invalid users, missing users, duplicate friendships,
+    //   self-add attempts, and non-friend access
+    // ==========================
+
     @InjectMockKs
     private lateinit var friendsService: FriendsService
 
@@ -55,12 +64,9 @@ class FriendsServiceTests {
         userB = user2
     )
 
-    val friendship = FriendsEntity(
-        id = FriendsId(user1.id, user2.id),
-        userA = user1,
-        userB = user2
-    )
-
+    // ==========================
+    // Get friends
+    // ==========================
     @Test
     fun shouldGetFriendsAsUser1(){
         SecurityContextHolder.getContext().authentication =
@@ -101,6 +107,9 @@ class FriendsServiceTests {
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
+    // ==========================
+    // Add friends
+    // ==========================
     @Test
     fun shouldAddFriendsAsUser1(){
         SecurityContextHolder.getContext().authentication =
@@ -188,8 +197,6 @@ class FriendsServiceTests {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
 
-        val slot = slot<FriendsEntity>()
-
         every { userService.getUserById(user1.id) } returns user1
         every { userRepository.getUserByUsername("username2") } returns user2
         every { friendsRepository.existsById(any()) } returns true
@@ -201,6 +208,9 @@ class FriendsServiceTests {
         assertEquals(HttpStatus.CONFLICT, exception.status)
     }
 
+    // ==========================
+    // Remove friends
+    // ==========================
     @Test
     fun shouldRemoveFriends(){
         SecurityContextHolder.getContext().authentication =
@@ -265,6 +275,9 @@ class FriendsServiceTests {
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
+    // ==========================
+    // Get friend info
+    // ==========================
     @Test
     fun shouldGetFriendInfo(){
         SecurityContextHolder.getContext().authentication =
@@ -325,6 +338,9 @@ class FriendsServiceTests {
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
+    // ==========================
+    // Get friend entity
+    // ==========================
     @Test
     fun shouldGetFriendEntity(){
         SecurityContextHolder.getContext().authentication =

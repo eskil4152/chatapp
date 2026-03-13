@@ -1,18 +1,21 @@
 package com.blikeng.chatapp.services
 
-import com.blikeng.chatapp.dtos.RoomDTO
+import com.blikeng.chatapp.dtos.room.RoomDTO
 import com.blikeng.chatapp.entities.*
 import com.blikeng.chatapp.errors.*
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
-import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
-import com.blikeng.chatapp.tools.getId
+import com.blikeng.chatapp.security.auth.getId
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.*
 
+// ==========================
+// Handles room creation, membership, room updates, room deletion,
+// and deterministic private message room creation between friends.
+// ==========================
 @Service
 class RoomService(
     @Autowired private val roomRepository: RoomRepository,
@@ -20,14 +23,14 @@ class RoomService(
     @Autowired private val userService: UserService,
 ) {
     @Autowired
-    private lateinit var userRepository: UserRepository
-
-    @Autowired
     private lateinit var friendsService: FriendsService
 
     @Autowired
     private lateinit var chatRepository: ChatRepository
 
+    // ==========================
+    // Room creation and retrieval
+    // ==========================
     fun makeNewRoom(roomName: String?, encrypted: Boolean?) {
         val userId = getId()
         userService.getUserById(userId) ?: throw InvalidUserException()
@@ -67,13 +70,16 @@ class RoomService(
         return roomDtos
     }
 
+    // ==========================
+    // Room membership
+    // ==========================
     fun joinRoom(roomId: String?){
         val userId = getId()
         userService.getUserById(userId) ?: throw InvalidUserException()
 
         val roomUUID = try {
             UUID.fromString(roomId)
-        } catch (e: IllegalArgumentException) {
+        } catch (_: IllegalArgumentException) {
             throw InvalidUUIDException()
         }
 
@@ -83,13 +89,35 @@ class RoomService(
         userRoomRepository.save(userRoom)
     }
 
+    @Transactional
+    fun leaveRoom(roomId: String?){
+        val userId = getId()
+        userService.getUserById(userId) ?: throw InvalidUserException()
+
+        val roomUUID = try {
+            UUID.fromString(roomId)
+        } catch (_: IllegalArgumentException) {
+            throw InvalidUUIDException()
+        }
+
+        val existed = userRoomRepository.existsByIdUserIdAndIdRoomId(userId, roomUUID)
+        if (!existed) {
+            throw RoomNotFoundException()
+        }
+
+        userRoomRepository.deleteByIdUserIdAndIdRoomId(userId, roomUUID)
+    }
+
+    // ==========================
+    // Room updates and deletion
+    // ==========================
     fun editRoom(roomDTO: RoomDTO) {
         val userId = getId()
         userService.getUserById(userId) ?: throw InvalidUserException()
 
         val roomId = try {
             UUID.fromString(roomDTO.roomId)
-        } catch (e: IllegalArgumentException) {
+        } catch (_: IllegalArgumentException) {
             throw InvalidUUIDException()
         }
 
@@ -113,32 +141,13 @@ class RoomService(
     }
 
     @Transactional
-    fun leaveRoom(roomId: String?){
-        val userId = getId()
-        userService.getUserById(userId) ?: throw InvalidUserException()
-
-        val roomUUID = try {
-            UUID.fromString(roomId)
-        } catch (e: IllegalArgumentException) {
-            throw InvalidUUIDException()
-        }
-
-        val existed = userRoomRepository.existsByIdUserIdAndIdRoomId(userId, roomUUID)
-        if (!existed) {
-            throw RoomNotFoundException()
-        }
-
-        userRoomRepository.deleteByIdUserIdAndIdRoomId(userId, roomUUID)
-    }
-
-    @Transactional
     fun deleteRoom(roomId: String?){
         val userId = getId()
         userService.getUserById(userId) ?: throw InvalidUserException()
 
         val roomUUID = try {
             UUID.fromString(roomId)
-        } catch (e: IllegalArgumentException) {
+        } catch (_: IllegalArgumentException) {
             throw InvalidUUIDException()
         }
 
@@ -153,6 +162,9 @@ class RoomService(
         roomRepository.deleteById(roomUUID)
     }
 
+    // ==========================
+    // Private message rooms
+    // ==========================
     fun getOrStartPrivateMessage(username: String): UUID {
         val userId = getId()
         userService.getUserById(userId) ?: throw InvalidUserException()
@@ -194,6 +206,9 @@ class RoomService(
         return room.id
     }
 
+    // ==========================
+    // Internal helper
+    // ==========================
     private fun generatePrivateRoomId(user1: UUID, user2: UUID): UUID {
         if (user1 == user2) throw FriendYourselfException()
 

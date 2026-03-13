@@ -1,6 +1,7 @@
 package com.blikeng.chatapp.e2e
 
 import com.blikeng.chatapp.errors.ErrorMessages
+import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.servlet.http.Cookie
 import org.hamcrest.CoreMatchers.containsString
 import org.hamcrest.CoreMatchers.not
@@ -21,7 +22,6 @@ import org.springframework.web.socket.WebSocketHttpHeaders
 import org.springframework.web.socket.WebSocketSession
 import org.springframework.web.socket.client.standard.StandardWebSocketClient
 import org.springframework.web.socket.handler.TextWebSocketHandler
-import tools.jackson.module.kotlin.jacksonObjectMapper
 import java.net.URI
 import java.util.*
 import java.util.concurrent.CopyOnWriteArrayList
@@ -33,7 +33,20 @@ import java.util.concurrent.TimeUnit
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class E2ETests : PostgresContainerBase() {
+    // ==========================
+    // E2E tests covering the full expected lifecycle of a user session. Tests cover:
+    // - Failed login and registration attempts
+    // - Successful registration and access to protected endpoints
+    // - Room listing and room creation
+    // - User profile retrieval and updates
+    // - Multi-user interactions
+    // - Room access, messaging, and persistence
+    // - Room changes and DELETE endpoints
+    // - Friend management
+    // ==========================
     @Autowired private lateinit var mockMvc: MockMvc
+    @Autowired private lateinit var objectMapper: ObjectMapper
+
     @LocalServerPort
     private var port: Int = 0
 
@@ -230,10 +243,10 @@ class E2ETests : PostgresContainerBase() {
             }
             .andReturn()
 
-        val json = jacksonObjectMapper()
+        val json = objectMapper
             .readTree(result.response.contentAsString)
 
-        roomId = json[0]["roomId"].asString()
+        roomId = json[0]["roomId"].asText()
     }
 
     @Test
@@ -259,12 +272,12 @@ class E2ETests : PostgresContainerBase() {
             .andExpect { status { isOk() } }
             .andReturn()
 
-        val json = jacksonObjectMapper()
+        val json = objectMapper
             .readTree(result.response.contentAsString)
 
-        assertEquals("I am a test user", json["bio"].asString())
-        assertEquals("e@mail.com", json["email"].asString())
-        assertEquals("Full Name", json["fullName"].asString())
+        assertEquals("I am a test user", json["bio"].asText())
+        assertEquals("e@mail.com", json["email"].asText())
+        assertEquals("Full Name", json["fullName"].asText())
     }
 
     @Test
@@ -488,7 +501,7 @@ class E2ETests : PostgresContainerBase() {
     @Order(27)
     fun shouldEnterRoomAndGetMessages() {
         val received = CopyOnWriteArrayList<String>()
-        val latch = CountDownLatch(2)
+        val latch = CountDownLatch(3)
 
         val handler = object : TextWebSocketHandler() {
             override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
@@ -546,11 +559,11 @@ class E2ETests : PostgresContainerBase() {
             .andExpect { status { isOk() } }
             .andReturn()
 
-        val json = jacksonObjectMapper()
+        val json = objectMapper
             .readTree(result.response.contentAsString)
 
         encryptedRoomId = json
-            .first { it["encrypted"].asBoolean() }["roomId"].asString()
+            .first { it["encrypted"].asBoolean() }["roomId"].asText()
     }
 
     @Test
@@ -624,7 +637,7 @@ class E2ETests : PostgresContainerBase() {
     @Order(31)
     fun shouldEnterEncryptedRoomAndGetMessages() {
         val received = CopyOnWriteArrayList<String>()
-        val latch = CountDownLatch(2)
+        val latch = CountDownLatch(3)
 
         val handler = object : TextWebSocketHandler() {
             override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {

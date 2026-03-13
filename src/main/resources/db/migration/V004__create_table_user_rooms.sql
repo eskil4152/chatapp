@@ -4,7 +4,9 @@ CREATE TABLE user_rooms
     room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
     PRIMARY KEY (user_id, room_id),
     role VARCHAR(16) NOT NULL
-    CHECK (role IN ('OWNER', 'MEMBER'))
+        CHECK (role IN ('OWNER', 'MEMBER')),
+    type VARCHAR(16)
+        CHECK (type IN ('GROUP', 'PRIVATE'))
 );
 
 CREATE INDEX IF NOT EXISTS ix_user_rooms_room_id ON user_rooms(room_id);

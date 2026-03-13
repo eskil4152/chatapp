@@ -2,6 +2,11 @@ package com.blikeng.chatapp.errors
 
 import org.springframework.http.HttpStatus
 
+// ==========================
+// Application-specific API exceptions mapped to HTTP status codes.
+// Used throughout services to signal expected client-facing errors.
+// ==========================
+
 // User related errors
 class InvalidTokenException : ApiException(HttpStatus.UNAUTHORIZED, ErrorMessages.INVALID_TOKEN)
 class InvalidCredentialsException : ApiException(HttpStatus.UNAUTHORIZED, ErrorMessages.INVALID_CREDENTIALS)

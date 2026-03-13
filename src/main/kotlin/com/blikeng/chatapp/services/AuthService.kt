@@ -6,11 +6,16 @@ import com.blikeng.chatapp.errors.ShortPasswordException
 import com.blikeng.chatapp.errors.ShortUsernameException
 import com.blikeng.chatapp.errors.UsernameAlreadyExistsException
 import com.blikeng.chatapp.repositories.AuthRepository
-import com.blikeng.chatapp.security.JwtService
-import com.blikeng.chatapp.security.PasswordService
+import com.blikeng.chatapp.security.auth.JwtService
+import com.blikeng.chatapp.security.auth.PasswordService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 
+// ==========================
+// Handles user registration and login.
+// Validates credentials, hashes passwords, persists users,
+// and issues JWT tokens for authenticated sessions.
+// ==========================
 @Service
 class AuthService(
     @Autowired private val passwordService: PasswordService,

@@ -2,7 +2,7 @@ package com.blikeng.chatapp.errorHandlingTests
 
 import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.errors.GlobalExceptionHandler
-import com.blikeng.chatapp.security.JwtAuthFilter
+import com.blikeng.chatapp.security.auth.JwtAuthFilter
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
@@ -26,11 +26,11 @@ import org.springframework.web.bind.annotation.RestController
 )
 @Import(GlobalExceptionHandler::class)
 class GlobalErrorHandlerTests {
-
+    // ==========================
+    // Tests for covering custom exception. Handmade controller to assert custom exceptions throws correctly
+    // ==========================
     @Autowired
     lateinit var mockMvc: MockMvc
-
-
 
     @Test
     fun shouldHandleApiException() {

@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.services
 
-import com.blikeng.chatapp.dtos.FriendDTO
+import com.blikeng.chatapp.dtos.friends.FriendDTO
 import com.blikeng.chatapp.entities.FriendsEntity
 import com.blikeng.chatapp.entities.FriendsId
 import com.blikeng.chatapp.entities.UserEntity
@@ -10,10 +10,14 @@ import com.blikeng.chatapp.errors.InvalidUserException
 import com.blikeng.chatapp.errors.UserNotFoundException
 import com.blikeng.chatapp.repositories.FriendsRepository
 import com.blikeng.chatapp.repositories.UserRepository
-import com.blikeng.chatapp.tools.getId
+import com.blikeng.chatapp.security.auth.getId
 import org.springframework.stereotype.Service
 import java.util.*
 
+// ==========================
+// Handles friend relationships, friend lookups, and friend profile retrieval.
+// Validates friendship existence and enforces deterministic friendship ordering.
+// ==========================
 @Service
 class FriendsService(
     private val friendsRepository: FriendsRepository,
@@ -99,6 +103,9 @@ class FriendsService(
         return friend
     }
 
+    // ==========================
+    // Internal helpers
+    // ==========================
     private fun generateFriendshipId(user1: UUID, user2: UUID): FriendsId {
         if (user1 == user2) throw FriendYourselfException()
 

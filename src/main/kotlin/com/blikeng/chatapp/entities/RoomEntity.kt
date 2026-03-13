@@ -16,7 +16,7 @@ class RoomEntity(
     val keyVersion: Int? = null,
 
     @Enumerated(EnumType.STRING)
-    val type: RoomType = RoomType.GROUP
+    val type: RoomType
 )
 
 enum class RoomType {

@@ -1,12 +1,17 @@
 package com.blikeng.chatapp.controllers
 
-import com.blikeng.chatapp.dtos.RoomDTO
 import com.blikeng.chatapp.dtos.UsernameDTO
+import com.blikeng.chatapp.dtos.room.RoomDTO
 import com.blikeng.chatapp.services.RoomService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
+// ==========================
+// Exposes room management endpoints for listing rooms, creating rooms,
+// joining and leaving rooms, editing and deleting rooms,
+// and starting private message rooms.
+// ==========================
 @RestController
 @RequestMapping("/api/rooms")
 class RoomController(
@@ -69,6 +74,6 @@ class RoomController(
     fun privateMessage(
         @RequestBody usernameDTO: UsernameDTO
     ) : ResponseEntity<String> {
-        return ResponseEntity.status(201).body(roomService.getOrStartPrivateMessage(usernameDTO.username).toString());
+        return ResponseEntity.status(201).body(roomService.getOrStartPrivateMessage(usernameDTO.username).toString())
     }
 }

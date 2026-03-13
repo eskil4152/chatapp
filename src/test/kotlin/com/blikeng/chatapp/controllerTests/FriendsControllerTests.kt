@@ -1,11 +1,11 @@
 package com.blikeng.chatapp.controllerTests
 
 import com.blikeng.chatapp.controllers.FriendsController
-import com.blikeng.chatapp.dtos.FriendDTO
+import com.blikeng.chatapp.dtos.friends.FriendDTO
 import com.blikeng.chatapp.errors.AlreadyFriendsException
 import com.blikeng.chatapp.errors.InvalidUserException
 import com.blikeng.chatapp.errors.UserNotFoundException
-import com.blikeng.chatapp.security.JwtAuthFilter
+import com.blikeng.chatapp.security.auth.JwtAuthFilter
 import com.blikeng.chatapp.services.FriendsService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
@@ -34,6 +34,15 @@ import java.time.Instant
 )
 @AutoConfigureMockMvc(addFilters = false)
 class FriendsControllerTests {
+    // ==========================
+    // Tests for FriendsController. Verifies:
+    // - Retrieving friends
+    // - Adding friends
+    // - Removing friends
+    // - Retrieving friend information
+    // - HTTP error mapping for service exceptions
+    // ==========================
+
     @MockkBean private lateinit var friendsService: FriendsService
 
     @Autowired
@@ -108,6 +117,9 @@ class FriendsControllerTests {
             }
     }
 
+    // ==========================
+    // HTTP error mapping
+    // ==========================
     @Test
     fun shouldGetBadRequestFromInvalidUser(){
         every { friendsService.getFriends() } throws InvalidUserException()

@@ -1,10 +1,10 @@
 package com.blikeng.chatapp.controllerTests
 
 import com.blikeng.chatapp.controllers.UserController
-import com.blikeng.chatapp.dtos.UserDTO
+import com.blikeng.chatapp.dtos.user.UserDTO
 import com.blikeng.chatapp.errors.InvalidTokenException
 import com.blikeng.chatapp.errors.WrongPasswordException
-import com.blikeng.chatapp.security.JwtAuthFilter
+import com.blikeng.chatapp.security.auth.JwtAuthFilter
 import com.blikeng.chatapp.services.UserService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
@@ -33,6 +33,14 @@ import kotlin.test.Test
 )
 @AutoConfigureMockMvc(addFilters = false)
 class UserControllerTests {
+    // ==========================
+    // Tests for UserController. Verifies:
+    // - Retrieving the current user
+    // - Updating user profile information
+    // - Updating user password
+    // - HTTP error mapping for service exceptions
+    // ==========================
+
     @MockkBean private lateinit var userService: UserService
     @Autowired private lateinit var mockMvc: MockMvc
 
@@ -95,6 +103,9 @@ class UserControllerTests {
             .andExpect { content { string("Password changed successfully") } }
     }
 
+    // ==========================
+    // HTTP error mapping
+    // ==========================
     @Test
     fun shouldReturnABadRequest(){
         every { userService.editPassword(any()) } throws WrongPasswordException()

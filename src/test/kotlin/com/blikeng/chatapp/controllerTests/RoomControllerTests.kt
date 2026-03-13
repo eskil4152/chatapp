@@ -1,13 +1,13 @@
 package com.blikeng.chatapp.controllerTests
 
 import com.blikeng.chatapp.controllers.RoomController
-import com.blikeng.chatapp.dtos.RoomDTO
+import com.blikeng.chatapp.dtos.room.RoomDTO
 import com.blikeng.chatapp.entities.RoomRole
 import com.blikeng.chatapp.entities.RoomType
 import com.blikeng.chatapp.errors.InvalidRoomNameException
 import com.blikeng.chatapp.errors.InvalidTokenException
 import com.blikeng.chatapp.errors.RoomNotFoundException
-import com.blikeng.chatapp.security.JwtAuthFilter
+import com.blikeng.chatapp.security.auth.JwtAuthFilter
 import com.blikeng.chatapp.services.RoomService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
@@ -33,6 +33,17 @@ import kotlin.test.Test
 )
 @AutoConfigureMockMvc(addFilters = false)
 class RoomControllerTests {
+    // ==========================
+    // Tests for RoomController. Verifies:
+    // - Retrieving user rooms
+    // - Creating rooms
+    // - Joining rooms
+    // - Updating room names
+    // - Deleting rooms
+    // - Creating private message rooms
+    // - HTTP error mapping for service exceptions
+    // ==========================
+
     @MockkBean private lateinit var roomService: RoomService
     @Autowired private lateinit var mockMvc: MockMvc
 
@@ -133,6 +144,9 @@ class RoomControllerTests {
             .andExpect { status { isCreated() } }
     }
 
+    // ==========================
+    // HTTP error mapping
+    // ==========================
     @Test
     fun shouldGetUnauthorized(){
         every { roomService.makeNewRoom(any(), any()) } throws InvalidTokenException()

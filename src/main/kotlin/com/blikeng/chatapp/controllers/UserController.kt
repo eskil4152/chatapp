@@ -1,17 +1,21 @@
 package com.blikeng.chatapp.controllers
 
-import com.blikeng.chatapp.dtos.ChangeUserDTO
-import com.blikeng.chatapp.dtos.EditPasswordDTO
-import com.blikeng.chatapp.dtos.UserDTO
+import com.blikeng.chatapp.dtos.user.ChangeUserDTO
+import com.blikeng.chatapp.dtos.user.EditPasswordDTO
+import com.blikeng.chatapp.dtos.user.UserDTO
 import com.blikeng.chatapp.services.UserService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
+// ==========================
+// Exposes user profile endpoints for retrieving the authenticated user,
+// updating profile information, and changing the account password.
+// ==========================
 @RestController
 @RequestMapping("/api/user")
 class UserController(@Autowired private val userService: UserService) {
-    @GetMapping("")
+    @GetMapping
     fun getInfo(
     ) : ResponseEntity<UserDTO>? {
         val user = userService.getSelf()
