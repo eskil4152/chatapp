@@ -22,6 +22,5 @@ object ErrorMessages {
 
     const val USER_NOT_FOUND = "User not found"
     const val ALREADY_FRIEND = "Already friends"
-    const val NOT_FRIENDS = "Not friends"
     const val CANT_FRIEND_YOURSELF = "You can't friend yourself"
 }

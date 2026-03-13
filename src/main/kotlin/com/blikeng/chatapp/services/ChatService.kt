@@ -1,7 +1,6 @@
 package com.blikeng.chatapp.services
 
 import com.blikeng.chatapp.config.configureAad
-import com.blikeng.chatapp.dtos.*
 import com.blikeng.chatapp.dtos.messaging.RabbitMessageDTO
 import com.blikeng.chatapp.dtos.messaging.SendMessageDTO
 import com.blikeng.chatapp.dtos.websocket.ReceivedMessageDTO
@@ -190,7 +189,6 @@ class ChatService (
             val enc = encrypt.encrypt(
                 plaintext = message.content,
                 aad = configureAad(room.id, messageId, message.userId),
-                keyVersion = v!!
             )
 
             RabbitMessageDTO(
@@ -227,7 +225,6 @@ class ChatService (
                     ciphertext = m.ciphertext,
                     nonce = m.nonce!!,
                     aad = configureAad(m.roomId, m.id, m.userId),
-                    keyVersion = m.keyVersion!!
                 )
             }
 

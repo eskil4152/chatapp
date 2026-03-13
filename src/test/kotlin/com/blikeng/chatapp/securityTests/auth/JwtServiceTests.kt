@@ -1,4 +1,4 @@
-package com.blikeng.chatapp.securityTests
+package com.blikeng.chatapp.securityTests.auth
 
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.security.auth.JwtService

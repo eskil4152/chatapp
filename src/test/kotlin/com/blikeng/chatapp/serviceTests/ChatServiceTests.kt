@@ -1,8 +1,8 @@
 package com.blikeng.chatapp.serviceTests
 
 import com.blikeng.chatapp.dtos.messaging.RabbitMessageDTO
-import com.blikeng.chatapp.dtos.websocket.ReceivedMessageDTO
 import com.blikeng.chatapp.dtos.messaging.SendMessageDTO
+import com.blikeng.chatapp.dtos.websocket.ReceivedMessageDTO
 import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.entities.RoomType
@@ -366,7 +366,7 @@ class ChatServiceTests {
         val room = RoomEntity(name = "r", encrypted = true, keyVersion = 1, type = RoomType.GROUP)
 
         every { roomRepository.findById(room.id) } returns Optional.of(room)
-        every { encrypt.encrypt(plaintext = "secret", aad = any(), keyVersion = 1) } returns Encrypted(ciphertext, nonce)
+        every { encrypt.encrypt(plaintext = "secret", aad = any()) } returns Encrypted(ciphertext, nonce)
 
         val session = mockk<WebSocketSession>(relaxed = true)
         val attrs: MutableMap<String, Any> = hashMapOf("userId" to user.id)
@@ -384,7 +384,6 @@ class ChatServiceTests {
             encrypt.encrypt(
                 plaintext = "secret",
                 aad = any(),
-                keyVersion = 1
             )
         }
     }
@@ -499,7 +498,7 @@ class ChatServiceTests {
         val saved: List<ChatEntity> = listOf(chat)
 
         every { chatRepository.getAllChatsByRoomId(any()) } returns saved
-        every { encrypt.decrypt(any(), any(), any(), any()) } returns "message"
+        every { encrypt.decrypt(any(), any(), any()) } returns "message"
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
         every { roomRepository.findById(any()) } returns Optional.of(room)
         every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
@@ -528,7 +527,6 @@ class ChatServiceTests {
                 ciphertext = chat.ciphertext!!,
                 nonce = chat.nonce!!,
                 aad = any(),
-                keyVersion = 1
             )
         }
     }

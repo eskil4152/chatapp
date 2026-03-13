@@ -26,7 +26,7 @@ class ChatEncrypt(
         SecretKeySpec(raw, "AES")
     }
 
-    fun encrypt(plaintext: String, aad: ByteArray, keyVersion: Int): Encrypted {
+    fun encrypt(plaintext: String, aad: ByteArray): Encrypted {
         val nonce = ByteArray(12).also(rng::nextBytes)
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, keyV1, GCMParameterSpec(128, nonce))
@@ -35,7 +35,7 @@ class ChatEncrypt(
         return Encrypted(ciphertext, nonce)
     }
 
-    fun decrypt(ciphertext: ByteArray, nonce: ByteArray, aad: ByteArray, keyVersion: Int): String {
+    fun decrypt(ciphertext: ByteArray, nonce: ByteArray, aad: ByteArray): String {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.DECRYPT_MODE, keyV1, GCMParameterSpec(128, nonce))
         cipher.updateAAD(aad)

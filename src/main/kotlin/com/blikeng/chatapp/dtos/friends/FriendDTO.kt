@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.dtos.friends
 
-import java.util.Date
+import java.util.*
 
 data class FriendDTO (
     val username: String?,

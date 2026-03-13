@@ -1,11 +1,11 @@
 package com.blikeng.chatapp.serviceTests
 
+import com.blikeng.chatapp.dtos.room.JoinedRoomDTO
 import com.blikeng.chatapp.dtos.room.RoomDTO
 import com.blikeng.chatapp.entities.*
 import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.errors.UserNotFoundException
-import com.blikeng.chatapp.dtos.room.JoinedRoomDTO
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.services.FriendsService

@@ -1,4 +1,4 @@
-package com.blikeng.chatapp.securityTests
+package com.blikeng.chatapp.securityTests.auth
 
 import jakarta.servlet.http.Cookie
 import org.springframework.beans.factory.annotation.Autowired

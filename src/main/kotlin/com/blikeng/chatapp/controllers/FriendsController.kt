@@ -1,7 +1,7 @@
 package com.blikeng.chatapp.controllers
 
-import com.blikeng.chatapp.dtos.friends.FriendDTO
 import com.blikeng.chatapp.dtos.UsernameDTO
+import com.blikeng.chatapp.dtos.friends.FriendDTO
 import com.blikeng.chatapp.services.FriendsService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*
 class FriendsController(@Autowired private val friendsService: FriendsService) {
     @GetMapping
     fun getFriends(): ResponseEntity<List<FriendDTO>> {
-        val friends = friendsService.getFriends();
+        val friends = friendsService.getFriends()
 
         return ResponseEntity.ok(friends)
     }

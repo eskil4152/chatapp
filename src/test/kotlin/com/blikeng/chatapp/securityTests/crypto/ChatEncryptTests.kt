@@ -1,4 +1,4 @@
-package com.blikeng.chatapp.securityTests
+package com.blikeng.chatapp.securityTests.crypto
 
 import com.blikeng.chatapp.config.configureAad
 import com.blikeng.chatapp.security.crypto.ChatEncrypt
@@ -19,7 +19,6 @@ class ChatEncryptTests {
     @Test
     fun shouldEncryptAndDecrypt(){
         val stringToEncrypt = "Hello from unit testing!"
-        val keyVersion = 1
 
         val roomId = UUID.randomUUID()
         val chatId = UUID.randomUUID()
@@ -30,14 +29,12 @@ class ChatEncryptTests {
         val encrypted = encrypt.encrypt(
             plaintext = stringToEncrypt,
             aad = aad,
-            keyVersion = keyVersion
         )
 
         val decrypted = encrypt.decrypt(
             ciphertext = encrypted.ciphertext,
             nonce = encrypted.nonce,
             aad = aad,
-            keyVersion = keyVersion
         )
 
         assertEquals(decrypted, stringToEncrypt)
@@ -46,28 +43,26 @@ class ChatEncryptTests {
     @Test
     fun shouldFailDecryptWithEmptyNonce() {
         val plaintext = "x"
-        val keyVersion = 1
         val aad = configureAad(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID())
 
-        val encrypted = encrypt.encrypt(plaintext, aad, keyVersion)
+        val encrypted = encrypt.encrypt(plaintext, aad)
 
         assertFails {
-            encrypt.decrypt(encrypted.ciphertext, byteArrayOf(), aad, keyVersion)
+            encrypt.decrypt(encrypted.ciphertext, byteArrayOf(), aad)
         }
     }
 
     @Test
     fun shouldFailDecryptWithWrongAad() {
         val plaintext = "x"
-        val keyVersion = 1
 
         val aad1 = configureAad(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID())
         val aad2 = configureAad(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID())
 
-        val encrypted = encrypt.encrypt(plaintext, aad1, keyVersion)
+        val encrypted = encrypt.encrypt(plaintext, aad1)
 
         assertFails {
-            encrypt.decrypt(encrypted.ciphertext, encrypted.nonce, aad2, keyVersion)
+            encrypt.decrypt(encrypted.ciphertext, encrypted.nonce, aad2)
         }
     }
 

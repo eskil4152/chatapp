@@ -79,7 +79,7 @@ class RoomService(
 
         val roomUUID = try {
             UUID.fromString(roomId)
-        } catch (e: IllegalArgumentException) {
+        } catch (_: IllegalArgumentException) {
             throw InvalidUUIDException()
         }
 
@@ -96,7 +96,7 @@ class RoomService(
 
         val roomUUID = try {
             UUID.fromString(roomId)
-        } catch (e: IllegalArgumentException) {
+        } catch (_: IllegalArgumentException) {
             throw InvalidUUIDException()
         }
 
@@ -117,7 +117,7 @@ class RoomService(
 
         val roomId = try {
             UUID.fromString(roomDTO.roomId)
-        } catch (e: IllegalArgumentException) {
+        } catch (_: IllegalArgumentException) {
             throw InvalidUUIDException()
         }
 
@@ -147,7 +147,7 @@ class RoomService(
 
         val roomUUID = try {
             UUID.fromString(roomId)
-        } catch (e: IllegalArgumentException) {
+        } catch (_: IllegalArgumentException) {
             throw InvalidUUIDException()
         }
 

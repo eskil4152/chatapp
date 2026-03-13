@@ -1,7 +1,7 @@
 package com.blikeng.chatapp.controllers
 
-import com.blikeng.chatapp.dtos.room.RoomDTO
 import com.blikeng.chatapp.dtos.UsernameDTO
+import com.blikeng.chatapp.dtos.room.RoomDTO
 import com.blikeng.chatapp.services.RoomService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
@@ -74,6 +74,6 @@ class RoomController(
     fun privateMessage(
         @RequestBody usernameDTO: UsernameDTO
     ) : ResponseEntity<String> {
-        return ResponseEntity.status(201).body(roomService.getOrStartPrivateMessage(usernameDTO.username).toString());
+        return ResponseEntity.status(201).body(roomService.getOrStartPrivateMessage(usernameDTO.username).toString())
     }
 }
