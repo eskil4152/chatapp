@@ -1,7 +1,7 @@
 # ChatApp
 
-ChatApp is a real-time messaging service built with Kotlin and Spring Boot. 
-It supports rooms, private DMs, optional AES-256-GCM message encryption on a per-room basis, and real-time WebSocket messaging.
+ChatApp is a distributed real-time messaging service built with Kotlin and Spring Boot.
+It supports chat rooms, private DMs, optional AES-256-GCM message encryption, and horizontally scalable WebSocket messaging using Redis Pub/Sub and RabbitMQ.
 
 ## [Access](https://chatapp.blikeng.com)
 
@@ -24,11 +24,13 @@ It supports rooms, private DMs, optional AES-256-GCM message encryption on a per
 - [Features](#features)
   - [Authentication & Security](#authentication--security)
   - [WebSocket & Real-Time Messaging](#websocket--real-time-messaging)
+  - [Distributed Messaging Pipeline](#distributed-messaging-pipeline)
   - [Message Encryption](#message-encryption)
   - [Friends & Direct Messages](#friends--direct-messages)
   - [Database & Persistence](#database--persistence)
   - [Room & User Management](#room--user-management)
-  - [Batch Message Buffering](#batch-message-buffering)
+  - [Presence Tracking](#presence-tracking)
+  - [Buffered Message Persistence](#buffered-message-persistence)
 - [API Overview](#api-overview)
 - [Deployment](#deployment)
 - [CI/CD Pipeline](#cicd-pipeline)
@@ -39,25 +41,30 @@ It supports rooms, private DMs, optional AES-256-GCM message encryption on a per
 
 ## Tech Stack
 
-| Layer            | Technology                                |
-|------------------|-------------------------------------------|
-| Language         | Kotlin                                    |
-| Framework        | Spring Boot                               |
-| Real-time        | WebSockets (Spring WebSocket)             |
-| Auth             | JWT (HTTP-only cookie, `SameSite=Strict`) |
-| Encryption       | AES-256-GCM                               |
-| Password Hashing | BCrypt                                    |
-| Database         | PostgreSQL (schema managed via Flyway)    |
-| Containerization | Docker                                    |
-| Cloud            | Azure Web App + Azure Container Registry  |
-| CI/CD            | GitHub Actions                            |
-| Code Quality     | SonarCloud                                |
+| Layer             | Technology                                |
+|-------------------|-------------------------------------------|
+| Language          | Kotlin                                    |
+| Framework         | Spring Boot                               |
+| Real-time         | WebSockets (Spring WebSocket)             |
+| Auth              | JWT (HTTP-only cookie, `SameSite=Strict`) |
+| Encryption        | AES-256-GCM                               |
+| Password Hashing  | BCrypt                                    |
+| Database          | PostgreSQL (schema managed via Flyway)    |
+| Messaging         | RabbitMQ                                  |
+| Distributed State | Redis                                     |
+| Containerization  | Docker                                    |
+| Cloud             | Azure Web App + Azure Container Registry  |
+| CI/CD             | GitHub Actions                            |
+| Code Quality      | SonarCloud                                |
 
 ---
 
 ## Architecture
 
 ![Architecture](docs/architecture.svg)
+
+The system separates real-time delivery (Redis Pub/Sub + WebSockets) from durable persistence (RabbitMQ + PostgreSQL), 
+allowing the chat service to scale horizontally without coupling WebSocket throughput to database writes.
 
 ---
 
@@ -68,7 +75,7 @@ It supports rooms, private DMs, optional AES-256-GCM message encryption on a per
 **JWT Authentication**
 - Registration and login issue a signed JWT stored as an `HttpOnly`, `SameSite=Strict` cookie with a 24-hour expiration.
 - The token encodes `userID` as the subject and `username` as a claim for efficient identity extraction.
-- A dedicated `JWTAuthFilter` is responsible for all authentication checks.
+- A dedicated `JwtAuthFilter` is responsible for all authentication checks.
 - After token validation, user existence is re-verified in the database. A valid token for a deleted user results in 400 Bad Request.
 
 **Password Handling**
@@ -77,7 +84,7 @@ It supports rooms, private DMs, optional AES-256-GCM message encryption on a per
 - Minimum length is enforced for both usernames and passwords during registration and password changes.
 
 **WebSocket Handshake Authentication**
-- A `HandshakeAuthenticator` intercepts every WebSocket request and validates the JWT from the cookie before any connection is established.
+- An `AuthHandshakeInterceptor` intercepts every WebSocket request and validates the JWT from the cookie before any connection is established.
 - `userID` and `username` are injected into the WebSocket session after validation.
 - Room membership is verified before a user can join a WebSocket room session. Unauthorized or non-member connections are rejected.
 
@@ -87,9 +94,31 @@ It supports rooms, private DMs, optional AES-256-GCM message encryption on a per
 
 - Messages are broadcast in real-time to all active sessions in a room.
 - Room session state is managed with thread-safe data structures: `ConcurrentHashMap` for room-to-sessions mapping and `CopyOnWriteArraySet` for per-room session sets.
-- WebSocket messages use a typed event structure with centralized exception handling. Three event types are supported: `MESSAGE`, `JOIN`, and `LEAVE`.
+- WebSocket messages use a typed event structure with centralized exception handling. Four event types are supported: `MESSAGE`, `JOIN`, `LEAVE`, and `PING`.
 - Only `MESSAGE` events are persisted to the database. `JOIN` and `LEAVE` are broadcast-only.
-- On room join, history is assembled from both the database and the unflushed in-memory buffer to present a complete, uninterrupted message history.
+- On room join, history is assembled from both the database and the current Redis message buffer to ensure no messages are missed between persistence batches.
+
+---
+
+### Distributed Messaging Pipeline
+
+To support horizontal scaling and decouple real-time messaging from persistence, the application uses a Redis + RabbitMQ pipeline.
+
+**Redis Pub/Sub**
+- All WebSocket broadcasts are published to Redis channels (`room:{roomId}`).
+- Each instance subscribes to these channels and rebroadcasts messages locally to connected WebSocket sessions.
+- This ensures messages reach users connected to different application instances.
+
+**RabbitMQ Message Queue**
+- Chat messages are asynchronously persisted through RabbitMQ.
+- When a message is sent:
+  1. The message is published to RabbitMQ.
+  2. A background consumer batches messages and writes them to the database.
+- Manual acknowledgements ensure messages are retried if persistence fails.
+
+This architecture separates:
+- **real-time delivery**
+- **durable persistence**
 
 ---
 
@@ -142,12 +171,41 @@ the same response as a non-existent user, preventing user enumeration.
 
 ---
 
-### Batch Message Buffering
+### Presence Tracking
 
-To reduce database write pressure, messages are not persisted on every event:
+User presence is tracked using Redis.
 
-- Messages are temporarily buffered in memory and written to the database in batches based on configurable size or time thresholds.
-- On room join, history is assembled from both the persisted database records and the current unflushed buffer, so no messages are lost between flushes.
+- Each active user session increments a Redis counter.
+- When sessions close, the counter is decremented.
+- A user is considered online when the counter is greater than zero.
+
+Room presence is also tracked using Redis sets to allow efficient lookup of users currently active in a room.
+
+---
+
+### Buffered Message Persistence
+
+To reduce database write pressure and support high message throughput, message persistence is handled asynchronously.
+
+**Redis Message Buffer**
+- Messages are temporarily stored in Redis lists (`chat.peek.{roomId}`).
+- This buffer allows newly joined users to retrieve messages that have not yet been persisted.
+
+**RabbitMQ Batch Persistence**
+- Messages are also published to a RabbitMQ queue.
+- A background consumer batches messages and writes them to PostgreSQL.
+
+**Flush Strategy**
+Messages are persisted when either:
+
+- A batch reaches a configured size threshold
+- A periodic flush interval is reached
+
+This design ensures:
+
+- consistent message history
+- reduced database write amplification
+- resilience to transient database failures
 
 ---
 
