@@ -2,6 +2,7 @@ package com.blikeng.chatapp.websocket
 
 import com.blikeng.chatapp.dtos.websocket.ReceivedMessageDTO
 import com.blikeng.chatapp.dtos.websocket.WsError
+import com.blikeng.chatapp.security.ratelimit.WsRateLimitService
 import com.blikeng.chatapp.services.ChatService
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -24,7 +25,8 @@ import java.util.*
 @Component
 class ChatWebSocketHandler(
     private val chatService: ChatService,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    private val wsRateLimitService: WsRateLimitService
 ) : TextWebSocketHandler() {
 
     // ==========================
@@ -92,6 +94,7 @@ class ChatWebSocketHandler(
             "MESSAGE"
         )
 
+        if (!checkRateLimit(userId, session)) return
         chatService.broadcast(roomId, message, username)
     }
 
@@ -101,7 +104,6 @@ class ChatWebSocketHandler(
         val username = getUsername(session)
 
         chatService.leaveRoom(roomId, session)
-
         val message = ReceivedMessageDTO(roomId, userId, "$username left the room", "LEAVE")
         chatService.broadcast(roomId, message, username)
     }
@@ -132,6 +134,18 @@ class ChatWebSocketHandler(
     private fun getUsername(session: WebSocketSession): String {
         return (session.attributes["username"]
             ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No username found")) as String
+    }
+
+    private fun checkRateLimit(userId: UUID, session: WebSocketSession) : Boolean{
+        if (!wsRateLimitService.tryConsumeMessage(userId)) {
+            sendWsError(
+                session,
+                ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Rate limit exceeded")
+            )
+            return false
+        }
+
+        return true
     }
 
     private fun sendWsError(session: WebSocketSession, e: Exception) {
