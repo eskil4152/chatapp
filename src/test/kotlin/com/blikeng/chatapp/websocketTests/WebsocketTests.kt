@@ -1,5 +1,6 @@
 package com.blikeng.chatapp.websocketTests
 
+import com.blikeng.chatapp.security.ratelimit.WsRateLimitService
 import com.blikeng.chatapp.services.ChatService
 import com.blikeng.chatapp.websocket.ChatWebSocketHandler
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -28,6 +29,7 @@ class WebsocketTests {
     // - WebSocket message routing
     // - Validation failures and missing session attributes
     // - Exception-to-error-message mapping
+    // - Rate limitation enforcement
     // ==========================
 
     @MockK
@@ -36,12 +38,16 @@ class WebsocketTests {
     @MockK
     private lateinit var session: WebSocketSession
 
+    @MockK
+    private lateinit var wsRateLimitService: WsRateLimitService
+
     private val objectMapper = jacksonObjectMapper()
     private lateinit var handler: ChatWebSocketHandler
 
     @BeforeEach
     fun setup() {
-        handler = ChatWebSocketHandler(chatService, objectMapper)
+        handler = ChatWebSocketHandler(chatService, objectMapper, wsRateLimitService)
+        every { wsRateLimitService.tryConsumeMessage(any()) } returns true
     }
 
     // ==========================
@@ -163,6 +169,8 @@ class WebsocketTests {
 
         every { session.attributes } returns attributes
         every { chatService.broadcast(any(), any(), any()) } returns Unit
+        every { session.isOpen } returns true
+        every { session.sendMessage(any()) } just Runs
 
         handler.handleMessage(session, payload)
 
@@ -565,5 +573,37 @@ class WebsocketTests {
         assertEquals("ERROR", json["type"].asText())
         assertEquals(400, json["code"].asInt())
         assertEquals("Bad request", json["message"].asText())
+    }
+
+    @Test
+    fun shouldSendRateLimitErrorForMessage() {
+        val payload = TextMessage(
+            objectMapper.createObjectNode()
+                .put("type", "MESSAGE")
+                .put("roomId", UUID.randomUUID().toString())
+                .put("message", "m")
+                .toString()
+        )
+
+        val attributes = mutableMapOf<String, Any>(
+            "username" to "u",
+            "userId" to UUID.randomUUID()
+        )
+
+        every { session.attributes } returns attributes
+        every { session.isOpen } returns true
+        every { wsRateLimitService.tryConsumeMessage(any()) } returns false
+
+        val msgSlot = slot<TextMessage>()
+        every { session.sendMessage(capture(msgSlot)) } just Runs
+
+        handler.handleMessage(session, payload)
+
+        verify(exactly = 0) { chatService.broadcast(any(), any(), any()) }
+
+        val json = objectMapper.readTree(msgSlot.captured.payload)
+        assertEquals("ERROR", json["type"].asText())
+        assertEquals(429, json["code"].asInt())
+        assertEquals("Rate limit exceeded", json["message"].asText())
     }
 }
