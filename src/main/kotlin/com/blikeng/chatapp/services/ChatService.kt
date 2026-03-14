@@ -6,6 +6,8 @@ import com.blikeng.chatapp.dtos.messaging.SendMessageDTO
 import com.blikeng.chatapp.dtos.websocket.ReceivedMessageDTO
 import com.blikeng.chatapp.dtos.websocket.WsChat
 import com.blikeng.chatapp.dtos.websocket.WsJoined
+import com.blikeng.chatapp.errors.ApiException
+import com.blikeng.chatapp.errors.InvalidMessageException
 import com.blikeng.chatapp.errors.InvalidTokenException
 import com.blikeng.chatapp.errors.RoomNotFoundException
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
@@ -168,6 +170,8 @@ class ChatService (
     fun broadcast(roomId: UUID, message: ReceivedMessageDTO, username: String) {
         val timestamp = Timestamp(System.currentTimeMillis())
         if (!userRoomRepository.existsByIdUserIdAndIdRoomId(message.userId, roomId)) throw RoomNotFoundException()
+
+        if (message.content.isBlank() || message.content.length > 2000) throw InvalidMessageException()
 
         if (message.type == "MESSAGE") addMessage(message, username)
 
