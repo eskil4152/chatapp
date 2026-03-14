@@ -10,7 +10,6 @@ import com.blikeng.chatapp.security.ratelimit.RateLimitService
 import com.blikeng.chatapp.services.FriendsService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
-import io.mockk.impl.annotations.MockK
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
