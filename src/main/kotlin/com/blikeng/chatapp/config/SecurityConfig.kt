@@ -30,6 +30,7 @@ class SecurityConfig(
                 authRequest.requestMatchers("/api/login").permitAll()
                 authRequest.requestMatchers("/api/register").permitAll()
                 authRequest.requestMatchers("/error").permitAll()
+                authRequest.requestMatchers("/actuator/**").permitAll()
                 authRequest.anyRequest().authenticated()
             }
             .httpBasic { it.disable() }

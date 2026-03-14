@@ -17,6 +17,7 @@ object ErrorMessages {
 
     const val SHORT_PASSWORD = "Password must be at least 8 characters long"
     const val SHORT_USERNAME = "Username must be at least 3 characters long"
+    const val INVALID_MESSAGE = "Invalid message"
 
     const val INVALID_UUID = "Invalid UUID"
 

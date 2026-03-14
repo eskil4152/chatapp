@@ -1,0 +1,536 @@
+{
+    "metrics": {
+        "http_req_receiving": {
+            "avg": 0.08089528795811399,
+            "min": 0.005,
+            "med": 0.042,
+            "max": 13.86,
+            "p(90)": 0.142,
+            "p(95)": 0.172
+        },
+        "http_req_sending": {
+            "med": 0.008,
+            "max": 0.238,
+            "p(90)": 0.016,
+            "p(95)": 0.019,
+            "avg": 0.009548506313520447,
+            "min": 0.001
+        },
+        "http_req_blocked": {
+            "min": 0,
+            "med": 0.002,
+            "max": 4.673,
+            "p(90)": 0.004,
+            "p(95)": 0.005,
+            "avg": 0.006557514628888336
+        },
+        "http_req_waiting": {
+            "p(90)": 131.86720000000003,
+            "p(95)": 176.53149999999988,
+            "avg": 63.12646088697274,
+            "min": 0.615,
+            "med": 71.2485,
+            "max": 392.755
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 12988,
+            "value": 0
+        },
+        "http_req_connecting": {
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0.0034420234062211247,
+            "min": 0,
+            "med": 0,
+            "max": 4.636
+        },
+        "checks": {
+            "passes": 12888,
+            "fails": 0,
+            "value": 1
+        },
+        "data_sent": {
+            "count": 3470231,
+            "rate": 23469.035473865362
+        },
+        "http_req_duration": {
+            "p(95)": 176.5641999999999,
+            "avg": 63.21690468124417,
+            "min": 0.654,
+            "med": 71.2945,
+            "max": 392.775,
+            "p(90)": 131.9554
+        },
+        "iteration_duration": {
+            "max": 1536.144708,
+            "p(90)": 1211.4636455000002,
+            "p(95)": 1283.92673755,
+            "avg": 1127.4559087197401,
+            "min": 1068.5185,
+            "med": 1102.3400835
+        },
+        "http_reqs": {
+            "count": 12988,
+            "rate": 87.83733207805571
+        },
+        "vus": {
+            "max": 100,
+            "value": 3,
+            "min": 0
+        },
+        "vus_max": {
+            "max": 100,
+            "value": 100,
+            "min": 100
+        },
+        "http_req_tls_handshaking": {
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0
+        },
+        "http_req_duration{expected_response:true}": {
+            "min": 0.654,
+            "med": 71.2945,
+            "max": 392.775,
+            "p(90)": 131.9554,
+            "p(95)": 176.5641999999999,
+            "avg": 63.21690468124417
+        },
+        "iterations": {
+            "count": 6444,
+            "rate": 43.58051800977756
+        },
+        "data_received": {
+            "count": 7409436,
+            "rate": 50109.723625123246
+        }
+    },
+    "setup_data": [
+        {
+            "password": "testpassword123",
+            "username": "list_user_1"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_2"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_3"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_4"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_5"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_6"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_7"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_8"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_9"
+        },
+        {
+            "username": "list_user_10",
+            "password": "testpassword123"
+        },
+        {
+            "username": "list_user_11",
+            "password": "testpassword123"
+        },
+        {
+            "username": "list_user_12",
+            "password": "testpassword123"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_13"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_14"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_15"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_16"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_17"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_18"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_19"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_20"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_21"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_22"
+        },
+        {
+            "username": "list_user_23",
+            "password": "testpassword123"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_24"
+        },
+        {
+            "username": "list_user_25",
+            "password": "testpassword123"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_26"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_27"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_28"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_29"
+        },
+        {
+            "username": "list_user_30",
+            "password": "testpassword123"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_31"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_32"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_33"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_34"
+        },
+        {
+            "username": "list_user_35",
+            "password": "testpassword123"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_36"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_37"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_38"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_39"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_40"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_41"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_42"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_43"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_44"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_45"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_46"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_47"
+        },
+        {
+            "username": "list_user_48",
+            "password": "testpassword123"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_49"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_50"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_51"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_52"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_53"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_54"
+        },
+        {
+            "username": "list_user_55",
+            "password": "testpassword123"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_56"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_57"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_58"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_59"
+        },
+        {
+            "username": "list_user_60",
+            "password": "testpassword123"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_61"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_62"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_63"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_64"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_65"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_66"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_67"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_68"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_69"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_70"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_71"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_72"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_73"
+        },
+        {
+            "username": "list_user_74",
+            "password": "testpassword123"
+        },
+        {
+            "username": "list_user_75",
+            "password": "testpassword123"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_76"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_77"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_78"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_79"
+        },
+        {
+            "username": "list_user_80",
+            "password": "testpassword123"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_81"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_82"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_83"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_84"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_85"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_86"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_87"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_88"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_89"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_90"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_91"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_92"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_93"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_94"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_95"
+        },
+        {
+            "username": "list_user_96",
+            "password": "testpassword123"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_97"
+        },
+        {
+            "username": "list_user_98",
+            "password": "testpassword123"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_99"
+        },
+        {
+            "password": "testpassword123",
+            "username": "list_user_100"
+        }
+    ],
+    "root_group": {
+        "groups": {},
+        "checks": {
+                "login ok": {
+                    "passes": 6444,
+                    "fails": 0,
+                    "name": "login ok",
+                    "path": "::login ok",
+                    "id": "0ddcda49e3a8b9d6d2e015dafbaafe65"
+                },
+                "rooms fetched": {
+                    "path": "::rooms fetched",
+                    "id": "857684b62ab300bfcb0c170c4ee8a318",
+                    "passes": 6444,
+                    "fails": 0,
+                    "name": "rooms fetched"
+                }
+            },
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e"
+    }
+}

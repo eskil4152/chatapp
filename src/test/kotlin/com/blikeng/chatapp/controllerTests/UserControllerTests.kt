@@ -5,9 +5,11 @@ import com.blikeng.chatapp.dtos.user.UserDTO
 import com.blikeng.chatapp.errors.InvalidTokenException
 import com.blikeng.chatapp.errors.WrongPasswordException
 import com.blikeng.chatapp.security.auth.JwtAuthFilter
+import com.blikeng.chatapp.security.ratelimit.RateLimitService
 import com.blikeng.chatapp.services.UserService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
+import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
@@ -43,6 +45,14 @@ class UserControllerTests {
 
     @MockkBean private lateinit var userService: UserService
     @Autowired private lateinit var mockMvc: MockMvc
+
+    @MockkBean
+    private lateinit var rateLimitService: RateLimitService
+
+    @BeforeEach
+    fun setup() {
+        every { rateLimitService.tryConsume(any(), any(), any()) } returns true
+    }
 
     @Test
     fun shouldGetSelf(){

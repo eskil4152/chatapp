@@ -6,9 +6,12 @@ import com.blikeng.chatapp.errors.AlreadyFriendsException
 import com.blikeng.chatapp.errors.InvalidUserException
 import com.blikeng.chatapp.errors.UserNotFoundException
 import com.blikeng.chatapp.security.auth.JwtAuthFilter
+import com.blikeng.chatapp.security.ratelimit.RateLimitService
 import com.blikeng.chatapp.services.FriendsService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
+import io.mockk.impl.annotations.MockK
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
@@ -45,8 +48,15 @@ class FriendsControllerTests {
 
     @MockkBean private lateinit var friendsService: FriendsService
 
-    @Autowired
-    private lateinit var mockMvc: MockMvc
+    @Autowired private lateinit var mockMvc: MockMvc
+
+    @MockkBean
+    private lateinit var rateLimitService: RateLimitService
+
+    @BeforeEach
+    fun setup() {
+        every { rateLimitService.tryConsume(any(), any(), any()) } returns true
+    }
 
     val friend = FriendDTO(
         "username",

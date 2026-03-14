@@ -103,6 +103,10 @@
 			<groupId>com.fasterxml.jackson.module</groupId>
 			<artifactId>jackson-module-kotlin</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
 
 		<dependency>
 			<groupId>org.postgresql</groupId>
@@ -130,6 +134,11 @@
 			<artifactId>junit-jupiter</artifactId>
 			<version>1.20.1</version>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j-core</artifactId>
+			<version>8.8.0</version>
 		</dependency>
 
 		<dependency>
@@ -196,6 +205,13 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<addResources>true</addResources>
+				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.jetbrains.kotlin</groupId>

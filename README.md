@@ -282,6 +282,21 @@ user flow, from registering to adding friends and chatting.
 
 ---
 
+## Load testing and multi-instance testing
+
+| Test                      | Scenario                                                                  | Result                                                                         |
+|---------------------------|---------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+| Multi-instance validation | 2 local application instances with shared PostgreSQL, Redis, and RabbitMQ | Passed                                                                         |
+| HTTP load test            | Register + login + authenticated access                                   | 0 failed checks, avg 51 ms, p95 90 ms                                          |
+| HTTP load test            | Room listing                                                              | 0 failed checks, ~88–92 req/s, p95 177–186 ms                                  |
+| WebSocket load test       | 25 users, 1 shared room                                                   | 211 successful WebSocket sessions, 100% successful login/cookie/upgrade checks |
+| WebSocket load test       | 30 users, 5 rooms                                                         | 267 successful WebSocket sessions, 100% successful login/cookie/upgrade checks |
+
+These tests were performed locally on a single development machine. The results are therefore most useful as validation of concurrency 
+behavior, distributed setup correctness, and baseline performance rather than production-capacity benchmarks.
+
+---
+
 ## License
 
 [MIT](LICENSE)

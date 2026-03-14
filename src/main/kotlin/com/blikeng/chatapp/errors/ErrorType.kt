@@ -23,6 +23,7 @@ class InvalidRoomNameException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessa
 class ShortPasswordException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.SHORT_PASSWORD)
 class ShortUsernameException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.SHORT_USERNAME)
 class InvalidUUIDException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.INVALID_UUID)
+class InvalidMessageException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.INVALID_MESSAGE)
 
 // Friends
 class UserNotFoundException : ApiException(HttpStatus.NOT_FOUND, ErrorMessages.USER_NOT_FOUND)

@@ -3,6 +3,10 @@ package com.blikeng.chatapp.errorHandlingTests
 import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.errors.GlobalExceptionHandler
 import com.blikeng.chatapp.security.auth.JwtAuthFilter
+import com.blikeng.chatapp.security.ratelimit.RateLimitService
+import com.ninjasquad.springmockk.MockkBean
+import io.mockk.every
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
@@ -31,6 +35,14 @@ class GlobalErrorHandlerTests {
     // ==========================
     @Autowired
     lateinit var mockMvc: MockMvc
+
+    @MockkBean
+    private lateinit var rateLimitService: RateLimitService
+
+    @BeforeEach
+    fun setup() {
+        every { rateLimitService.tryConsume(any(), any(), any()) } returns true
+    }
 
     @Test
     fun shouldHandleApiException() {
