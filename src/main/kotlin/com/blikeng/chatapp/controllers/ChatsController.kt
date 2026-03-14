@@ -10,6 +10,9 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.util.UUID
 
+// ==========================
+// Own endpoint for retrieving messages in a room, allows for limiting entities returned.
+// ==========================
 @RestController
 @RequestMapping("/api/chats")
 class ChatsController(

@@ -6,6 +6,10 @@ import org.springframework.stereotype.Component
 import org.springframework.web.servlet.HandlerInterceptor
 import java.time.Duration
 
+// ==========================
+// File for API rate limiting. Sets max limits per minute for login, register, user edit, and password edit.
+// Fallback rate limit for other /api paths. Non-covered paths have no limit.
+// ==========================
 @Component
 class RateLimitInterceptor(
     private val rateLimitService: RateLimitService,
