@@ -8,7 +8,7 @@ import java.time.Duration
 
 @Component
 class RateLimitInterceptor(
-    private val rateLimitService: RateLimitService
+    private val rateLimitService: RateLimitService,
 ) : HandlerInterceptor {
 
     override fun preHandle(

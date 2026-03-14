@@ -2,14 +2,21 @@ package com.blikeng.chatapp.security.ratelimit
 
 import io.github.bucket4j.Bandwidth
 import io.github.bucket4j.Bucket
+import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.stereotype.Service
 import java.time.Duration
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
 @Service
-class WsRateLimitService {
+class WsRateLimitService(
+    meterRegistry: MeterRegistry
+) {
     private val buckets = ConcurrentHashMap<UUID, Bucket>()
+
+    init {
+        meterRegistry.gauge("ws.rate_limit.buckets", buckets) { it.size.toDouble() }
+    }
 
     fun tryConsumeMessage(userId: UUID): Boolean {
         val bucket = buckets.computeIfAbsent(userId) {

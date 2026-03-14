@@ -16,6 +16,8 @@ import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.crypto.ChatEncrypt
 import com.fasterxml.jackson.databind.ObjectMapper
+import io.micrometer.core.instrument.Gauge
+import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
@@ -41,9 +43,19 @@ class ChatService (
     private val rabbitTemplate: RabbitTemplate,
     private val objectMapper: ObjectMapper,
     private val presenceHandler: PresenceHandler,
+    meterRegistry: MeterRegistry,
 ) {
+
     val rooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
     val users = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
+
+    init {
+        meterRegistry.gauge("chat.rooms", rooms) { it.size.toDouble() }
+        meterRegistry.gauge("chat.users", users) { it.size.toDouble() }
+        meterRegistry.gauge("chat.sessions", users) {
+            it.values.sumOf { sessions -> sessions.size.toDouble() }
+        }
+    }
 
     // ==========================
     // Session handling
