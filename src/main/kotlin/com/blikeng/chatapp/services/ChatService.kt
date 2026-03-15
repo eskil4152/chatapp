@@ -46,54 +46,9 @@ class ChatService (
     meterRegistry: MeterRegistry,
 ) {
     val rooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
-    val users = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
 
     init {
         meterRegistry.gauge("chat.rooms", rooms) { it.size.toDouble() }
-        meterRegistry.gauge("chat.users", users) { it.size.toDouble() }
-        meterRegistry.gauge("chat.sessions", users) {
-            it.values.sumOf { sessions -> sessions.size.toDouble() }
-        }
-    }
-
-    // ==========================
-    // Session handling
-    // ==========================
-    fun registerSession(userId: UUID, session: WebSocketSession) {
-        users.computeIfAbsent(userId) { CopyOnWriteArraySet() }.add(session)
-        presenceHandler.userConnected(userId)
-    }
-
-    fun removeSession(userId: UUID, session: WebSocketSession) {
-        users[userId]?.remove(session)
-        if (users[userId]?.isEmpty() == true) {
-            users.remove(userId)
-        }
-
-        val affectedRoomIds = rooms
-            .filterValues { it.contains(session) }
-            .keys
-            .toList()
-
-        affectedRoomIds.forEach { roomId ->
-            val roomSessions = rooms[roomId] ?: return@forEach
-
-            roomSessions.remove(session)
-
-            val stillPresentInRoom = roomSessions.any {
-                it.attributes["userId"] == userId
-            }
-
-            if (!stillPresentInRoom) {
-                presenceHandler.userLeftRoom(roomId, userId)
-            }
-
-            if (roomSessions.isEmpty()) {
-                rooms.remove(roomId)
-            }
-        }
-
-        presenceHandler.userDisconnected(userId)
     }
 
     // ==========================
@@ -142,6 +97,32 @@ class ChatService (
                 )
             )
         )
+    }
+
+    fun removeSessionFromRooms(userId: UUID, session: WebSocketSession) {
+        val affectedRoomIds = rooms
+            .filterValues { it.contains(session) }
+            .keys
+            .toList()
+
+        affectedRoomIds.forEach { roomId ->
+
+            val roomSessions = rooms[roomId] ?: return@forEach
+
+            roomSessions.remove(session)
+
+            val stillPresent = roomSessions.any {
+                it.attributes["userId"] == userId
+            }
+
+            if (!stillPresent) {
+                presenceHandler.userLeftRoom(roomId, userId)
+            }
+
+            if (roomSessions.isEmpty()) {
+                rooms.remove(roomId)
+            }
+        }
     }
 
     // ==========================
