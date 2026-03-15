@@ -8,6 +8,10 @@ import java.time.Duration
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
+// ==========================
+// File for WebSocket message rate limiting. Injected in WebSocketHandler.
+// Current settings set 10 initial chats and a max of 10. Regenerates 10 per minute, evenly spread.
+// ==========================
 @Service
 class WsRateLimitService(
     meterRegistry: MeterRegistry

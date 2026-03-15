@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNull
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.amqp.rabbit.core.RabbitTemplate
+import org.springframework.data.domain.PageImpl
 import org.springframework.data.redis.core.ListOperations
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.http.HttpStatus
@@ -108,7 +109,7 @@ class ChatServiceTests {
 
     @Test
     fun shouldRemoveSessionForEveryRoom(){
-        every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
+
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
         every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
         every { presenceHandler.userConnected(any()) } just Runs
@@ -192,7 +193,7 @@ class ChatServiceTests {
 
     @Test
     fun shouldNotRemoveRoomIfOtherUsersArePresentInRoom(){
-        every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
+
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
         every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
         every { presenceHandler.userConnected(any()) } just Runs
@@ -255,7 +256,7 @@ class ChatServiceTests {
     // ==========================
     @Test
     fun shouldJoinRoom(){
-        every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
+
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
         every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
         every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
@@ -313,7 +314,7 @@ class ChatServiceTests {
 
     @Test
     fun shouldLeaveRoom(){
-        every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
+
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
         every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
         every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
@@ -350,7 +351,7 @@ class ChatServiceTests {
 
     @Test
     fun shouldLeaveRoomEvenWhenUserIdIsNotPresentInSessionAttributes(){
-        every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
+
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
         every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
         every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
@@ -369,7 +370,7 @@ class ChatServiceTests {
 
     @Test
     fun shouldLeaveRoomOnlyFromOneSessionIfMultipleSessionsExist() {
-        every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
+
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
         every { roomRepository.findById(any()) } returns Optional.of(
             RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP)
@@ -449,7 +450,7 @@ class ChatServiceTests {
 
     @Test
     fun shouldBroadcastMessageToAllSessionsInRoom() {
-        every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
+
         every { userRepository.findById(any()) } returns Optional.of(UserEntity(username = "u", password = ""))
         every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
@@ -480,7 +481,7 @@ class ChatServiceTests {
 
     @Test
     fun shouldNotPublishMessageIfNoMessageType() {
-        every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
+
         every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
         every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
@@ -502,7 +503,7 @@ class ChatServiceTests {
 
     @Test
     fun shouldPublishEncryptedMessage() {
-        every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
+
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
         every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
 
@@ -537,7 +538,7 @@ class ChatServiceTests {
 
     @Test
     fun shouldFailToPublishBlankMessage() {
-        every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
+
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
         every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
 
@@ -565,7 +566,7 @@ class ChatServiceTests {
 
     @Test
     fun shouldFailToPublishTooLongMessage() {
-        every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
+
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
         every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
 
@@ -591,33 +592,6 @@ class ChatServiceTests {
         verify(exactly = 0) { rabbitTemplate.convertAndSend("chat.buffer", any<Any>()) }
         verify(exactly = 0) { listOps.rightPush("chat.peek.${room.id}", any<String>()) }
         verify(exactly = 0) { redisTemplate.convertAndSend("room:${room.id}", any<String>()) }
-    }
-
-    @Test
-    fun shouldSendEmptyStringWhenCiphertextNullAndMessageNull() {
-        val room = RoomEntity(name = "r", encrypted = false, keyVersion = null, type = RoomType.GROUP)
-        val user = UserEntity(username = "u", password = "")
-
-        val chat = SendMessageDTO(
-            id = UUID.randomUUID(),
-            roomId = room.id,
-            userId = user.id,
-            username = user.username,
-            message = null,
-            keyVersion = null,
-            ciphertext = null,
-            nonce = null,
-            timestamp = Timestamp(System.currentTimeMillis()),
-        )
-
-        val session = mockk<WebSocketSession>(relaxed = true)
-        val msgSlot = slot<TextMessage>()
-        every { session.sendMessage(capture(msgSlot)) } just Runs
-
-        chatService.fetchAllMessages(listOf(chat), session)
-
-        verify(exactly = 1) { session.sendMessage(any()) }
-        assertTrue(msgSlot.captured.payload.contains("\"content\":\"\""))
     }
 
     @Test
@@ -651,42 +625,128 @@ class ChatServiceTests {
     // Message fetching and history
     // ==========================
     @Test
-    fun shouldFetchAllSavedMessages() {
+    fun shouldGetPersistedRoomMessagesPageZero() {
         val room = RoomEntity(name = "r", type = RoomType.GROUP)
         val user = UserEntity(username = "u", password = "")
 
-        val chat1 = ChatEntity(roomId = room.id, user = user, message =  "Hello", timestamp = Timestamp(System.currentTimeMillis()))
-        val chat2 = ChatEntity(roomId = room.id, user = user, message =  "Hello again", timestamp = Timestamp(System.currentTimeMillis()))
-        val saved: List<ChatEntity> = listOf(chat1, chat2)
+        val chat1 = ChatEntity(
+            roomId = room.id,
+            user = user,
+            message = "Hello",
+            timestamp = Timestamp(System.currentTimeMillis() - 1000)
+        )
+        val chat2 = ChatEntity(
+            roomId = room.id,
+            user = user,
+            message = "Hello again",
+            timestamp = Timestamp(System.currentTimeMillis())
+        )
 
-        every { chatRepository.getAllChatsByRoomId(any()) } returns saved
-        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
-        every { roomRepository.findById(any()) } returns Optional.of(room)
-        every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
+        every {
+            chatRepository.findByRoomIdOrderByTimestampDesc(eq(room.id), any())
+        } returns PageImpl(listOf(chat2, chat1))
 
-        val attrs: MutableMap<String, Any> = hashMapOf("userId" to user.id)
-        val session = mockk<WebSocketSession>(relaxed = true)
+        every { listOps.range("chat.peek.${room.id}", 0L, -1L) } returns emptyList()
 
-        every { session.attributes } returns attrs
+        val result = chatService.getRoomMessages(room.id, 0, 25)
 
-        val sent = mutableListOf<TextMessage>()
-        every { session.sendMessage(capture(sent)) } just Runs
-
-        chatService.joinRoom(room.id, session)
-
-        assertEquals(3, sent.size)
-
-        val mapper = objectMapper
-        val types = sent.map { mapper.readTree(it.payload)["type"].asText() }
-
-        assertEquals(listOf("JOINED","MESSAGE","MESSAGE"), types)
-
-        verify(exactly = 3) { session.sendMessage(any())}
-        verify(exactly = 1) { chatRepository.getAllChatsByRoomId(room.id) }
+        assertEquals(2, result.size)
+        assertEquals("Hello", result[0].message)
+        assertEquals("Hello again", result[1].message)
     }
 
     @Test
-    fun shouldFetchAllSavedEncryptedMessages() {
+    fun shouldGetOnlyPersistedMessagesAfterPageZero() {
+        val room = RoomEntity(name = "r", type = RoomType.GROUP)
+        val user = UserEntity(username = "u", password = "")
+
+        val chat = ChatEntity(
+            roomId = room.id,
+            user = user,
+            message = "Older message",
+            timestamp = Timestamp(System.currentTimeMillis())
+        )
+
+        every {
+            chatRepository.findByRoomIdOrderByTimestampDesc(eq(room.id), any())
+        } returns PageImpl(listOf(chat))
+
+        val result = chatService.getRoomMessages(room.id, 1, 25)
+
+        assertEquals(1, result.size)
+        assertEquals("Older message", result[0].message)
+
+        verify(exactly = 0) { listOps.range(any(), any(), any()) }
+    }
+
+    @Test
+    fun shouldIncludePendingRedisMessagesOnPageZero() {
+        val room = RoomEntity(name = "r", type = RoomType.GROUP)
+        val user = UserEntity(
+            id = UUID.randomUUID(),
+            username = "u",
+            password = ""
+        )
+
+        every {
+            chatRepository.findByRoomIdOrderByTimestampDesc(eq(room.id), any())
+        } returns PageImpl(emptyList())
+
+        val pending = RabbitMessageDTO(
+            roomId = room.id,
+            userId = user.id,
+            username = user.username,
+            message = "from redis"
+        )
+
+        every { listOps.range("chat.peek.${room.id}", 0L, -1L) } returns
+                listOf(objectMapper.writeValueAsString(pending))
+
+        val result = chatService.getRoomMessages(room.id, 0, 25)
+
+        assertEquals(1, result.size)
+        assertEquals("from redis", result[0].message)
+    }
+
+    @Test
+    fun shouldMergePersistedAndPendingMessagesOnPageZero() {
+        val room = RoomEntity(name = "r", type = RoomType.GROUP)
+        val user = UserEntity(
+            id = UUID.randomUUID(),
+            username = "u",
+            password = ""
+        )
+
+        val persisted = ChatEntity(
+            roomId = room.id,
+            user = user,
+            message = "persisted",
+            timestamp = Timestamp(System.currentTimeMillis() - 1000)
+        )
+
+        every {
+            chatRepository.findByRoomIdOrderByTimestampDesc(eq(room.id), any())
+        } returns PageImpl(listOf(persisted))
+
+        val pending = RabbitMessageDTO(
+            roomId = room.id,
+            userId = user.id,
+            username = user.username,
+            message = "pending"
+        )
+
+        every { listOps.range("chat.peek.${room.id}", 0L, -1L) } returns
+                listOf(objectMapper.writeValueAsString(pending))
+
+        val result = chatService.getRoomMessages(room.id, 0, 25)
+
+        assertEquals(2, result.size)
+        assertTrue(result.any { it.message == "persisted" })
+        assertTrue(result.any { it.message == "pending" })
+    }
+
+    @Test
+    fun shouldReturnEncryptedMessagesAsEncryptedPayloadInHistory() {
         val room = RoomEntity(name = "r", encrypted = true, keyVersion = 1, type = RoomType.GROUP)
         val user = UserEntity(username = "u", password = "")
 
@@ -700,161 +760,124 @@ class ChatServiceTests {
             timestamp = Timestamp(System.currentTimeMillis())
         )
 
-        val saved: List<ChatEntity> = listOf(chat)
+        every {
+            chatRepository.findByRoomIdOrderByTimestampDesc(eq(room.id), any())
+        } returns PageImpl(listOf(chat))
 
-        every { chatRepository.getAllChatsByRoomId(any()) } returns saved
-        every { encrypt.decrypt(any(), any(), any()) } returns "message"
-        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
-        every { roomRepository.findById(any()) } returns Optional.of(room)
-        every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
+        every { listOps.range("chat.peek.${room.id}", 0L, -1L) } returns emptyList()
+
+        val result = chatService.getRoomMessages(room.id, 0, 25)
+
+        assertEquals(1, result.size)
+        assertNull(result[0].message)
+        assertArrayEquals("cipher".toByteArray(), result[0].ciphertext)
+        assertArrayEquals("nonce".toByteArray(), result[0].nonce)
+        assertEquals(1, result[0].keyVersion)
+    }
+
+    @Test
+    fun shouldDecryptEncryptedMessageWhenFetchingAllMessages() {
+        val room = RoomEntity(name = "r", encrypted = true, keyVersion = 1, type = RoomType.GROUP)
+        val user = UserEntity(username = "u", password = "")
+
+        val message = SendMessageDTO(
+            id = UUID.randomUUID(),
+            roomId = room.id,
+            userId = user.id,
+            username = user.username,
+            message = null,
+            keyVersion = 1,
+            ciphertext = "cipher".toByteArray(),
+            nonce = "nonce".toByteArray(),
+            timestamp = Timestamp(System.currentTimeMillis()),
+        )
+
+        every {
+            encrypt.decrypt(
+                ciphertext = "cipher".toByteArray(),
+                nonce = "nonce".toByteArray(),
+                aad = any(),
+            )
+        } returns "decrypted message"
 
         val session = mockk<WebSocketSession>(relaxed = true)
-        val attrs: MutableMap<String, Any> = hashMapOf("userId" to user.id)
+        val msgSlot = slot<TextMessage>()
+        every { session.sendMessage(capture(msgSlot)) } just Runs
 
-        every { session.attributes } returns attrs
+        chatService.fetchAllMessages(listOf(message), session)
 
-        val sent = mutableListOf<TextMessage>()
-        every { session.sendMessage(capture(sent)) } returns Unit
-
-        chatService.joinRoom(room.id, session)
-
-        assertEquals(2, sent.size)
-
-        val mapper = objectMapper
-        val types = sent.map { mapper.readTree(it.payload)["type"].asText() }
-
-        assertEquals("JOINED", types[0])
-        assertEquals(listOf("MESSAGE"), types.drop(1))
-
-        verify(exactly = 1) { chatRepository.getAllChatsByRoomId(room.id) }
         verify(exactly = 1) {
             encrypt.decrypt(
-                ciphertext = chat.ciphertext!!,
-                nonce = chat.nonce!!,
+                ciphertext = "cipher".toByteArray(),
+                nonce = "nonce".toByteArray(),
                 aad = any(),
             )
         }
+
+        verify(exactly = 1) { session.sendMessage(any()) }
+        assertTrue(msgSlot.captured.payload.contains("\"content\":\"decrypted message\""))
+    }
+
+    @Test
+    fun shouldSendEmptyStringWhenCiphertextNullAndMessageNull() {
+        val room = RoomEntity(name = "r", encrypted = false, keyVersion = null, type = RoomType.GROUP)
+        val user = UserEntity(username = "u", password = "")
+
+        val chat = SendMessageDTO(
+            id = UUID.randomUUID(),
+            roomId = room.id,
+            userId = user.id,
+            username = user.username,
+            message = null,
+            keyVersion = null,
+            ciphertext = null,
+            nonce = null,
+            timestamp = Timestamp(System.currentTimeMillis()),
+        )
+
+        val session = mockk<WebSocketSession>(relaxed = true)
+        val msgSlot = slot<TextMessage>()
+        every { session.sendMessage(capture(msgSlot)) } just Runs
+
+        chatService.fetchAllMessages(listOf(chat), session)
+
+        verify(exactly = 1) { session.sendMessage(any()) }
+        assertTrue(msgSlot.captured.payload.contains("\"content\":\"\""))
+    }
+
+    @Test
+    fun shouldSendPlainMessageWhenCiphertextIsNullAndMessageExists() {
+        val room = RoomEntity(name = "r", encrypted = false, keyVersion = null, type = RoomType.GROUP)
+        val user = UserEntity(username = "u", password = "")
+
+        val chat = SendMessageDTO(
+            id = UUID.randomUUID(),
+            roomId = room.id,
+            userId = user.id,
+            username = user.username,
+            message = "Hello",
+            keyVersion = null,
+            ciphertext = null,
+            nonce = null,
+            timestamp = Timestamp(System.currentTimeMillis()),
+        )
+
+        val session = mockk<WebSocketSession>(relaxed = true)
+        val msgSlot = slot<TextMessage>()
+        every { session.sendMessage(capture(msgSlot)) } just Runs
+
+        chatService.fetchAllMessages(listOf(chat), session)
+
+        verify(exactly = 1) { session.sendMessage(any()) }
+        assertTrue(msgSlot.captured.payload.contains("\"content\":\"Hello\""))
     }
 
     // ==========================
     // Redis pending message handling
     // ==========================
     @Test
-    fun shouldOnlySendPendingRedisMessagesForJoinedRoom() {
-        every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
-        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
-        every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
-
-        val room1 = RoomEntity(name = "r1", encrypted = false, keyVersion = null, type = RoomType.GROUP)
-        val room2 = RoomEntity(name = "r2", encrypted = false, keyVersion = null, type = RoomType.GROUP)
-
-        val user = UserEntity(id = UUID.randomUUID(), username = "u", password = "")
-
-        every { roomRepository.findById(room1.id) } returns Optional.of(room1)
-        every { roomRepository.findById(room2.id) } returns Optional.of(room2)
-
-        val msg1Json = objectMapper.writeValueAsString(
-            RabbitMessageDTO(
-                roomId = room1.id,
-                userId = user.id,
-                username = user.username,
-                message = "one"
-            )
-        )
-
-        val msg2Json = objectMapper.writeValueAsString(
-            RabbitMessageDTO(
-                roomId = room2.id,
-                userId = user.id,
-                username = user.username,
-                message = "two"
-            )
-        )
-
-        every { listOps.range("chat.peek.${room1.id}", 0L, -1L) } returns listOf(msg1Json)
-        every { listOps.range("chat.peek.${room2.id}", 0L, -1L) } returns listOf(msg2Json)
-
-        val session = mockk<WebSocketSession>(relaxed = true)
-        every { session.attributes } returns hashMapOf("userId" to user.id)
-
-        val sent = mutableListOf<TextMessage>()
-        every { session.sendMessage(capture(sent)) } just Runs
-
-        chatService.joinRoom(room1.id, session)
-
-        verify(exactly = 2) { session.sendMessage(any()) }
-        assertEquals(2, sent.size)
-
-        val types = sent.map { objectMapper.readTree(it.payload)["type"].asText() }
-        assertEquals(listOf("JOINED", "MESSAGE"), types)
-
-        assertTrue(sent.any { it.payload.contains("\"content\":\"one\"") })
-        assertFalse(sent.any { it.payload.contains("\"content\":\"two\"") })
-    }
-
-    @Test
-    fun shouldReadPendingMessagesFromRedisOnJoin() {
-        every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
-        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
-        every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
-
-        val room = RoomEntity(name = "r", encrypted = false, keyVersion = null, type = RoomType.GROUP)
-        val user = UserEntity(id = UUID.randomUUID(), username = "u", password = "")
-
-        every { roomRepository.findById(room.id) } returns Optional.of(room)
-
-        val pending = RabbitMessageDTO(
-            roomId = room.id,
-            userId = user.id,
-            username = user.username,
-            message = "from redis"
-        )
-
-        val pendingJson = objectMapper.writeValueAsString(pending)
-        every { listOps.range("chat.peek.${room.id}", 0L, -1L) } returns listOf(pendingJson)
-
-        val session = mockk<WebSocketSession>(relaxed = true)
-        every { session.attributes } returns hashMapOf("userId" to user.id)
-
-        val sent = mutableListOf<TextMessage>()
-        every { session.sendMessage(capture(sent)) } just Runs
-
-        chatService.joinRoom(room.id, session)
-
-        assertEquals(2, sent.size)
-
-        val types = sent.map { objectMapper.readTree(it.payload)["type"].asText() }
-        assertEquals(listOf("JOINED", "MESSAGE"), types)
-        assertTrue(sent.any { it.payload.contains("\"content\":\"from redis\"") })
-    }
-
-    @Test
-    fun shouldReturnNoPendingMessagesWhenRedisRangeIsNull() {
-        every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
-        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
-        every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
-
-        val room = RoomEntity(name = "r", encrypted = false, type = RoomType.GROUP)
-        val user = UserEntity(id = UUID.randomUUID(), username = "u", password = "")
-
-        every { roomRepository.findById(room.id) } returns Optional.of(room)
-        every { listOps.range("chat.peek.${room.id}", 0L, -1L) } returns null
-
-        val session = mockk<WebSocketSession>(relaxed = true)
-        every { session.attributes } returns hashMapOf("userId" to user.id)
-
-        val sent = mutableListOf<TextMessage>()
-        every { session.sendMessage(capture(sent)) } just Runs
-
-        chatService.joinRoom(room.id, session)
-
-        assertEquals(1, sent.size)
-        assertEquals("JOINED", objectMapper.readTree(sent[0].payload)["type"].asText())
-    }
-
-    @Test
     fun shouldReturnNoPendingMessagesWhenRedisRangeIsEmpty() {
-        every { chatRepository.getAllChatsByRoomId(any()) } returns emptyList()
+
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
         every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
 
@@ -876,6 +899,20 @@ class ChatServiceTests {
         assertEquals("JOINED", objectMapper.readTree(sent[0].payload)["type"].asText())
     }
 
+    @Test
+    fun shouldReturnEmptyListWhenRedisRangeReturnsNull() {
+        val room = RoomEntity(name = "r", type = RoomType.GROUP)
+
+        every {
+            chatRepository.findByRoomIdOrderByTimestampDesc(eq(room.id), any())
+        } returns PageImpl(emptyList())
+
+        every { listOps.range("chat.peek.${room.id}", 0L, -1L) } returns null
+
+        val result = chatService.getRoomMessages(room.id, 0, 25)
+
+        assertTrue(result.isEmpty())
+    }
 
     // ==========================
     // Meter registry

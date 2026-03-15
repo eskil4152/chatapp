@@ -499,9 +499,9 @@ class E2ETests : PostgresContainerBase() {
 
     @Test
     @Order(27)
-    fun shouldEnterRoomAndGetMessages() {
+    fun shouldEnterRoom() {
         val received = CopyOnWriteArrayList<String>()
-        val latch = CountDownLatch(3)
+        val latch = CountDownLatch(1)
 
         val handler = object : TextWebSocketHandler() {
             override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
@@ -531,15 +531,27 @@ class E2ETests : PostgresContainerBase() {
         )
 
         assertTrue(latch.await(5, TimeUnit.SECONDS))
-
         assertTrue(received.any { it.contains("JOINED") })
-        assertTrue(received.any { it.contains("hello from user1") })
 
         session.close()
     }
 
     @Test
     @Order(28)
+    fun shouldGetRoomHistory() {
+        mockMvc.get("/api/chats/$roomId?page=0&size=25") {
+            user2Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+            .andExpect {
+                content {
+                    string(containsString("hello from user1"))
+                }
+            }
+    }
+
+    @Test
+    @Order(29)
     fun shouldMakeEncryptedRoom(){
         mockMvc.post("/api/rooms/make") {
             contentType = MediaType.APPLICATION_JSON
@@ -567,7 +579,7 @@ class E2ETests : PostgresContainerBase() {
     }
 
     @Test
-    @Order(29)
+    @Order(30)
     fun shouldJoinEncryptedRoom(){
         mockMvc.post("/api/rooms/join") {
             contentType = MediaType.APPLICATION_JSON
@@ -582,7 +594,7 @@ class E2ETests : PostgresContainerBase() {
     }
 
     @Test
-    @Order(30)
+    @Order(31)
     fun shouldEnterEncryptedRoomAndSendMessage() {
         val received = CopyOnWriteArrayList<String>()
         val latch = CountDownLatch(2)
@@ -634,10 +646,10 @@ class E2ETests : PostgresContainerBase() {
     }
 
     @Test
-    @Order(31)
-    fun shouldEnterEncryptedRoomAndGetMessages() {
+    @Order(32)
+    fun shouldEnterEncryptedRoom() {
         val received = CopyOnWriteArrayList<String>()
-        val latch = CountDownLatch(3)
+        val latch = CountDownLatch(1)
 
         val handler = object : TextWebSocketHandler() {
             override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
@@ -667,15 +679,34 @@ class E2ETests : PostgresContainerBase() {
         )
 
         assertTrue(latch.await(5, TimeUnit.SECONDS))
-
         assertTrue(received.any { it.contains("JOINED") })
-        assertTrue(received.any { it.contains("encrypted hello from user1") })
 
         session.close()
     }
 
     @Test
-    @Order(32)
+    @Order(33)
+    fun shouldGetEncryptedRoomHistory() {
+        mockMvc.get("/api/chats/$encryptedRoomId?page=0&size=25") {
+            user2Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+            .andExpect {
+                jsonPath("$[0].message") { doesNotExist() }
+            }
+            .andExpect {
+                jsonPath("$[0].ciphertext") { exists() }
+            }
+            .andExpect {
+                jsonPath("$[0].nonce") { exists() }
+            }
+            .andExpect {
+                jsonPath("$[0].keyVersion") { value(1) }
+            }
+    }
+
+    @Test
+    @Order(34)
     fun shouldEditRoomName(){
         mockMvc.put("/api/rooms/edit") {
             contentType = MediaType.APPLICATION_JSON
@@ -700,7 +731,7 @@ class E2ETests : PostgresContainerBase() {
     }
 
     @Test
-    @Order(33)
+    @Order(35)
     fun shouldLeaveRoom(){
         mockMvc.delete("/api/rooms/leave") {
             contentType = MediaType.APPLICATION_JSON
@@ -732,7 +763,7 @@ class E2ETests : PostgresContainerBase() {
     }
 
     @Test
-    @Order(34)
+    @Order(36)
     fun shouldDeleteRoom(){
         mockMvc.delete("/api/rooms/delete") {
             contentType = MediaType.APPLICATION_JSON
@@ -764,7 +795,7 @@ class E2ETests : PostgresContainerBase() {
     }
 
     @Test
-    @Order(35)
+    @Order(37)
     fun shouldLogOut(){
         val result = mockMvc.post("/api/logout") {
             contentType = MediaType.APPLICATION_JSON
@@ -783,7 +814,7 @@ class E2ETests : PostgresContainerBase() {
     }
 
     @Test
-    @Order(36)
+    @Order(38)
     fun shouldFailToAddNonExistingUserAsFriend(){
         mockMvc.post("/api/friends/add") {
             contentType = MediaType.APPLICATION_JSON
@@ -797,7 +828,7 @@ class E2ETests : PostgresContainerBase() {
     }
 
     @Test
-    @Order(37)
+    @Order(39)
     fun shouldAddFriend(){
         mockMvc.post("/api/friends/add") {
             contentType = MediaType.APPLICATION_JSON
@@ -818,7 +849,7 @@ class E2ETests : PostgresContainerBase() {
     }
 
     @Test
-    @Order(38)
+    @Order(40)
     fun shouldMakePrivateRoom(){
         mockMvc.post("/api/rooms/dm") {
             contentType = MediaType.APPLICATION_JSON

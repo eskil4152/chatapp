@@ -1,6 +1,6 @@
 import http from 'k6/http';
 import ws from 'k6/ws';
-import { check, sleep } from 'k6';
+import {check, sleep} from 'k6';
 
 const BASE = 'http://localhost:5050';
 const WS_URL = 'ws://localhost:5050/ws';

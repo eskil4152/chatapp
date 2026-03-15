@@ -6,7 +6,7 @@ import com.blikeng.chatapp.dtos.messaging.SendMessageDTO
 import com.blikeng.chatapp.dtos.websocket.ReceivedMessageDTO
 import com.blikeng.chatapp.dtos.websocket.WsChat
 import com.blikeng.chatapp.dtos.websocket.WsJoined
-import com.blikeng.chatapp.errors.ApiException
+import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.errors.InvalidMessageException
 import com.blikeng.chatapp.errors.InvalidTokenException
 import com.blikeng.chatapp.errors.RoomNotFoundException
@@ -16,9 +16,9 @@ import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.crypto.ChatEncrypt
 import com.fasterxml.jackson.databind.ObjectMapper
-import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.amqp.rabbit.core.RabbitTemplate
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
 import org.springframework.web.socket.TextMessage
@@ -45,7 +45,6 @@ class ChatService (
     private val presenceHandler: PresenceHandler,
     meterRegistry: MeterRegistry,
 ) {
-
     val rooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
     val users = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
 
@@ -143,37 +142,6 @@ class ChatService (
                 )
             )
         )
-
-        val persisted = chatRepository.getAllChatsByRoomId(roomId).map { message ->
-            SendMessageDTO(
-                id = message.id,
-                roomId = message.roomId,
-                userId = message.user.id,
-                username = message.user.username,
-                message = message.message,
-                nonce = message.nonce,
-                ciphertext = message.ciphertext,
-                timestamp = message.timestamp,
-                keyVersion = message.keyVersion
-            )
-        }
-
-        val buffered = getPendingMessages(roomId).map { message ->
-            SendMessageDTO(
-                id = message.id,
-                roomId = message.roomId,
-                userId = message.userId,
-                username = message.username,
-                message = message.message,
-                nonce = message.nonce,
-                ciphertext = message.ciphertext,
-                timestamp = message.timestamp,
-                keyVersion = message.keyVersion
-            )
-        }
-
-        val allMessages = (persisted + buffered).sortedBy { it.timestamp }
-        fetchAllMessages(allMessages, session)
     }
 
     // ==========================
@@ -262,6 +230,53 @@ class ChatService (
             .range("chat.peek.$roomId", 0, -1)
             ?.mapNotNull { objectMapper.readValue(it, RabbitMessageDTO::class.java) }
             ?: emptyList()
+    }
+
+    fun getRoomMessages(roomId: UUID, page: Int, size: Int): List<SendMessageDTO> {
+        val persisted = chatRepository
+            .findByRoomIdOrderByTimestampDesc(
+                roomId,
+                PageRequest.of(page, size)
+            )
+            .content
+            .map { toSendMessageDTO(it) }
+
+        if (page != 0) {
+            return persisted.sortedBy { it.timestamp }
+        }
+
+        val buffered = getPendingMessages(roomId).map { message ->
+            SendMessageDTO(
+                id = message.id,
+                roomId = message.roomId,
+                userId = message.userId,
+                username = message.username,
+                message = message.message,
+                nonce = message.nonce,
+                ciphertext = message.ciphertext,
+                timestamp = message.timestamp,
+                keyVersion = message.keyVersion
+            )
+        }
+
+        return (persisted + buffered)
+            .distinctBy { it.id }
+            .sortedBy { it.timestamp }
+            .takeLast(size)
+    }
+
+    private fun toSendMessageDTO(message: ChatEntity): SendMessageDTO {
+        return SendMessageDTO(
+            id = message.id,
+            roomId = message.roomId,
+            userId = message.user.id,
+            username = message.user.username,
+            message = message.message,
+            nonce = message.nonce,
+            ciphertext = message.ciphertext,
+            timestamp = message.timestamp,
+            keyVersion = message.keyVersion
+        )
     }
 }
 

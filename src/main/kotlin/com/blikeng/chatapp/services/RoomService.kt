@@ -55,7 +55,7 @@ class RoomService(
 
         val joinedRooms = roomRepository.findRoomsForUser(userId)
 
-        val roomDtos = joinedRooms.map { room ->
+        val roomDTOs = joinedRooms.map { room ->
             if (room.type == RoomType.PRIVATE) {
                 val otherUser = userRoomRepository.findOtherUser(room.room.id, userId)
                 if (otherUser == null) {
@@ -67,7 +67,7 @@ class RoomService(
             RoomDTO(roomId = room.room.id.toString(), roomName = room.room.name, encrypted = room.room.encrypted, role = room.role, type = room.type)
         }
 
-        return roomDtos
+        return roomDTOs
     }
 
     // ==========================
