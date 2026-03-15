@@ -3,9 +3,11 @@ package com.blikeng.chatapp.services
 import com.blikeng.chatapp.config.configureAad
 import com.blikeng.chatapp.dtos.messaging.RabbitMessageDTO
 import com.blikeng.chatapp.dtos.messaging.SendMessageDTO
+import com.blikeng.chatapp.dtos.room.RoomUserDTO
 import com.blikeng.chatapp.dtos.websocket.ReceivedMessageDTO
 import com.blikeng.chatapp.dtos.websocket.WsChat
 import com.blikeng.chatapp.dtos.websocket.WsJoined
+import com.blikeng.chatapp.dtos.websocket.WsRoomUsers
 import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.errors.InvalidMessageException
 import com.blikeng.chatapp.errors.InvalidTokenException
@@ -13,6 +15,7 @@ import com.blikeng.chatapp.errors.RoomNotFoundException
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
+import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.crypto.ChatEncrypt
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -44,6 +47,7 @@ class ChatService (
     private val objectMapper: ObjectMapper,
     private val presenceHandler: PresenceHandler,
     meterRegistry: MeterRegistry,
+    private val userRepository: UserRepository,
 ) {
     val rooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
 
@@ -67,6 +71,8 @@ class ChatService (
                 presenceHandler.userLeftRoom(roomId, userId)
             }
         }
+
+        broadcastUsersInRoom(roomId)
 
         if (rooms[roomId]?.isEmpty() == true) {
             rooms.remove(roomId)
@@ -97,6 +103,21 @@ class ChatService (
                 )
             )
         )
+
+        broadcastUsersInRoom(roomId)
+    }
+
+    fun broadcastUsersInRoom(roomId: UUID) {
+        val payload = objectMapper.writeValueAsString(
+            WsRoomUsers(
+                roomId = roomId,
+                users = getUsersInRoom(roomId)
+            )
+        )
+
+        rooms[roomId]?.forEach { session ->
+            session.sendMessage(TextMessage(payload))
+        }
     }
 
     fun removeSessionFromRooms(userId: UUID, session: WebSocketSession) {
@@ -258,6 +279,24 @@ class ChatService (
             timestamp = message.timestamp,
             keyVersion = message.keyVersion
         )
+    }
+
+    // ==========================
+    // Helper methods
+    // ==========================
+    fun getUsersInRoom(roomId: UUID): List<RoomUserDTO> {
+        val userIds = presenceHandler.getUsersInRoom(roomId)
+
+        val users = userRepository.findAllById(userIds)
+
+        return users.map {
+            RoomUserDTO(
+                id = it.id,
+                username = it.username,
+                avatarUrl = it.avatarUrl,
+                online = true
+            )
+        }
     }
 }
 
