@@ -35,7 +35,7 @@ class AuthServiceTests {
 
     @Test
     fun shouldRegisterUser() {
-        every { authRepository.existsByUsername(any()) } returns false
+        every { authRepository.existsByUsernameIgnoreCase(any()) } returns false
         every { passwordService.encodePassword("password") } returns "ENC"
         every { authRepository.save(any()) } answers { firstArg() }
         every { jwtService.generateToken(any()) } returns "TOKEN"
@@ -46,7 +46,7 @@ class AuthServiceTests {
 
     @Test
     fun shouldNotRegisterUserWithExistingUsername() {
-        every { authRepository.existsByUsername(any()) } returns true
+        every { authRepository.existsByUsernameIgnoreCase(any()) } returns true
         every { passwordService.encodePassword(any()) } returns "ENCO"
 
         val exception = assertFailsWith<ApiException> {
@@ -59,7 +59,7 @@ class AuthServiceTests {
 
     @Test
     fun shouldNotRegisterUserWithTooShortUsername() {
-        every { authRepository.existsByUsername(any()) } returns false
+        every { authRepository.existsByUsernameIgnoreCase(any()) } returns false
 
         val exception = assertFailsWith<ApiException> {
             authService.registerUser("u", "password")
@@ -71,7 +71,7 @@ class AuthServiceTests {
 
     @Test
     fun shouldNotRegisterUserWithTooShortPassword() {
-        every { authRepository.existsByUsername(any()) } returns false
+        every { authRepository.existsByUsernameIgnoreCase(any()) } returns false
 
         val exception = assertFailsWith<ApiException> {
             authService.registerUser("username", "p")
@@ -83,7 +83,7 @@ class AuthServiceTests {
 
     @Test
     fun shouldLoginSuccessfully(){
-        every { authRepository.findByUsername(any()) } returns UserEntity(username = "u", password = "")
+        every { authRepository.findByUsernameIgnoreCase(any()) } returns UserEntity(username = "u", password = "")
         every { passwordService.checkPassword("p", any()) } returns true
         every { jwtService.generateToken(any()) } returns "TOKEN"
 
@@ -93,7 +93,7 @@ class AuthServiceTests {
 
     @Test
     fun shouldFailLoginOnNonExistingUser(){
-        every { authRepository.findByUsername(any()) } returns null
+        every { authRepository.findByUsernameIgnoreCase(any()) } returns null
 
        val exception = assertFailsWith<ApiException> {
            authService.loginUser("u", "p")
@@ -105,7 +105,7 @@ class AuthServiceTests {
 
     @Test
     fun shouldFailLoginOnWrongPassword(){
-        every { authRepository.findByUsername(any()) } returns UserEntity(username = "u", password = "")
+        every { authRepository.findByUsernameIgnoreCase(any()) } returns UserEntity(username = "u", password = "")
         every { passwordService.checkPassword("p", any()) } returns false
 
         val exception = assertFailsWith<ApiException> {

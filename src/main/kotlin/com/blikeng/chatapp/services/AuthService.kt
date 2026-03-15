@@ -23,7 +23,7 @@ class AuthService(
     @Autowired private val authRepository: AuthRepository,
 ) {
     fun registerUser(username: String, password: String): String {
-        if (authRepository.existsByUsername(username)) throw UsernameAlreadyExistsException()
+        if (authRepository.existsByUsernameIgnoreCase(username)) throw UsernameAlreadyExistsException()
         if (password.trim().length < 8) throw ShortPasswordException()
         if (username.trim().length < 3) throw ShortUsernameException()
 
@@ -33,7 +33,7 @@ class AuthService(
     }
 
     fun loginUser(username: String, password: String): String {
-        val user = authRepository.findByUsername(username) ?: throw InvalidCredentialsException()
+        val user = authRepository.findByUsernameIgnoreCase(username) ?: throw InvalidCredentialsException()
         if (!passwordService.checkPassword(password, user.password)) throw InvalidCredentialsException()
 
         return jwtService.generateToken(user)
