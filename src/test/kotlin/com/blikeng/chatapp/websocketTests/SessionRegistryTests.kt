@@ -3,20 +3,13 @@ package com.blikeng.chatapp.websocketTests
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.websocket.SessionRegistry
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
-import io.mockk.Runs
-import io.mockk.every
-import io.mockk.just
-import io.mockk.mockk
-import io.mockk.runs
-import io.mockk.verify
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNotNull
-import org.junit.jupiter.api.Assertions.assertTrue
+import io.mockk.*
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNull
 import org.springframework.web.socket.WebSocketSession
-import java.util.UUID
+import java.util.*
 
 class SessionRegistryTests {
     private lateinit var sessionRegistry: SessionRegistry

@@ -1,14 +1,9 @@
 package com.blikeng.chatapp.controllerTests
 
-import com.blikeng.chatapp.controllers.AuthController
 import com.blikeng.chatapp.controllers.ChatsController
 import com.blikeng.chatapp.dtos.messaging.SendMessageDTO
-import com.blikeng.chatapp.errors.ErrorMessages
-import com.blikeng.chatapp.errors.InvalidCredentialsException
-import com.blikeng.chatapp.errors.UsernameAlreadyExistsException
 import com.blikeng.chatapp.security.auth.JwtAuthFilter
 import com.blikeng.chatapp.security.ratelimit.RateLimitService
-import com.blikeng.chatapp.services.AuthService
 import com.blikeng.chatapp.services.ChatService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
@@ -22,11 +17,8 @@ import org.springframework.context.annotation.FilterType
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
-import org.springframework.test.web.servlet.post
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie
 import java.sql.Timestamp
-import java.util.UUID
+import java.util.*
 import kotlin.test.Test
 
 @WebMvcTest(
