@@ -1,0 +1,149 @@
+package com.blikeng.chatapp.websocketTests
+
+import com.blikeng.chatapp.messaging.redis.PresenceHandler
+import com.blikeng.chatapp.websocket.SessionRegistry
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
+import io.mockk.Runs
+import io.mockk.every
+import io.mockk.just
+import io.mockk.mockk
+import io.mockk.runs
+import io.mockk.verify
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertNull
+import org.springframework.web.socket.WebSocketSession
+import java.util.UUID
+
+class SessionRegistryTests {
+    private lateinit var sessionRegistry: SessionRegistry
+    private lateinit var presenceHandler: PresenceHandler
+    private lateinit var meterRegistry: SimpleMeterRegistry
+
+    @BeforeEach
+    fun setup() {
+        presenceHandler = mockk()
+        meterRegistry = SimpleMeterRegistry()
+
+        every { presenceHandler.userConnected(any()) } just Runs
+        every { presenceHandler.userDisconnected(any()) } just Runs
+
+        sessionRegistry = SessionRegistry(presenceHandler, meterRegistry)
+    }
+
+    @Test
+    fun shouldRegisterGauges(){
+
+    }
+
+    @Test
+    fun shouldRegisterSession() {
+        val userId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>()
+
+        sessionRegistry.registerSession(userId, session)
+
+        assertEquals(setOf(session), sessionRegistry.users[userId])
+        verify(exactly = 1) { presenceHandler.userConnected(userId) }
+    }
+
+    @Test
+    fun shouldRegisterMultipleSessionsForSameUser() {
+        val userId = UUID.randomUUID()
+        val session1 = mockk<WebSocketSession>()
+        val session2 = mockk<WebSocketSession>()
+
+        sessionRegistry.registerSession(userId, session1)
+        sessionRegistry.registerSession(userId, session2)
+
+        assertNotNull(sessionRegistry.users[userId])
+        assertEquals(2, sessionRegistry.users[userId]?.size)
+        assertTrue(sessionRegistry.users[userId]?.contains(session1) == true)
+        assertTrue(sessionRegistry.users[userId]?.contains(session2) == true)
+
+        verify(exactly = 2) { presenceHandler.userConnected(userId) }
+    }
+
+    @Test
+    fun shouldRemoveSessionAndRemoveUserIfLastSessionClosed() {
+        val userId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>()
+
+        sessionRegistry.registerSession(userId, session)
+        sessionRegistry.removeSession(userId, session)
+
+        assertNull(sessionRegistry.users[userId])
+        verify(exactly = 1) { presenceHandler.userDisconnected(userId) }
+    }
+
+    @Test
+    fun shouldKeepUserWhenRemovingOneOfMultipleSessions() {
+        val userId = UUID.randomUUID()
+        val session1 = mockk<WebSocketSession>()
+        val session2 = mockk<WebSocketSession>()
+
+        sessionRegistry.registerSession(userId, session1)
+        sessionRegistry.registerSession(userId, session2)
+
+        sessionRegistry.removeSession(userId, session1)
+
+        assertNotNull(sessionRegistry.users[userId])
+        assertEquals(1, sessionRegistry.users[userId]?.size)
+        assertTrue(sessionRegistry.users[userId]?.contains(session2) == true)
+
+        verify(exactly = 1) { presenceHandler.userDisconnected(userId) }
+    }
+
+    @Test
+    fun shouldKeepUserWhenRemovingSessionThatWasNotPresent() {
+        val userId = UUID.randomUUID()
+        val existingSession = mockk<WebSocketSession>()
+        val otherSession = mockk<WebSocketSession>()
+
+        sessionRegistry.registerSession(userId, existingSession)
+        sessionRegistry.removeSession(userId, otherSession)
+
+        assertNotNull(sessionRegistry.users[userId])
+        assertEquals(1, sessionRegistry.users[userId]?.size)
+        assertTrue(sessionRegistry.users[userId]?.contains(existingSession) == true)
+
+        verify(exactly = 1) { presenceHandler.userDisconnected(userId) }
+    }
+
+    @Test
+    fun shouldDoNothingWhenRemovingSessionForUnknownUser() {
+        val userId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>()
+
+        sessionRegistry.removeSession(userId, session)
+
+        assertNull(sessionRegistry.users[userId])
+        verify(exactly = 1) { presenceHandler.userDisconnected(userId) }
+    }
+
+    @Test
+    fun shouldRegisterAndEvaluateGauges() {
+        val usersGauge = meterRegistry.get("users").gauge()
+        val sessionsGauge = meterRegistry.get("users.sessions").gauge()
+
+        assertEquals(0.0, usersGauge.value())
+        assertEquals(0.0, sessionsGauge.value())
+
+        val user1 = UUID.randomUUID()
+        val user2 = UUID.randomUUID()
+
+        val session1 = mockk<WebSocketSession>()
+        val session2 = mockk<WebSocketSession>()
+        val session3 = mockk<WebSocketSession>()
+
+        sessionRegistry.registerSession(user1, session1)
+        sessionRegistry.registerSession(user1, session2)
+        sessionRegistry.registerSession(user2, session3)
+
+        assertEquals(2.0, usersGauge.value())
+        assertEquals(3.0, sessionsGauge.value())
+    }
+}

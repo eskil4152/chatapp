@@ -34,8 +34,4 @@ class SessionRegistry(
         }
         presenceHandler.userDisconnected(userId)
     }
-
-    fun getSessions(userId: UUID): Set<WebSocketSession> {
-        return users[userId]?.toSet() ?: emptySet()
-    }
 }

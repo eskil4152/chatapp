@@ -4,6 +4,7 @@ import com.blikeng.chatapp.entities.FriendsEntity
 import com.blikeng.chatapp.entities.FriendsId
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.errors.ApiException
+import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.repositories.FriendsRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.services.FriendsService
@@ -47,6 +48,9 @@ class FriendsServiceTests {
     @MockK
     private lateinit var userRepository: UserRepository
 
+    @MockK
+    private lateinit var presenceHandler: PresenceHandler
+
     val user1 = UserEntity(
         id = UUID.fromString("00000000-0000-0000-0000-000000000001"),
         username = "username1",
@@ -74,6 +78,7 @@ class FriendsServiceTests {
 
         every { userService.getUserById(user1.id) } returns user1
         every { friendsRepository.findFriendsForUser(user1.id) } returns listOf(friendsEntity)
+        every { presenceHandler.isUserOnline(user2.id) } returns true
 
         val friends = friendsService.getFriends()
 
@@ -87,6 +92,7 @@ class FriendsServiceTests {
 
         every { userService.getUserById(user2.id) } returns user2
         every { friendsRepository.findFriendsForUser(user2.id) } returns listOf(friendsEntity)
+        every { presenceHandler.isUserOnline(user1.id) } returns true
 
         val friends = friendsService.getFriends()
 
@@ -286,6 +292,7 @@ class FriendsServiceTests {
         every { userService.getUserById(user1.id) } returns user1
         every { userRepository.getUserByUsernameIgnoreCase("username2") } returns user2
         every { friendsRepository.existsById(any()) } returns true
+        every { presenceHandler.isUserOnline(user2.id) } returns true
 
        val friend = friendsService.getFriendInfo("username2")
 

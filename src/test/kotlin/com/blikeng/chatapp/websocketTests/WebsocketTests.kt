@@ -3,6 +3,7 @@ package com.blikeng.chatapp.websocketTests
 import com.blikeng.chatapp.security.ratelimit.WsRateLimitService
 import com.blikeng.chatapp.services.ChatService
 import com.blikeng.chatapp.websocket.ChatWebSocketHandler
+import com.blikeng.chatapp.websocket.SessionRegistry
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.mockk.*
 import io.mockk.impl.annotations.MockK
@@ -41,12 +42,15 @@ class WebsocketTests {
     @MockK
     private lateinit var wsRateLimitService: WsRateLimitService
 
+    @MockK
+    private lateinit var sessionRegistry: SessionRegistry
+
     private val objectMapper = jacksonObjectMapper()
     private lateinit var handler: ChatWebSocketHandler
 
     @BeforeEach
     fun setup() {
-        handler = ChatWebSocketHandler(chatService, objectMapper, wsRateLimitService)
+        handler = ChatWebSocketHandler(chatService, objectMapper, wsRateLimitService, sessionRegistry)
         every { wsRateLimitService.tryConsumeMessage(any()) } returns true
     }
 
@@ -62,13 +66,13 @@ class WebsocketTests {
             "username" to username
         )
 
-        every { chatService.registerSession(any(), any()) } returns Unit
+        every { sessionRegistry.registerSession(any(), any()) } just Runs
         every { session.attributes } returns attributes
 
         handler.afterConnectionEstablished(session)
-        verify { chatService.registerSession(userId, session) }
 
-        verify(exactly = 1) { chatService.registerSession(any(), any()) }
+        verify(exactly = 1) { sessionRegistry.registerSession(userId, session) }
+        verify(exactly = 0) { chatService.joinRoom(any(), any()) }
     }
 
     @Test
@@ -87,7 +91,7 @@ class WebsocketTests {
         assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
         assertEquals("No userID found", exception.reason)
 
-        verify(exactly = 0) { chatService.registerSession(any(), any()) }
+        verify(exactly = 0) { sessionRegistry.registerSession(any(), any()) }
     }
 
     @Test
@@ -99,15 +103,17 @@ class WebsocketTests {
             "username" to username
         )
 
-        every { chatService.registerSession(any(), any()) } returns Unit
-        every { chatService.removeSession(any(), any()) } returns Unit
+        every { sessionRegistry.registerSession(any(), any()) } just Runs
+        every { chatService.removeSessionFromRooms(any(), any()) } just Runs
+        every { sessionRegistry.removeSession(any(), any()) } just Runs
         every { session.attributes } returns attributes
 
         handler.afterConnectionEstablished(session)
         handler.afterConnectionClosed(session, CloseStatus.NORMAL)
 
-        verify(exactly = 1) { chatService.registerSession(any(), any()) }
-        verify(exactly = 1) { chatService.removeSession(any(), any()) }
+        verify(exactly = 1) { sessionRegistry.registerSession(userId, session) }
+        verify(exactly = 1) { chatService.removeSessionFromRooms(userId, session) }
+        verify(exactly = 1) { sessionRegistry.removeSession(userId, session) }
     }
 
     @Test
@@ -126,7 +132,8 @@ class WebsocketTests {
         assertEquals(HttpStatus.UNAUTHORIZED, ex.statusCode)
         assertEquals("No userID found", ex.reason)
 
-        verify(exactly = 0) { chatService.removeSession(any(), any()) }
+        verify(exactly = 0) { chatService.removeSessionFromRooms(any(), any()) }
+        verify(exactly = 0) { sessionRegistry.removeSession(any(), any()) }
     }
 
     // ==========================
