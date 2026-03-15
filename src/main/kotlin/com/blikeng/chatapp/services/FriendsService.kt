@@ -49,7 +49,7 @@ class FriendsService(
         val id = getId()
         val user = userService.getUserById(id) ?: throw InvalidUserException()
 
-        val friend = userRepository.getUserByUsername(friendUsername) ?: throw UserNotFoundException()
+        val friend = userRepository.getUserByUsernameIgnoreCase(friendUsername) ?: throw UserNotFoundException()
 
         val friendshipId = generateFriendshipId(id, friend.id)
         if (friendsRepository.existsById(friendshipId)) throw AlreadyFriendsException()
@@ -66,7 +66,7 @@ class FriendsService(
         val id = getId()
         userService.getUserById(id) ?: throw InvalidUserException()
 
-        val friend = userRepository.getUserByUsername(friendUsername) ?: throw UserNotFoundException()
+        val friend = userRepository.getUserByUsernameIgnoreCase(friendUsername) ?: throw UserNotFoundException()
 
         val friendshipId = generateFriendshipId(id, friend.id)
         if (!friendsRepository.existsById(friendshipId)) throw UserNotFoundException()
@@ -78,7 +78,7 @@ class FriendsService(
         val id = getId()
         userService.getUserById(id) ?: throw InvalidUserException()
 
-        val friend = userRepository.getUserByUsername(friendUsername) ?: throw UserNotFoundException()
+        val friend = userRepository.getUserByUsernameIgnoreCase(friendUsername) ?: throw UserNotFoundException()
 
         val friendshipId = generateFriendshipId(id, friend.id)
         if (!friendsRepository.existsById(friendshipId)) throw UserNotFoundException()
@@ -95,7 +95,7 @@ class FriendsService(
     }
 
     fun getFriendEntity(username: String, userId: UUID): UserEntity {
-        val friend = userRepository.getUserByUsername(username) ?: throw UserNotFoundException()
+        val friend = userRepository.getUserByUsernameIgnoreCase(username) ?: throw UserNotFoundException()
 
         val friendshipId = generateFriendshipId(userId, friend.id)
         if (!friendsRepository.existsById(friendshipId)) throw UserNotFoundException()

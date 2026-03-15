@@ -7,9 +7,9 @@ import java.util.*
 
 @Repository
 interface AuthRepository: JpaRepository<UserEntity, UUID> {
-    fun findByUsername(username: String): UserEntity?
+    fun findByUsernameIgnoreCase(username: String): UserEntity?
 
-    fun existsByUsername(username: String): Boolean
+    fun existsByUsernameIgnoreCase(username: String): Boolean
 
     fun save(user: UserEntity): UserEntity
 }

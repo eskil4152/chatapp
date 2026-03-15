@@ -118,7 +118,7 @@ class FriendsServiceTests {
         val slot = slot<FriendsEntity>()
 
         every { userService.getUserById(user1.id) } returns user1
-        every { userRepository.getUserByUsername("username2") } returns user2
+        every { userRepository.getUserByUsernameIgnoreCase("username2") } returns user2
         every { friendsRepository.existsById(any()) } returns false
         every { friendsRepository.save(capture(slot)) } answers { firstArg() }
 
@@ -137,7 +137,7 @@ class FriendsServiceTests {
         val slot = slot<FriendsEntity>()
 
         every { userService.getUserById(user2.id) } returns user2
-        every { userRepository.getUserByUsername("username1") } returns user1
+        every { userRepository.getUserByUsernameIgnoreCase("username1") } returns user1
         every { friendsRepository.existsById(any()) } returns false
         every { friendsRepository.save(capture(slot)) } answers { firstArg() }
 
@@ -168,7 +168,7 @@ class FriendsServiceTests {
             UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
 
         every { userService.getUserById(user1.id) } returns user1
-        every { userRepository.getUserByUsername("non existent") } returns null
+        every { userRepository.getUserByUsernameIgnoreCase("non existent") } returns null
 
         val exception = assertFailsWith<ApiException> {
             friendsService.addFriend("non existent")
@@ -183,7 +183,7 @@ class FriendsServiceTests {
             UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
 
         every { userService.getUserById(user1.id) } returns user1
-        every { userRepository.getUserByUsername("username1") } returns user1
+        every { userRepository.getUserByUsernameIgnoreCase("username1") } returns user1
 
         val exception = assertFailsWith<ApiException> {
             friendsService.addFriend("username1")
@@ -198,7 +198,7 @@ class FriendsServiceTests {
             UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
 
         every { userService.getUserById(user1.id) } returns user1
-        every { userRepository.getUserByUsername("username2") } returns user2
+        every { userRepository.getUserByUsernameIgnoreCase("username2") } returns user2
         every { friendsRepository.existsById(any()) } returns true
 
         val exception = assertFailsWith<ApiException> {
@@ -219,7 +219,7 @@ class FriendsServiceTests {
         val slot = slot<FriendsId>()
 
         every { userService.getUserById(user1.id) } returns user1
-        every { userRepository.getUserByUsername("username2") } returns user2
+        every { userRepository.getUserByUsernameIgnoreCase("username2") } returns user2
         every { friendsRepository.existsById(any()) } returns true
         every { friendsRepository.deleteById(capture(slot)) } just Runs
 
@@ -250,7 +250,7 @@ class FriendsServiceTests {
             UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
 
         every { userService.getUserById(user1.id) } returns user1
-        every { userRepository.getUserByUsername("fake name") } returns null
+        every { userRepository.getUserByUsernameIgnoreCase("fake name") } returns null
 
         val exception = assertFailsWith<ApiException> {
             friendsService.removeFriend("fake name")
@@ -265,7 +265,7 @@ class FriendsServiceTests {
             UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
 
         every { userService.getUserById(user1.id) } returns user1
-        every { userRepository.getUserByUsername("username2") } returns user2
+        every { userRepository.getUserByUsernameIgnoreCase("username2") } returns user2
         every { friendsRepository.existsById(any()) } returns false
 
         val exception = assertFailsWith<ApiException> {
@@ -284,7 +284,7 @@ class FriendsServiceTests {
             UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
 
         every { userService.getUserById(user1.id) } returns user1
-        every { userRepository.getUserByUsername("username2") } returns user2
+        every { userRepository.getUserByUsernameIgnoreCase("username2") } returns user2
         every { friendsRepository.existsById(any()) } returns true
 
        val friend = friendsService.getFriendInfo("username2")
@@ -313,7 +313,7 @@ class FriendsServiceTests {
             UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
 
         every { userService.getUserById(user1.id) } returns user1
-        every { userRepository.getUserByUsername("fake name") } returns null
+        every { userRepository.getUserByUsernameIgnoreCase("fake name") } returns null
 
         val exception = assertFailsWith<ApiException> {
             friendsService.getFriendInfo("fake name")
@@ -328,7 +328,7 @@ class FriendsServiceTests {
             UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
 
         every { userService.getUserById(user1.id) } returns user1
-        every { userRepository.getUserByUsername("username2") } returns user2
+        every { userRepository.getUserByUsernameIgnoreCase("username2") } returns user2
         every { friendsRepository.existsById(any()) } returns false
 
         val exception = assertFailsWith<ApiException> {
@@ -346,7 +346,7 @@ class FriendsServiceTests {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
 
-        every { userRepository.getUserByUsername("username2") } returns user2
+        every { userRepository.getUserByUsernameIgnoreCase("username2") } returns user2
         every { friendsRepository.existsById(any()) } returns true
 
         val friend = friendsService.getFriendEntity("username2", user1.id)
@@ -361,7 +361,7 @@ class FriendsServiceTests {
             UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
 
         every { userService.getUserById(user1.id) } returns user1
-        every { userRepository.getUserByUsername("fake name") } returns null
+        every { userRepository.getUserByUsernameIgnoreCase("fake name") } returns null
 
         val exception = assertFailsWith<ApiException> {
             friendsService.getFriendEntity("fake name", user1.id)
@@ -376,7 +376,7 @@ class FriendsServiceTests {
             UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
 
         every { userService.getUserById(user1.id) } returns user1
-        every { userRepository.getUserByUsername("real name") } returns user2
+        every { userRepository.getUserByUsernameIgnoreCase("real name") } returns user2
         every { friendsRepository.existsById(any()) } returns false
 
         val exception = assertFailsWith<ApiException> {
