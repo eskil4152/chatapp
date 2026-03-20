@@ -8,6 +8,7 @@ import com.blikeng.chatapp.errors.AlreadyFriendsException
 import com.blikeng.chatapp.errors.FriendYourselfException
 import com.blikeng.chatapp.errors.InvalidUserException
 import com.blikeng.chatapp.errors.UserNotFoundException
+import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.repositories.FriendsRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.security.auth.getId
@@ -23,6 +24,7 @@ class FriendsService(
     private val friendsRepository: FriendsRepository,
     private val userService: UserService,
     private val userRepository: UserRepository,
+    private val presenceHandler: PresenceHandler,
 ) {
     fun getFriends(): List<FriendDTO> {
         val id = getId()
@@ -41,6 +43,7 @@ class FriendsService(
                 avatarUrl = friend.avatarUrl,
                 birthday = friend.birthday,
                 createdAt = friend.createdAt,
+                online = presenceHandler.isUserOnline(friend.id)
             )
         }
     }
@@ -91,6 +94,7 @@ class FriendsService(
             avatarUrl = friend.avatarUrl,
             birthday = friend.birthday,
             createdAt = friend.createdAt,
+            online = presenceHandler.isUserOnline(friend.id)
         )
     }
 

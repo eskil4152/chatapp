@@ -3,9 +3,11 @@ package com.blikeng.chatapp.services
 import com.blikeng.chatapp.config.configureAad
 import com.blikeng.chatapp.dtos.messaging.RabbitMessageDTO
 import com.blikeng.chatapp.dtos.messaging.SendMessageDTO
+import com.blikeng.chatapp.dtos.room.RoomUserDTO
 import com.blikeng.chatapp.dtos.websocket.ReceivedMessageDTO
 import com.blikeng.chatapp.dtos.websocket.WsChat
 import com.blikeng.chatapp.dtos.websocket.WsJoined
+import com.blikeng.chatapp.dtos.websocket.WsRoomUsers
 import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.errors.InvalidMessageException
 import com.blikeng.chatapp.errors.InvalidTokenException
@@ -13,6 +15,7 @@ import com.blikeng.chatapp.errors.RoomNotFoundException
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
+import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.crypto.ChatEncrypt
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -44,56 +47,12 @@ class ChatService (
     private val objectMapper: ObjectMapper,
     private val presenceHandler: PresenceHandler,
     meterRegistry: MeterRegistry,
+    private val userRepository: UserRepository,
 ) {
     val rooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
-    val users = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
 
     init {
         meterRegistry.gauge("chat.rooms", rooms) { it.size.toDouble() }
-        meterRegistry.gauge("chat.users", users) { it.size.toDouble() }
-        meterRegistry.gauge("chat.sessions", users) {
-            it.values.sumOf { sessions -> sessions.size.toDouble() }
-        }
-    }
-
-    // ==========================
-    // Session handling
-    // ==========================
-    fun registerSession(userId: UUID, session: WebSocketSession) {
-        users.computeIfAbsent(userId) { CopyOnWriteArraySet() }.add(session)
-        presenceHandler.userConnected(userId)
-    }
-
-    fun removeSession(userId: UUID, session: WebSocketSession) {
-        users[userId]?.remove(session)
-        if (users[userId]?.isEmpty() == true) {
-            users.remove(userId)
-        }
-
-        val affectedRoomIds = rooms
-            .filterValues { it.contains(session) }
-            .keys
-            .toList()
-
-        affectedRoomIds.forEach { roomId ->
-            val roomSessions = rooms[roomId] ?: return@forEach
-
-            roomSessions.remove(session)
-
-            val stillPresentInRoom = roomSessions.any {
-                it.attributes["userId"] == userId
-            }
-
-            if (!stillPresentInRoom) {
-                presenceHandler.userLeftRoom(roomId, userId)
-            }
-
-            if (roomSessions.isEmpty()) {
-                rooms.remove(roomId)
-            }
-        }
-
-        presenceHandler.userDisconnected(userId)
     }
 
     // ==========================
@@ -112,6 +71,8 @@ class ChatService (
                 presenceHandler.userLeftRoom(roomId, userId)
             }
         }
+
+        broadcastUsersInRoom(roomId)
 
         if (rooms[roomId]?.isEmpty() == true) {
             rooms.remove(roomId)
@@ -142,6 +103,47 @@ class ChatService (
                 )
             )
         )
+
+        broadcastUsersInRoom(roomId)
+    }
+
+    fun broadcastUsersInRoom(roomId: UUID) {
+        val payload = objectMapper.writeValueAsString(
+            WsRoomUsers(
+                roomId = roomId,
+                users = getUsersInRoom(roomId)
+            )
+        )
+
+        rooms[roomId]?.forEach { session ->
+            session.sendMessage(TextMessage(payload))
+        }
+    }
+
+    fun removeSessionFromRooms(userId: UUID, session: WebSocketSession) {
+        val affectedRoomIds = rooms
+            .filterValues { it.contains(session) }
+            .keys
+            .toList()
+
+        affectedRoomIds.forEach { roomId ->
+
+            val roomSessions = rooms[roomId] ?: return@forEach
+
+            roomSessions.remove(session)
+
+            val stillPresent = roomSessions.any {
+                it.attributes["userId"] == userId
+            }
+
+            if (!stillPresent) {
+                presenceHandler.userLeftRoom(roomId, userId)
+            }
+
+            if (roomSessions.isEmpty()) {
+                rooms.remove(roomId)
+            }
+        }
     }
 
     // ==========================
@@ -277,6 +279,24 @@ class ChatService (
             timestamp = message.timestamp,
             keyVersion = message.keyVersion
         )
+    }
+
+    // ==========================
+    // Helper methods
+    // ==========================
+    fun getUsersInRoom(roomId: UUID): List<RoomUserDTO> {
+        val userIds = presenceHandler.getUsersInRoom(roomId)
+
+        val users = userRepository.findAllById(userIds)
+
+        return users.map {
+            RoomUserDTO(
+                id = it.id,
+                username = it.username,
+                avatarUrl = it.avatarUrl,
+                online = true
+            )
+        }
     }
 }
 

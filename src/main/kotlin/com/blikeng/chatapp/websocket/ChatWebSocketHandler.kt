@@ -26,7 +26,8 @@ import java.util.*
 class ChatWebSocketHandler(
     private val chatService: ChatService,
     private val objectMapper: ObjectMapper,
-    private val wsRateLimitService: WsRateLimitService
+    private val wsRateLimitService: WsRateLimitService,
+    private val sessionRegistry: SessionRegistry
 ) : TextWebSocketHandler() {
 
     // ==========================
@@ -34,7 +35,7 @@ class ChatWebSocketHandler(
     // ==========================
     override fun afterConnectionEstablished(session: WebSocketSession) {
         val userId = getUserId(session)
-        chatService.registerSession(userId, session)
+        sessionRegistry.registerSession(userId, session)
     }
 
     // ==========================
@@ -61,7 +62,9 @@ class ChatWebSocketHandler(
     // ==========================
     override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
         val userId = getUserId(session)
-        chatService.removeSession(userId, session)
+
+        chatService.removeSessionFromRooms(userId, session)
+        sessionRegistry.removeSession(userId, session)
     }
 
     enum class MessageType {

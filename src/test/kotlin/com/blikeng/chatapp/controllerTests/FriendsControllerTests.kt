@@ -65,6 +65,7 @@ class FriendsControllerTests {
         "",
         Date.from(Instant.now()),
         Date.from(Instant.now()),
+        online = false
     )
 
     @Test
