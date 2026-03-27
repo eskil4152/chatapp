@@ -3,6 +3,8 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/chatdb}
     username: ${SPRING_DATASOURCE_USERNAME:eskil}
     password: ${SPRING_DATASOURCE_PASSWORD:password1}
+    hikari:
+      maximum-pool-size: 10
   jpa:
     properties:
       hibernate:
