@@ -1,6 +1,7 @@
 package com.blikeng.chatapp.messaging.redis
 
 import com.blikeng.chatapp.services.ChatService
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.TextMessage
 import java.util.*
@@ -14,13 +15,16 @@ import java.util.*
 class LocalBroadcaster(
     private val chatService: ChatService
 ) {
+    private val logger = LoggerFactory.getLogger(this::class.java);
+
     fun broadcastRaw(roomId: UUID, payload: String) {
         chatService.rooms[roomId]?.forEach { session ->
             synchronized(session) {
                 if (session.isOpen) {
                     try {
                         session.sendMessage(TextMessage(payload))
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
+                        logger.error("Failed to send message to session {}", session.id, e)
                         chatService.leaveRoom(roomId, session)
                     }
                 }

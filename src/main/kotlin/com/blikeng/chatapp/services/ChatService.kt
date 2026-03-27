@@ -23,7 +23,9 @@ import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
+import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import java.sql.Timestamp
@@ -87,7 +89,7 @@ class ChatService (
             throw RoomNotFoundException()
         }
 
-        val room = roomRepository.findById(roomId).orElseThrow()
+        val room = roomRepository.findById(roomId).orElseThrow { RoomNotFoundException() }
 
         rooms.computeIfAbsent(roomId) { CopyOnWriteArraySet() }.add(session)
         presenceHandler.userJoinedRoom(roomId, userId)
@@ -218,9 +220,11 @@ class ChatService (
             val content = if (m.ciphertext == null) {
                 m.message ?: ""
             } else {
+                val nonce = m.nonce ?: throw InvalidMessageException()
+
                 encrypt.decrypt(
                     ciphertext = m.ciphertext,
-                    nonce = m.nonce!!,
+                    nonce = nonce,
                     aad = configureAad(m.roomId, m.id, m.userId),
                 )
             }
@@ -247,6 +251,8 @@ class ChatService (
     }
 
     fun getRoomMessages(roomId: UUID, page: Int, size: Int): List<SendMessageDTO> {
+        if (page < 0 || size !in setOf(25, 50, 100)) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid page or size")
+
         val persisted = chatRepository
             .findByRoomIdOrderByTimestampDesc(
                 roomId,

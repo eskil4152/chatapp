@@ -30,11 +30,16 @@ class SessionRegistry(
     }
 
     fun removeSession(userId: UUID, session: WebSocketSession) {
-        users[userId]?.remove(session)
-        sessionIndex.remove(session.id)
-        if (users[userId]?.isEmpty() == true) {
-            users.remove(userId)
+        val sessions = users[userId] ?: return
+
+        val removed = sessions.remove(session)
+        if (!removed) return
+
+        if (sessions.isEmpty()) {
+            users.remove(userId, sessions)
         }
+
+        sessionIndex.remove(session.id)
         presenceHandler.userDisconnected(userId)
     }
 

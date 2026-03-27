@@ -7,6 +7,7 @@ import com.blikeng.chatapp.services.ChatService
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.http.HttpStatus
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
@@ -33,6 +34,7 @@ class ChatWebSocketHandler(
     private val sessionRegistry: SessionRegistry,
     @Value("\${chat.ping.ttlMs}") private val ttlMs: Long
 ) : TextWebSocketHandler() {
+    private val logger = LoggerFactory.getLogger(this::class.java)
     private val lastPing = ConcurrentHashMap<String, Long>()
 
     // ==========================
@@ -97,7 +99,9 @@ class ChatWebSocketHandler(
 
                 try {
                     session.close(CloseStatus.SESSION_NOT_RELIABLE)
-                } catch (_: Exception) {}
+                } catch (e: Exception) {
+                    logger.error("Failed to close stale session {}", session.id, e)
+                }
 
             }
         }
@@ -122,7 +126,7 @@ class ChatWebSocketHandler(
         val message = ReceivedMessageDTO(
             roomId,
             userId,
-            json["message"].asText(),
+            json["message"]?.asText() ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing message field"),
             "MESSAGE"
         )
 
@@ -189,7 +193,7 @@ class ChatWebSocketHandler(
         }
 
         val payload = objectMapper.writeValueAsString(
-            WsError(code = code, message = msg!!)
+            WsError(code = code, message = msg)
         )
 
         synchronized(session) {
