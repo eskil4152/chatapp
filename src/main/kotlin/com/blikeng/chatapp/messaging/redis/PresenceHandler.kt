@@ -26,7 +26,8 @@ class PresenceHandler(
     }
 
     fun isUserOnline(userId: UUID): Boolean {
-        val value = redisTemplate.opsForValue().get(PresenceKeys.userPresence(userId))
+
+        val value = redisTemplate.opsForValue()[PresenceKeys.userPresence(userId)]
         return value?.toLongOrNull()?.let { it > 0 } == true
     }
 
