@@ -165,6 +165,53 @@ class ChatRoomSessionTests {
     }
 
     @Test
+    fun shouldJoinRoomWithoutSendingMessagesWhenJoiningSessionIsClosed() {
+        val roomId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>()
+
+        every { session.attributes } returns hashMapOf("userId" to UUID.randomUUID())
+        every { session.isOpen } returns false
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
+        every { userRoomRepository.findUsersByRoomId(any()) } returns emptyList()
+        every { roomRepository.findById(roomId) } returns Optional.of(
+            RoomEntity(id = roomId, name = "r", type = RoomType.GROUP)
+        )
+
+        chatService.joinRoom(roomId, session)
+
+        assertTrue(chatService.rooms[roomId]?.contains(session) == true)
+        verify(exactly = 0) { session.sendMessage(any()) }
+    }
+
+
+    @Test
+    fun shouldSkipClosedExistingSessionsWhenSendingJoinPresence() {
+        val roomId = UUID.randomUUID()
+
+        val existingSession = mockk<WebSocketSession>(relaxed = true)
+        val joiningSession = mockk<WebSocketSession>(relaxed = true)
+
+        every { existingSession.attributes } returns hashMapOf("userId" to UUID.randomUUID())
+        every { joiningSession.attributes } returns hashMapOf("userId" to UUID.randomUUID())
+
+        every { existingSession.isOpen } returns false
+        every { joiningSession.isOpen } returns true
+
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
+        every { userRoomRepository.findUsersByRoomId(any()) } returns emptyList()
+        every { roomRepository.findById(roomId) } returns Optional.of(
+            RoomEntity(id = roomId, name = "r", type = RoomType.GROUP)
+        )
+        every { joiningSession.sendMessage(any()) } just Runs
+
+        chatService.joinRoom(roomId, existingSession)
+        clearMocks(existingSession, answers = false, recordedCalls = true)
+        chatService.joinRoom(roomId, joiningSession)
+
+        verify(exactly = 0) { existingSession.sendMessage(any()) }
+    }
+
+    @Test
     fun shouldFailToJoinRoomIfNoUserIdInSessionAttributes() {
         val session = mockk<WebSocketSession>()
         every { session.attributes } returns emptyMap()
@@ -186,6 +233,23 @@ class ChatRoomSessionTests {
 
         val exception = assertFailsWith<ApiException> {
             chatService.joinRoom(UUID.randomUUID(), session)
+        }
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.status)
+        assertEquals(ErrorMessages.ROOM_NOT_FOUND, exception.message)
+    }
+
+    @Test
+    fun shouldFailToJoinRoomWhenRoomMissingInDatabase() {
+        val roomId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>()
+
+        every { session.attributes } returns hashMapOf("userId" to UUID.randomUUID())
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), roomId) } returns true
+        every { roomRepository.findById(roomId) } returns Optional.empty()
+
+        val exception = assertFailsWith<ApiException> {
+            chatService.joinRoom(roomId, session)
         }
 
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
@@ -214,6 +278,25 @@ class ChatRoomSessionTests {
 
         chatService.leaveRoom(roomId, session)
         assertNull(chatService.rooms[roomId])
+    }
+
+    @Test
+    fun shouldSkipClosedRemainingSessionsWhenLeavingRoom() {
+        val roomId = UUID.randomUUID()
+
+        val leavingSession = mockk<WebSocketSession>(relaxed = true)
+        val remainingSession = mockk<WebSocketSession>(relaxed = true)
+
+        every { leavingSession.attributes } returns hashMapOf("userId" to UUID.randomUUID())
+        every { remainingSession.attributes } returns hashMapOf("userId" to UUID.randomUUID())
+        every { remainingSession.isOpen } returns false
+        every { presenceHandler.isUserOnline(any()) } returns false
+
+        chatService.rooms[roomId] = CopyOnWriteArraySet(mutableSetOf(leavingSession, remainingSession))
+
+        chatService.leaveRoom(roomId, leavingSession)
+
+        verify(exactly = 0) { remainingSession.sendMessage(any()) }
     }
 
     @Test
@@ -289,5 +372,39 @@ class ChatRoomSessionTests {
         assertNotNull(chatService.rooms[roomId])
         assertEquals(1, chatService.rooms[roomId]?.size)
         assertTrue(chatService.rooms[roomId]?.contains(invalidSession) == true)
+    }
+
+    // ==========================
+    // Presence notifications
+    // ==========================
+    @Test
+    fun shouldSendRoomPresenceToOpenSessions() {
+        val roomId = UUID.randomUUID()
+        val userId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>(relaxed = true)
+
+        every { session.isOpen } returns true
+        every { session.sendMessage(any()) } just Runs
+
+        chatService.rooms[roomId] = CopyOnWriteArraySet(mutableSetOf(session))
+
+        chatService.notifyRoomPresence(listOf(roomId), userId, true)
+
+        verify(exactly = 1) { session.sendMessage(any()) }
+    }
+
+    @Test
+    fun shouldSkipClosedSessionsWhenNotifyingRoomPresence() {
+        val roomId = UUID.randomUUID()
+        val userId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>(relaxed = true)
+
+        every { session.isOpen } returns false
+
+        chatService.rooms[roomId] = CopyOnWriteArraySet(mutableSetOf(session))
+
+        chatService.notifyRoomPresence(listOf(roomId), userId, true)
+
+        verify(exactly = 0) { session.sendMessage(any()) }
     }
 }

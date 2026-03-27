@@ -83,11 +83,6 @@ class ChatFlushConsumer(
         flushPending()
     }
 
-    @PreDestroy
-    fun shutdown() {
-        flushPending()
-    }
-
     private fun flushPending() {
         val batch = synchronized(lock) {
             if (pending.isEmpty()) return
