@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNull
+import org.springframework.test.util.ReflectionTestUtils
 import org.springframework.web.socket.WebSocketSession
 import java.util.*
 
@@ -28,14 +29,11 @@ class SessionRegistryTests {
     }
 
     @Test
-    fun shouldRegisterGauges(){
-
-    }
-
-    @Test
     fun shouldRegisterSession() {
         val userId = UUID.randomUUID()
         val session = mockk<WebSocketSession>()
+
+        every { session.id } returns userId.toString();
 
         sessionRegistry.registerSession(userId, session)
 
@@ -48,6 +46,9 @@ class SessionRegistryTests {
         val userId = UUID.randomUUID()
         val session1 = mockk<WebSocketSession>()
         val session2 = mockk<WebSocketSession>()
+
+        every { session1.id } returns userId.toString();
+        every { session2.id } returns userId.toString();
 
         sessionRegistry.registerSession(userId, session1)
         sessionRegistry.registerSession(userId, session2)
@@ -65,6 +66,8 @@ class SessionRegistryTests {
         val userId = UUID.randomUUID()
         val session = mockk<WebSocketSession>()
 
+        every { session.id } returns userId.toString();
+
         sessionRegistry.registerSession(userId, session)
         sessionRegistry.removeSession(userId, session)
 
@@ -77,6 +80,9 @@ class SessionRegistryTests {
         val userId = UUID.randomUUID()
         val session1 = mockk<WebSocketSession>()
         val session2 = mockk<WebSocketSession>()
+
+        every { session1.id } returns userId.toString();
+        every { session2.id } returns userId.toString();
 
         sessionRegistry.registerSession(userId, session1)
         sessionRegistry.registerSession(userId, session2)
@@ -96,6 +102,9 @@ class SessionRegistryTests {
         val existingSession = mockk<WebSocketSession>()
         val otherSession = mockk<WebSocketSession>()
 
+        every { existingSession.id } returns userId.toString();
+        every { otherSession.id } returns userId.toString();
+
         sessionRegistry.registerSession(userId, existingSession)
         sessionRegistry.removeSession(userId, otherSession)
 
@@ -103,7 +112,7 @@ class SessionRegistryTests {
         assertEquals(1, sessionRegistry.users[userId]?.size)
         assertTrue(sessionRegistry.users[userId]?.contains(existingSession) == true)
 
-        verify(exactly = 1) { presenceHandler.userDisconnected(userId) }
+        verify(exactly = 0) { presenceHandler.userDisconnected(userId) }
     }
 
     @Test
@@ -114,7 +123,7 @@ class SessionRegistryTests {
         sessionRegistry.removeSession(userId, session)
 
         assertNull(sessionRegistry.users[userId])
-        verify(exactly = 1) { presenceHandler.userDisconnected(userId) }
+        verify(exactly = 0) { presenceHandler.userDisconnected(userId) }
     }
 
     @Test
@@ -132,11 +141,35 @@ class SessionRegistryTests {
         val session2 = mockk<WebSocketSession>()
         val session3 = mockk<WebSocketSession>()
 
+        every { session1.id } returns user1.toString();
+        every { session2.id } returns user1.toString();
+        every { session3.id } returns user2.toString();
+
         sessionRegistry.registerSession(user1, session1)
         sessionRegistry.registerSession(user1, session2)
         sessionRegistry.registerSession(user2, session3)
 
         assertEquals(2.0, usersGauge.value())
         assertEquals(3.0, sessionsGauge.value())
+    }
+
+    @Test
+    fun shouldReturnSessionWhenSessionIdExists() {
+        val session = mockk<WebSocketSession>()
+        val sessionId = "s1"
+
+        val map = ReflectionTestUtils.getField(sessionRegistry, "sessionIndex") as MutableMap<String, WebSocketSession>
+        map[sessionId] = session
+
+        val result = sessionRegistry.getSessionById(sessionId)
+
+        assertEquals(session, result)
+    }
+
+    @Test
+    fun shouldReturnNullWhenSessionIdDoesNotExist() {
+        val result = sessionRegistry.getSessionById("missing")
+
+        assertNull(result)
     }
 }

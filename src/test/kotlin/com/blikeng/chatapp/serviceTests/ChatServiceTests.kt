@@ -12,7 +12,6 @@ import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
-import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.crypto.ChatEncrypt
 import com.blikeng.chatapp.security.crypto.Encrypted
@@ -57,7 +56,6 @@ class ChatServiceTests {
 
     @MockK lateinit var chatRepository: ChatRepository
     @MockK lateinit var roomRepository: RoomRepository
-    @MockK lateinit var userRepository: UserRepository
     @MockK lateinit var userRoomRepository: UserRoomRepository
     @MockK lateinit var encrypt: ChatEncrypt
     @MockK lateinit var redisTemplate: RedisTemplate<String, String>
@@ -86,11 +84,8 @@ class ChatServiceTests {
     fun shouldRemoveSessionForEveryRoom(){
 
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
+        every { userRoomRepository.findUsersByRoomId(any()) } returns emptyList()
         every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
-        every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
-        every { presenceHandler.userLeftRoom(any(), any()) } just Runs
-        every { presenceHandler.getUsersInRoom(any()) } returns emptySet()
-        every { userRepository.findAllById(any()) } returns emptyList()
 
         val userId = UUID.randomUUID()
         val session = mockk<WebSocketSession>()
@@ -100,6 +95,7 @@ class ChatServiceTests {
         val attrs: MutableMap<String, Any> = hashMapOf("userId" to userId)
 
         every { session.attributes } returns attrs
+        every { session.isOpen } returns true
         every { session.sendMessage(any()) } just Runs
 
         chatService.joinRoom(roomId, session)
@@ -108,7 +104,7 @@ class ChatServiceTests {
         assertEquals(chatService.rooms[roomId]?.first(), session)
         assertEquals(chatService.rooms[roomId2]?.first(), session)
 
-        chatService.removeSessionFromRooms(userId, session)
+        chatService.removeSessionFromRooms(session)
 
         assertNull(chatService.rooms[roomId])
         assertNull(chatService.rooms[roomId2])
@@ -117,11 +113,8 @@ class ChatServiceTests {
     @Test
     fun shouldNotRemoveRoomIfOtherUsersArePresentInRoom(){
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
+        every { userRoomRepository.findUsersByRoomId(any()) } returns emptyList()
         every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
-        every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
-        every { presenceHandler.userLeftRoom(any(), any()) } just Runs
-        every { presenceHandler.getUsersInRoom(any()) } returns emptySet()
-        every { userRepository.findAllById(any()) } returns emptyList()
 
         val userId = UUID.randomUUID()
         val userId2 = UUID.randomUUID()
@@ -134,25 +127,23 @@ class ChatServiceTests {
         val attrs2: MutableMap<String, Any> = hashMapOf("userId" to userId2)
 
         every { session.attributes } returns attrs
+        every { session.isOpen } returns true
         every { session.sendMessage(any()) } just Runs
 
         every { session2.attributes } returns attrs2
+        every { session2.isOpen } returns true
         every { session2.sendMessage(any()) } just Runs
 
         chatService.joinRoom(roomId, session)
-
         chatService.joinRoom(roomId, session2)
 
-        chatService.removeSessionFromRooms(userId, session)
+        chatService.removeSessionFromRooms(session)
 
         assertNotNull(chatService.rooms[roomId])
     }
 
     @Test
     fun shouldKeepPresenceWhenUserStillHasSessionInRoom() {
-        every { presenceHandler.userDisconnected(any()) } just Runs
-        every { presenceHandler.userLeftRoom(any(), any()) } just Runs
-
         val userId = UUID.randomUUID()
         val roomId = UUID.randomUUID()
 
@@ -164,9 +155,10 @@ class ChatServiceTests {
 
         chatService.rooms[roomId] = mutableSetOf(session1, session2)
 
-        chatService.removeSessionFromRooms(userId, session1)
+        chatService.removeSessionFromRooms(session1)
 
-        verify(exactly = 0) { presenceHandler.userLeftRoom(roomId, userId) }
+        assertNotNull(chatService.rooms[roomId])
+        assertTrue(chatService.rooms[roomId]?.contains(session2) == true)
     }
 
     // ==========================
@@ -175,29 +167,27 @@ class ChatServiceTests {
     @Test
     fun shouldJoinRoom(){
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
+        every { userRoomRepository.findUsersByRoomId(any()) } returns emptyList()
         every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
-        every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
-        every { presenceHandler.getUsersInRoom(any()) } returns emptySet()
-        every { userRepository.findAllById(any()) } returns emptyList()
 
         val roomId = UUID.randomUUID()
         val session = mockk<WebSocketSession>()
 
         val attrs: MutableMap<String, Any> = hashMapOf("userId" to UUID.randomUUID())
         every { session.attributes } returns attrs
-        every { session.sendMessage(any()) } just Runs
+        every { session.isOpen } returns true
 
         val sent = mutableListOf<TextMessage>()
         every { session.sendMessage(capture(sent)) } just Runs
 
         chatService.joinRoom(roomId, session)
 
-        assertEquals(2, sent.size)
+        assertEquals(1, sent.size)
 
         val json = objectMapper.readTree(sent[0].payload)
         assertEquals("JOINED", json["type"].asText())
 
-        verify(exactly = 2) { session.sendMessage(any()) }
+        verify(exactly = 1) { session.sendMessage(any()) }
         assertEquals(session, chatService.rooms[roomId]?.first())
     }
 
@@ -233,13 +223,10 @@ class ChatServiceTests {
 
     @Test
     fun shouldLeaveRoom(){
-
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
+        every { userRoomRepository.findUsersByRoomId(any()) } returns emptyList()
         every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
-        every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
-        every { presenceHandler.userLeftRoom(any(), any()) } just Runs
-        every { presenceHandler.getUsersInRoom(any()) } returns emptySet()
-        every { userRepository.findAllById(any()) } returns emptyList()
+        every { presenceHandler.isUserOnline(any()) } returns false
 
         val roomId = UUID.randomUUID()
         val userId = UUID.randomUUID()
@@ -247,6 +234,7 @@ class ChatServiceTests {
         val attrs: MutableMap<String, Any> = hashMapOf("userId" to userId)
 
         every { session.attributes } returns attrs
+        every { session.isOpen } returns true
         every { session.sendMessage(any()) } just Runs
 
         chatService.joinRoom(roomId, session)
@@ -258,9 +246,7 @@ class ChatServiceTests {
 
     @Test
     fun shouldDoNothingWhenLeavingNonExistingRoom(){
-        every { presenceHandler.userLeftRoom(any(), any()) } just Runs
-        every { presenceHandler.getUsersInRoom(any()) } returns emptySet()
-        every { userRepository.findAllById(any()) } returns emptyList()
+        every { presenceHandler.isUserOnline(any()) } returns false
 
         val roomId = UUID.randomUUID()
         val session = mockk<WebSocketSession>()
@@ -274,20 +260,11 @@ class ChatServiceTests {
 
     @Test
     fun shouldLeaveRoomEvenWhenUserIdIsNotPresentInSessionAttributes(){
-
-        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
-        every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
-        every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
-        every { presenceHandler.userLeftRoom(any(), any()) } just Runs
-        every { presenceHandler.getUsersInRoom(any()) } returns emptySet()
-        every { userRepository.findAllById(any()) } returns emptyList()
-
         val roomId = UUID.randomUUID()
         val session = mockk<WebSocketSession>()
         val attrs: MutableMap<String, Any> = hashMapOf("userId" to "")
 
         every { session.attributes } returns attrs
-        every { session.sendMessage(any()) } just Runs
 
         chatService.leaveRoom(roomId, session)
         assertNull(chatService.rooms[roomId])
@@ -296,13 +273,11 @@ class ChatServiceTests {
     @Test
     fun shouldLeaveRoomOnlyFromOneSessionIfMultipleSessionsExist() {
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
+        every { userRoomRepository.findUsersByRoomId(any()) } returns emptyList()
         every { roomRepository.findById(any()) } returns Optional.of(
             RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP)
         )
-        every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
-        every { presenceHandler.userLeftRoom(any(), any()) } just Runs
-        every { presenceHandler.getUsersInRoom(any()) } returns emptySet()
-        every { userRepository.findAllById(any()) } returns emptyList()
+        every { presenceHandler.isUserOnline(any()) } returns false
 
         val roomId = UUID.randomUUID()
         val userId = UUID.randomUUID()
@@ -314,6 +289,8 @@ class ChatServiceTests {
 
         every { session1.attributes } returns attrs
         every { session2.attributes } returns attrs
+        every { session1.isOpen } returns true
+        every { session2.isOpen } returns true
         every { session1.sendMessage(any()) } just Runs
         every { session2.sendMessage(any()) } just Runs
 
@@ -335,9 +312,7 @@ class ChatServiceTests {
 
     @Test
     fun shouldRemoveUserPresenceWhenRemainingRoomSessionHasInvalidUserIdType() {
-        every { presenceHandler.userLeftRoom(any(), any()) } just Runs
-        every { presenceHandler.getUsersInRoom(any()) } returns emptySet()
-        every { userRepository.findAllById(any()) } returns emptyList()
+        every { presenceHandler.isUserOnline(any()) } returns false
 
         val roomId = UUID.randomUUID()
         val userId = UUID.randomUUID()
@@ -348,6 +323,7 @@ class ChatServiceTests {
         every { leavingSession.attributes } returns hashMapOf("userId" to userId)
         every { invalidSession.attributes } returns hashMapOf("userId" to "not-a-uuid")
         every { leavingSession.sendMessage(any()) } just Runs
+        every { invalidSession.isOpen } returns true
         every { invalidSession.sendMessage(any()) } just Runs
 
         chatService.rooms[roomId] =
@@ -355,7 +331,6 @@ class ChatServiceTests {
 
         chatService.leaveRoom(roomId, leavingSession)
 
-        verify(exactly = 1) { presenceHandler.userLeftRoom(roomId, userId) }
         assertNotNull(chatService.rooms[roomId])
         assertEquals(1, chatService.rooms[roomId]?.size)
         assertTrue(chatService.rooms[roomId]?.contains(invalidSession) == true)
@@ -381,12 +356,8 @@ class ChatServiceTests {
     @Test
     fun shouldBroadcastMessageToAllSessionsInRoom() {
 
-        every { userRepository.findById(any()) } returns Optional.of(UserEntity(username = "u", password = ""))
         every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
-        every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
-        every { presenceHandler.getUsersInRoom(any()) } returns emptySet()
-        every { userRepository.findAllById(any()) } returns emptyList()
 
         val roomId = UUID.randomUUID()
         val userId = UUID.randomUUID()
@@ -415,9 +386,6 @@ class ChatServiceTests {
     fun shouldNotPublishMessageIfNoMessageType() {
         every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
-        every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
-        every { presenceHandler.getUsersInRoom(any()) } returns emptySet()
-        every { userRepository.findAllById(any()) } returns emptyList()
 
         val roomId = UUID.randomUUID()
         val message = ReceivedMessageDTO(roomId, UUID.randomUUID(), "join", "JOIN")
@@ -431,15 +399,12 @@ class ChatServiceTests {
 
         chatService.broadcast(roomId, message, "u")
 
-        verify(exactly = 2) { session.sendMessage(any()) }
+        verify(exactly = 0) { session.sendMessage(any()) }
     }
 
     @Test
     fun shouldPublishEncryptedMessage() {
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
-        every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
-        every { presenceHandler.getUsersInRoom(any()) } returns emptySet()
-        every { userRepository.findAllById(any()) } returns emptyList()
 
         val nonce = "nonce".toByteArray()
         val ciphertext = "ciphertext".toByteArray()
@@ -473,9 +438,6 @@ class ChatServiceTests {
     @Test
     fun shouldFailToPublishBlankMessage() {
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
-        every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
-        every { presenceHandler.getUsersInRoom(any()) } returns emptySet()
-        every { userRepository.findAllById(any()) } returns emptyList()
 
         val user = UserEntity(username = "u", password = "")
         val room = RoomEntity(name = "r", encrypted = false, type = RoomType.GROUP)
@@ -503,9 +465,6 @@ class ChatServiceTests {
     fun shouldFailToPublishTooLongMessage() {
 
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
-        every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
-        every { presenceHandler.getUsersInRoom(any()) } returns emptySet()
-        every { userRepository.findAllById(any()) } returns emptyList()
 
         val user = UserEntity(username = "u", password = "")
         val room = RoomEntity(name = "r", encrypted = false, type = RoomType.GROUP)
@@ -537,12 +496,8 @@ class ChatServiceTests {
         val userId = UUID.randomUUID()
 
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(userId, roomId) } returns true
-        every { userRepository.findById(userId) } returns Optional.of(UserEntity(username="u",password=""))
         every { roomRepository.findById(roomId) } returns Optional.of(RoomEntity(id=roomId,name="r", type = RoomType.GROUP))
         every { chatRepository.getAllChatsByRoomId(roomId) } returns listOf()
-        every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
-        every { presenceHandler.getUsersInRoom(any()) } returns emptySet()
-        every { userRepository.findAllById(any()) } returns emptyList()
 
         val session = mockk<WebSocketSession>(relaxed = true)
         every { session.attributes } returns hashMapOf("userId" to userId)
@@ -719,6 +674,9 @@ class ChatServiceTests {
         val room = RoomEntity(name = "r", encrypted = true, keyVersion = 1, type = RoomType.GROUP)
         val user = UserEntity(username = "u", password = "")
 
+        val ciphertext = "cipher".toByteArray()
+        val nonce = "nonce".toByteArray()
+
         val message = SendMessageDTO(
             id = UUID.randomUUID(),
             roomId = room.id,
@@ -726,20 +684,22 @@ class ChatServiceTests {
             username = user.username,
             message = null,
             keyVersion = 1,
-            ciphertext = "cipher".toByteArray(),
-            nonce = "nonce".toByteArray(),
+            ciphertext = ciphertext,
+            nonce = nonce,
             timestamp = Timestamp(System.currentTimeMillis()),
         )
 
         every {
             encrypt.decrypt(
-                ciphertext = "cipher".toByteArray(),
-                nonce = "nonce".toByteArray(),
+                ciphertext = ciphertext,
+                nonce = nonce,
                 aad = any(),
             )
         } returns "decrypted message"
 
         val session = mockk<WebSocketSession>(relaxed = true)
+        every { session.isOpen } returns true
+
         val msgSlot = slot<TextMessage>()
         every { session.sendMessage(capture(msgSlot)) } just Runs
 
@@ -747,8 +707,8 @@ class ChatServiceTests {
 
         verify(exactly = 1) {
             encrypt.decrypt(
-                ciphertext = "cipher".toByteArray(),
-                nonce = "nonce".toByteArray(),
+                ciphertext = ciphertext,
+                nonce = nonce,
                 aad = any(),
             )
         }
@@ -777,6 +737,7 @@ class ChatServiceTests {
         val session = mockk<WebSocketSession>(relaxed = true)
         val msgSlot = slot<TextMessage>()
         every { session.sendMessage(capture(msgSlot)) } just Runs
+        every { session.isOpen } returns true
 
         chatService.fetchAllMessages(listOf(chat), session)
 
@@ -804,6 +765,7 @@ class ChatServiceTests {
         val session = mockk<WebSocketSession>(relaxed = true)
         val msgSlot = slot<TextMessage>()
         every { session.sendMessage(capture(msgSlot)) } just Runs
+        every { session.isOpen } returns true
 
         chatService.fetchAllMessages(listOf(chat), session)
 
@@ -814,32 +776,6 @@ class ChatServiceTests {
     // ==========================
     // Redis pending message handling
     // ==========================
-    @Test
-    fun shouldReturnNoPendingMessagesWhenRedisRangeIsEmpty() {
-
-        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
-        every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
-        every { presenceHandler.getUsersInRoom(any()) } returns emptySet()
-        every { userRepository.findAllById(any()) } returns emptyList()
-
-        val room = RoomEntity(name = "r", encrypted = false, type = RoomType.GROUP)
-        val user = UserEntity(id = UUID.randomUUID(), username = "u", password = "")
-
-        every { roomRepository.findById(room.id) } returns Optional.of(room)
-        every { listOps.range("chat.peek.${room.id}", 0L, -1L) } returns emptyList()
-
-        val session = mockk<WebSocketSession>(relaxed = true)
-        every { session.attributes } returns hashMapOf("userId" to user.id)
-
-        val sent = mutableListOf<TextMessage>()
-        every { session.sendMessage(capture(sent)) } just Runs
-
-        chatService.joinRoom(room.id, session)
-
-        assertEquals(2, sent.size)
-        assertEquals("JOINED", objectMapper.readTree(sent[0].payload)["type"].asText())
-    }
-
     @Test
     fun shouldReturnEmptyListWhenRedisRangeReturnsNull() {
         val room = RoomEntity(name = "r", type = RoomType.GROUP)
@@ -872,21 +808,17 @@ class ChatServiceTests {
             objectMapper = objectMapper,
             presenceHandler = presenceHandler,
             meterRegistry = meterRegistry,
-            userRepository = userRepository
         )
 
         val roomsGauge = meterRegistry.get("chat.rooms").gauge()
 
         assertEquals(0.0, roomsGauge.value())
 
-        val user1 = UUID.randomUUID()
-        val user2 = UUID.randomUUID()
         val room1 = UUID.randomUUID()
         val room2 = UUID.randomUUID()
 
         val session1 = mockk<WebSocketSession>()
         val session2 = mockk<WebSocketSession>()
-        val session3 = mockk<WebSocketSession>()
 
         chatService.rooms[room1] = CopyOnWriteArraySet(mutableSetOf(session1))
         chatService.rooms[room2] = CopyOnWriteArraySet(mutableSetOf(session2))

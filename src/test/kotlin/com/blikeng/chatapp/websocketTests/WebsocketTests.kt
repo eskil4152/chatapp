@@ -1,7 +1,9 @@
 package com.blikeng.chatapp.websocketTests
 
+import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.security.ratelimit.WsRateLimitService
 import com.blikeng.chatapp.services.ChatService
+import com.blikeng.chatapp.services.FriendsService
 import com.blikeng.chatapp.websocket.ChatWebSocketHandler
 import com.blikeng.chatapp.websocket.SessionRegistry
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -9,14 +11,18 @@ import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import junit.framework.TestCase.assertTrue
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.http.HttpStatus
+import org.springframework.test.util.ReflectionTestUtils
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -45,12 +51,18 @@ class WebsocketTests {
     @MockK
     private lateinit var sessionRegistry: SessionRegistry
 
+    @MockK
+    private lateinit var friendsService: FriendsService
+
+    @MockK
+    private lateinit var presenceHandler: PresenceHandler
+
     private val objectMapper = jacksonObjectMapper()
     private lateinit var handler: ChatWebSocketHandler
 
     @BeforeEach
     fun setup() {
-        handler = ChatWebSocketHandler(chatService, objectMapper, wsRateLimitService, sessionRegistry)
+        handler = ChatWebSocketHandler(chatService, objectMapper, wsRateLimitService, sessionRegistry, friendsService, presenceHandler, ttlMs = 30_000)
         every { wsRateLimitService.tryConsumeMessage(any()) } returns true
     }
 
@@ -67,7 +79,9 @@ class WebsocketTests {
         )
 
         every { sessionRegistry.registerSession(any(), any()) } just Runs
+        every { friendsService.notifyFriends(any(), any()) } just Runs
         every { session.attributes } returns attributes
+        every { session.getId() } returns "123"
 
         handler.afterConnectionEstablished(session)
 
@@ -104,15 +118,18 @@ class WebsocketTests {
         )
 
         every { sessionRegistry.registerSession(any(), any()) } just Runs
-        every { chatService.removeSessionFromRooms(any(), any()) } just Runs
+        every { chatService.removeSessionFromRooms(any()) } returns emptyList()
         every { sessionRegistry.removeSession(any(), any()) } just Runs
+        every { friendsService.notifyFriends(any(), any()) } just Runs
+        every { presenceHandler.isUserOnline(any()) } returns false
         every { session.attributes } returns attributes
+        every { session.getId() } returns "123"
 
         handler.afterConnectionEstablished(session)
         handler.afterConnectionClosed(session, CloseStatus.NORMAL)
 
         verify(exactly = 1) { sessionRegistry.registerSession(userId, session) }
-        verify(exactly = 1) { chatService.removeSessionFromRooms(userId, session) }
+        verify(exactly = 1) { chatService.removeSessionFromRooms(session) }
         verify(exactly = 1) { sessionRegistry.removeSession(userId, session) }
     }
 
@@ -132,8 +149,107 @@ class WebsocketTests {
         assertEquals(HttpStatus.UNAUTHORIZED, ex.statusCode)
         assertEquals("No userID found", ex.reason)
 
-        verify(exactly = 0) { chatService.removeSessionFromRooms(any(), any()) }
+        verify(exactly = 0) { chatService.removeSessionFromRooms(any()) }
         verify(exactly = 0) { sessionRegistry.removeSession(any(), any()) }
+    }
+
+    @Test
+    fun shouldCloseStaleSessionDuringSweep() {
+        val session = mockk<WebSocketSession>(relaxed = true)
+        every { session.id } returns "stale"
+        every { session.close(CloseStatus.SESSION_NOT_RELIABLE) } just Runs
+        every { sessionRegistry.getSessionById("stale") } returns session
+
+        lastPingMap().clear()
+        lastPingMap()["stale"] = System.currentTimeMillis() - 100_000
+
+        handler.sweepStaleSessions()
+
+        verify(exactly = 1) { session.close(CloseStatus.SESSION_NOT_RELIABLE) }
+    }
+
+    @Test
+    fun shouldRemoveMissingStaleSessionFromLastPingDuringSweep() {
+        every { sessionRegistry.getSessionById("stale") } returns null
+
+        lastPingMap().clear()
+        lastPingMap()["stale"] = System.currentTimeMillis() - 100_000
+
+        handler.sweepStaleSessions()
+
+        assertFalse(lastPingMap().containsKey("stale"))
+    }
+
+    @Test
+    fun shouldIgnoreNonStaleSessionDuringSweep() {
+        val session = mockk<WebSocketSession>(relaxed = true)
+        every { sessionRegistry.getSessionById(any()) } returns session
+
+        lastPingMap().clear()
+        lastPingMap()["fresh"] = System.currentTimeMillis()
+
+        handler.sweepStaleSessions()
+
+        verify(exactly = 0) { session.close(any()) }
+    }
+
+    @Test
+    fun shouldContinueWhenClosingStaleSessionFails() {
+        val session = mockk<WebSocketSession>(relaxed = true)
+        every { session.id } returns "stale"
+        every { session.close(CloseStatus.SESSION_NOT_RELIABLE) } throws RuntimeException("boom")
+        every { sessionRegistry.getSessionById("stale") } returns session
+
+        lastPingMap().clear()
+        lastPingMap()["stale"] = System.currentTimeMillis() - 100_000
+
+        assertDoesNotThrow {
+            handler.sweepStaleSessions()
+        }
+
+        verify(exactly = 1) { session.close(CloseStatus.SESSION_NOT_RELIABLE) }
+    }
+
+    @Test
+    fun shouldUpdateLastPingAndReplyWithPongWhenPingReceived() {
+        val userId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>(relaxed = true)
+
+        every { session.id } returns "ping-session"
+        every { session.attributes } returns mutableMapOf(
+            "userId" to userId,
+            "username" to "user"
+        )
+        every { session.sendMessage(any()) } just Runs
+
+        val msgSlot = slot<TextMessage>()
+        every { session.sendMessage(capture(msgSlot)) } just Runs
+
+        val lastPing = ReflectionTestUtils.getField(
+            handler,
+            "lastPing"
+        ) as ConcurrentHashMap<String, Long>
+
+        lastPing.clear()
+        val before = System.currentTimeMillis()
+
+        handler.handleMessage(
+            session,
+            TextMessage(
+                """
+            {
+                "type":"PING",
+                "roomId":"${UUID.randomUUID()}",
+                "message":""
+            }
+            """.trimIndent()
+            )
+        )
+
+        verify(exactly = 1) { session.sendMessage(any()) }
+        assertEquals("pong", msgSlot.captured.payload)
+        assertTrue(lastPing.containsKey("ping-session"))
+        assertTrue(lastPing["ping-session"]!! >= before)
     }
 
     // ==========================
@@ -163,6 +279,33 @@ class WebsocketTests {
     }
 
     @Test
+    fun shouldSendLeaveMessage(){
+        val payload = TextMessage((objectMapper.createObjectNode()
+            .put("type", "LEAVE")
+            .put("message", "m" )
+            .put("roomId", UUID.randomUUID().toString())).toString())
+
+        val attributes: MutableMap<String, Any> = mutableMapOf(
+            "username" to "u",
+            "userId" to UUID.randomUUID()
+        )
+
+        every { session.attributes } returns attributes
+        every { chatService.leaveRoom(any(), any()) } returns Unit
+        every { chatService.broadcast(any(), any(), any()) } just Runs
+
+        every { session.id } returns "test-session-id"
+        every { session.isOpen } returns true
+        every { session.sendMessage(any()) } just Runs
+
+        handler.handleMessage(session, payload)
+
+        verify (exactly = 0) { chatService.joinRoom(any(), any()) }
+        verify (exactly = 1) { chatService.broadcast(any(), any(), any()) }
+        verify (exactly = 1) { chatService.leaveRoom(any(), any()) }
+    }
+
+    @Test
     fun shouldSendMessage(){
         val payload = TextMessage((objectMapper.createObjectNode()
             .put("type", "MESSAGE")
@@ -187,29 +330,6 @@ class WebsocketTests {
     }
 
     @Test
-    fun shouldSendLeaveMessage(){
-        val payload = TextMessage((objectMapper.createObjectNode()
-            .put("type", "LEAVE")
-            .put("message", "m" )
-            .put("roomId", UUID.randomUUID().toString())).toString())
-
-        val attributes: MutableMap<String, Any> = mutableMapOf(
-            "username" to "u",
-            "userId" to UUID.randomUUID()
-        )
-
-        every { session.attributes } returns attributes
-        every { chatService.leaveRoom(any(), any()) } returns Unit
-        every { chatService.broadcast(any(), any(), any()) } returns Unit
-
-        handler.handleMessage(session, payload)
-
-        verify (exactly = 0) { chatService.joinRoom(any(), any()) }
-        verify (exactly = 1) { chatService.broadcast(any(), any(), any()) }
-        verify (exactly = 1) { chatService.leaveRoom(any(), any()) }
-    }
-
-    @Test
     fun shouldReceivePing(){
         val payload = TextMessage((objectMapper.createObjectNode()
             .put("type", "PING")
@@ -222,6 +342,8 @@ class WebsocketTests {
         )
 
         every { session.attributes } returns attributes
+        every { session.isOpen } returns true
+        every { session.sendMessage(any()) } just Runs
 
         handler.handleMessage(session, payload)
 
@@ -353,6 +475,93 @@ class WebsocketTests {
         verify (exactly = 0) { chatService.joinRoom(any(), any()) }
         verify (exactly = 0) { chatService.broadcast(any(), any(), any()) }
         verify (exactly = 0) { chatService.leaveRoom(any(), any()) }
+    }
+
+    // ==========================
+    // Friend notifications
+    // ==========================
+    @Test
+    fun shouldNotifyFriendsOfflineWhenUserIsNoLongerOnline() {
+        val userId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>(relaxed = true)
+
+        every { session.id } returns "s1"
+        every { session.attributes } returns mutableMapOf(
+            "userId" to userId,
+            "username" to "user"
+        )
+
+        every { chatService.removeSessionFromRooms(session) } returns emptyList()
+        every { presenceHandler.isUserOnline(userId) } returns false
+        every { sessionRegistry.removeSession(userId, session) } just Runs
+        every { friendsService.notifyFriends(userId, false) } just Runs
+
+        handler.afterConnectionClosed(session, CloseStatus.NORMAL)
+
+        verify(exactly = 1) { friendsService.notifyFriends(userId, false) }
+    }
+
+    @Test
+    fun shouldNotNotifyFriendsOfflineWhenUserIsStillOnline() {
+        val userId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>(relaxed = true)
+
+        every { session.id } returns "s1"
+        every { session.attributes } returns mutableMapOf(
+            "userId" to userId,
+            "username" to "user"
+        )
+
+        every { chatService.removeSessionFromRooms(session) } returns emptyList()
+        every { presenceHandler.isUserOnline(userId) } returns true
+        every { sessionRegistry.removeSession(userId, session) } just Runs
+
+        handler.afterConnectionClosed(session, CloseStatus.NORMAL)
+
+        verify(exactly = 0) { friendsService.notifyFriends(userId, false) }
+    }
+
+    // ==========================
+    // Shutdown
+    // ==========================
+    @Test
+    fun shouldCloseAllSessionsOnShutdown() {
+        val session1 = mockk<WebSocketSession>(relaxed = true)
+        val session2 = mockk<WebSocketSession>(relaxed = true)
+
+        every { session1.close(CloseStatus.GOING_AWAY) } just Runs
+        every { session2.close(CloseStatus.GOING_AWAY) } just Runs
+
+        every { sessionRegistry.users } returns ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
+            put(UUID.randomUUID(), mutableSetOf(session1))
+            put(UUID.randomUUID(), mutableSetOf(session2))
+        }
+
+        handler.shutdown()
+
+        verify(exactly = 1) { session1.close(CloseStatus.GOING_AWAY) }
+        verify(exactly = 1) { session2.close(CloseStatus.GOING_AWAY) }
+    }
+
+    @Test
+    fun shouldContinueClosingSessionsWhenOneFailsDuringShutdown() {
+        val session1 = mockk<WebSocketSession>(relaxed = true)
+        val session2 = mockk<WebSocketSession>(relaxed = true)
+
+        every { session1.id } returns "s1"
+        every { session2.id } returns "s2"
+
+        every { session1.close(CloseStatus.GOING_AWAY) } throws RuntimeException("boom")
+        every { session2.close(CloseStatus.GOING_AWAY) } just Runs
+
+        every { sessionRegistry.users } returns ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
+            put(UUID.randomUUID(), mutableSetOf(session1, session2))
+        }
+
+        handler.shutdown()
+
+        verify(exactly = 1) { session1.close(CloseStatus.GOING_AWAY) }
+        verify(exactly = 1) { session2.close(CloseStatus.GOING_AWAY) }
     }
 
     // ==========================
@@ -520,37 +729,6 @@ class WebsocketTests {
     }
 
     @Test
-    fun shouldFallbackToRequestFailedWhenReasonAndMessageNull() {
-        val payload = TextMessage(
-            objectMapper.createObjectNode()
-                .put("type", "JOIN")
-                .put("roomId", UUID.randomUUID().toString())
-                .toString()
-        )
-
-        val attributes = mutableMapOf<String, Any>(
-            "username" to "u",
-            "userId" to UUID.randomUUID()
-        )
-
-        every { session.attributes } returns attributes
-        every { session.isOpen } returns true
-
-        val ex = ResponseStatusException(HttpStatus.BAD_REQUEST)
-        every { chatService.joinRoom(any(), any()) } throws ex
-
-        val msgSlot = slot<TextMessage>()
-        every { session.sendMessage(capture(msgSlot)) } just Runs
-
-        handler.handleMessage(session, payload)
-
-        val json = objectMapper.readTree(msgSlot.captured.payload)
-
-        assertEquals("ERROR", json["type"].asText())
-        assertEquals(400, json["code"].asInt())
-    }
-
-    @Test
     fun shouldFallbackToBadRequestWhenIllegalArgumentMessageNull() {
         val payload = TextMessage(
             objectMapper.createObjectNode()
@@ -612,5 +790,77 @@ class WebsocketTests {
         assertEquals("ERROR", json["type"].asText())
         assertEquals(429, json["code"].asInt())
         assertEquals("Rate limit exceeded", json["message"].asText())
+    }
+
+    @Test
+    fun shouldSendWsErrorWhenMessageFieldIsMissing() {
+        val userId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>(relaxed = true)
+
+        every { session.id } returns "s1"
+        every { session.attributes } returns mutableMapOf(
+            "userId" to userId,
+            "username" to "user"
+        )
+
+        val msgSlot = slot<TextMessage>()
+        every { session.sendMessage(capture(msgSlot)) } just Runs
+        every { session.isOpen } returns true
+
+        handler.handleMessage(
+            session,
+            TextMessage(
+                """
+            {
+                "type":"MESSAGE",
+                "roomId":"${UUID.randomUUID()}"
+            }
+            """.trimIndent()
+            )
+        )
+
+        verify { session.sendMessage(any()) }
+
+        val payload = msgSlot.captured.payload
+        assertTrue(payload.contains("400"))
+        assertTrue(payload.contains("Missing message field"))
+    }
+
+    @Test
+    fun shouldSendWsErrorWhenMessageFieldIsNull() {
+        val userId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>(relaxed = true)
+
+        every { session.id } returns "s1"
+        every { session.attributes } returns mutableMapOf(
+            "userId" to userId,
+            "username" to "user"
+        )
+
+        val msgSlot = slot<TextMessage>()
+        every { session.sendMessage(capture(msgSlot)) } just Runs
+        every { session.isOpen } returns true
+
+        handler.handleMessage(
+            session,
+            TextMessage(
+                """
+            {
+                "type":"MESSAGE",
+                "roomId":"${UUID.randomUUID()}",
+                "message":null
+            }
+            """.trimIndent()
+            )
+        )
+
+        verify { session.sendMessage(any()) }
+
+        val payload = msgSlot.captured.payload
+        assertTrue(payload.contains("400"))
+    }
+
+    private fun lastPingMap(): ConcurrentHashMap<String, Long> {
+        return ReflectionTestUtils.getField(handler, "lastPing") as ConcurrentHashMap<String, Long>
     }
 }

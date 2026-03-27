@@ -1,14 +1,20 @@
+server:
+  port: ${PORT:5050}
+  shutdown: graceful
+
 spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/chatdb}
     username: ${SPRING_DATASOURCE_USERNAME:eskil}
     password: ${SPRING_DATASOURCE_PASSWORD:password1}
+    hikari:
+      maximum-pool-size: 10
   jpa:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
     database: postgresql
-    show-sql: 'true'
+    show-sql: true
     hibernate:
       ddl-auto: none
   flyway:
@@ -33,6 +39,8 @@ spring:
     virtual-host: ${SPRING_RABBITMQ_VHOST:}
     ssl:
       enabled: ${SPRING_RABBITMQ_SSL:false}
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
 
 management:
   endpoints:
@@ -55,9 +63,9 @@ info:
 chat:
   flush:
     fixedDelayMs: 10000
-
-server:
-  port: ${PORT:5050}
+  ping:
+    sweepDelayMs: 30000
+    ttlMs: 60000
 
 app:
   crypto:

@@ -22,6 +22,10 @@ class JwtService(
 ) {
     private val logger: Logger = getLogger(this::class.java)
 
+    init {
+        require(secret.toByteArray().size >= 64) { "Secret must be at least 64 bytes long" }
+    }
+
     private fun key(): SecretKey =
         Keys.hmacShaKeyFor(secret.toByteArray())
 

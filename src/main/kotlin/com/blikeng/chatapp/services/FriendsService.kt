@@ -1,6 +1,7 @@
 package com.blikeng.chatapp.services
 
 import com.blikeng.chatapp.dtos.friends.FriendDTO
+import com.blikeng.chatapp.dtos.websocket.WsFriendPresence
 import com.blikeng.chatapp.entities.FriendsEntity
 import com.blikeng.chatapp.entities.FriendsId
 import com.blikeng.chatapp.entities.UserEntity
@@ -12,7 +13,10 @@ import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.repositories.FriendsRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.security.auth.getId
+import com.blikeng.chatapp.websocket.SessionRegistry
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.stereotype.Service
+import org.springframework.web.socket.TextMessage
 import java.util.*
 
 // ==========================
@@ -25,6 +29,8 @@ class FriendsService(
     private val userService: UserService,
     private val userRepository: UserRepository,
     private val presenceHandler: PresenceHandler,
+    private val sessionRegistry: SessionRegistry,
+    private val objectMapper: ObjectMapper,
 ) {
     fun getFriends(): List<FriendDTO> {
         val id = getId()
@@ -105,6 +111,31 @@ class FriendsService(
         if (!friendsRepository.existsById(friendshipId)) throw UserNotFoundException()
 
         return friend
+    }
+
+    fun notifyFriends(userId: UUID, online: Boolean) {
+        val payload = objectMapper.writeValueAsString(
+            WsFriendPresence(
+                userId = userId,
+                online = online
+            )
+        )
+
+        for (friendship in friendsRepository.findFriendsForUser(userId)) {
+            val friendId = if (friendship.userA.id == userId) {
+                friendship.userB.id
+            } else {
+                friendship.userA.id
+            }
+
+            val sessions = sessionRegistry.users[friendId] ?: continue
+
+            for (session in sessions) {
+                synchronized(session) {
+                    if (session.isOpen) session.sendMessage(TextMessage(payload))
+                }
+            }
+        }
     }
 
     // ==========================

@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit
 @AutoConfigureMockMvc
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class E2ETests : PostgresContainerBase() {
+class E2ETests : ContainerBase() {
     // ==========================
     // E2E tests covering the full expected lifecycle of a user session. Tests cover:
     // - Failed login and registration attempts
