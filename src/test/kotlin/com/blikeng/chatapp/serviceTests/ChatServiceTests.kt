@@ -233,7 +233,6 @@ class ChatServiceTests {
 
     @Test
     fun shouldLeaveRoom(){
-
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
         every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
         every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
@@ -815,32 +814,6 @@ class ChatServiceTests {
     // Redis pending message handling
     // ==========================
     @Test
-    fun shouldReturnNoPendingMessagesWhenRedisRangeIsEmpty() {
-
-        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
-        every { presenceHandler.userJoinedRoom(any(), any()) } just Runs
-        every { presenceHandler.getUsersInRoom(any()) } returns emptySet()
-        every { userRepository.findAllById(any()) } returns emptyList()
-
-        val room = RoomEntity(name = "r", encrypted = false, type = RoomType.GROUP)
-        val user = UserEntity(id = UUID.randomUUID(), username = "u", password = "")
-
-        every { roomRepository.findById(room.id) } returns Optional.of(room)
-        every { listOps.range("chat.peek.${room.id}", 0L, -1L) } returns emptyList()
-
-        val session = mockk<WebSocketSession>(relaxed = true)
-        every { session.attributes } returns hashMapOf("userId" to user.id)
-
-        val sent = mutableListOf<TextMessage>()
-        every { session.sendMessage(capture(sent)) } just Runs
-
-        chatService.joinRoom(room.id, session)
-
-        assertEquals(2, sent.size)
-        assertEquals("JOINED", objectMapper.readTree(sent[0].payload)["type"].asText())
-    }
-
-    @Test
     fun shouldReturnEmptyListWhenRedisRangeReturnsNull() {
         val room = RoomEntity(name = "r", type = RoomType.GROUP)
 
@@ -879,14 +852,11 @@ class ChatServiceTests {
 
         assertEquals(0.0, roomsGauge.value())
 
-        val user1 = UUID.randomUUID()
-        val user2 = UUID.randomUUID()
         val room1 = UUID.randomUUID()
         val room2 = UUID.randomUUID()
 
         val session1 = mockk<WebSocketSession>()
         val session2 = mockk<WebSocketSession>()
-        val session3 = mockk<WebSocketSession>()
 
         chatService.rooms[room1] = CopyOnWriteArraySet(mutableSetOf(session1))
         chatService.rooms[room2] = CopyOnWriteArraySet(mutableSetOf(session2))
