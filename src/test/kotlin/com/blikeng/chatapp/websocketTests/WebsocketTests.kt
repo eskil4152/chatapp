@@ -1,7 +1,9 @@
 package com.blikeng.chatapp.websocketTests
 
+import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.security.ratelimit.WsRateLimitService
 import com.blikeng.chatapp.services.ChatService
+import com.blikeng.chatapp.services.FriendsService
 import com.blikeng.chatapp.websocket.ChatWebSocketHandler
 import com.blikeng.chatapp.websocket.SessionRegistry
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -45,12 +47,18 @@ class WebsocketTests {
     @MockK
     private lateinit var sessionRegistry: SessionRegistry
 
+    @MockK
+    private lateinit var friendsService: FriendsService
+
+    @MockK
+    private lateinit var presenceHandler: PresenceHandler
+
     private val objectMapper = jacksonObjectMapper()
     private lateinit var handler: ChatWebSocketHandler
 
     @BeforeEach
     fun setup() {
-        handler = ChatWebSocketHandler(chatService, objectMapper, wsRateLimitService, sessionRegistry, ttlMs = 30_000)
+        handler = ChatWebSocketHandler(chatService, objectMapper, wsRateLimitService, sessionRegistry, friendsService, presenceHandler, ttlMs = 30_000)
         every { wsRateLimitService.tryConsumeMessage(any()) } returns true
     }
 
@@ -67,6 +75,7 @@ class WebsocketTests {
         )
 
         every { sessionRegistry.registerSession(any(), any()) } just Runs
+        every { friendsService.notifyFriends(any(), any()) } just Runs
         every { session.attributes } returns attributes
         every { session.getId() } returns "123"
 
@@ -105,8 +114,10 @@ class WebsocketTests {
         )
 
         every { sessionRegistry.registerSession(any(), any()) } just Runs
-        every { chatService.removeSessionFromRooms(any(), any()) } just Runs
+        every { chatService.removeSessionFromRooms(any()) } returns emptyList()
         every { sessionRegistry.removeSession(any(), any()) } just Runs
+        every { friendsService.notifyFriends(any(), any()) } just Runs
+        every { presenceHandler.isUserOnline(any()) } returns false
         every { session.attributes } returns attributes
         every { session.getId() } returns "123"
 
@@ -114,7 +125,7 @@ class WebsocketTests {
         handler.afterConnectionClosed(session, CloseStatus.NORMAL)
 
         verify(exactly = 1) { sessionRegistry.registerSession(userId, session) }
-        verify(exactly = 1) { chatService.removeSessionFromRooms(userId, session) }
+        verify(exactly = 1) { chatService.removeSessionFromRooms(session) }
         verify(exactly = 1) { sessionRegistry.removeSession(userId, session) }
     }
 
@@ -134,7 +145,7 @@ class WebsocketTests {
         assertEquals(HttpStatus.UNAUTHORIZED, ex.statusCode)
         assertEquals("No userID found", ex.reason)
 
-        verify(exactly = 0) { chatService.removeSessionFromRooms(any(), any()) }
+        verify(exactly = 0) { chatService.removeSessionFromRooms(any()) }
         verify(exactly = 0) { sessionRegistry.removeSession(any(), any()) }
     }
 

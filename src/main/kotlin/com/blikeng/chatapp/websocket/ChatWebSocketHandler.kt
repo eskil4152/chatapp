@@ -2,8 +2,10 @@ package com.blikeng.chatapp.websocket
 
 import com.blikeng.chatapp.dtos.websocket.ReceivedMessageDTO
 import com.blikeng.chatapp.dtos.websocket.WsError
+import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.security.ratelimit.WsRateLimitService
 import com.blikeng.chatapp.services.ChatService
+import com.blikeng.chatapp.services.FriendsService
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.http.HttpStatus
@@ -33,6 +35,8 @@ class ChatWebSocketHandler(
     private val objectMapper: ObjectMapper,
     private val wsRateLimitService: WsRateLimitService,
     private val sessionRegistry: SessionRegistry,
+    private val friendsService: FriendsService,
+    private val presenceHandler: PresenceHandler,
     @Value("\${chat.ping.ttlMs}") private val ttlMs: Long
 ) : TextWebSocketHandler() {
     private val logger = LoggerFactory.getLogger(this::class.java)
@@ -45,6 +49,26 @@ class ChatWebSocketHandler(
         val userId = getUserId(session)
         sessionRegistry.registerSession(userId, session)
         lastPing[session.id] = System.currentTimeMillis()
+
+        friendsService.notifyFriends(userId, online = true)
+    }
+
+    override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
+        val userId = getUserId(session)
+
+        lastPing.remove(session.id)
+        val affectedRoomIds = chatService.removeSessionFromRooms(session)
+        sessionRegistry.removeSession(userId, session)
+
+        val isStillOnline = presenceHandler.isUserOnline(userId)
+
+        if (!isStillOnline) {
+            friendsService.notifyFriends(userId, online = false)
+        }
+
+        if (affectedRoomIds.isNotEmpty()) {
+            chatService.notifyRoomPresence(affectedRoomIds, userId, isStillOnline)
+        }
     }
 
     // ==========================
@@ -67,17 +91,6 @@ class ChatWebSocketHandler(
         } catch (e: Exception) {
             sendWsError(session, e)
         }
-    }
-
-    // ==========================
-    // Connection cleanup
-    // ==========================
-    override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
-        val userId = getUserId(session)
-
-        lastPing.remove(session.id)
-        chatService.removeSessionFromRooms(userId, session)
-        sessionRegistry.removeSession(userId, session)
     }
 
     enum class MessageType {

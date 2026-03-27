@@ -5,8 +5,8 @@ import org.springframework.stereotype.Component
 import java.util.*
 
 // ==========================
-// Tracks user and room presence in Redis.
-// Stores online user counts per user and room membership sets per room.
+// Tracks global user presence in Redis via a session-count counter.
+// A user is online as long as their counter is above zero.
 // ==========================
 @Component
 class PresenceHandler(
@@ -26,30 +26,7 @@ class PresenceHandler(
     }
 
     fun isUserOnline(userId: UUID): Boolean {
-
         val value = redisTemplate.opsForValue()[PresenceKeys.userPresence(userId)]
         return value?.toLongOrNull()?.let { it > 0 } == true
-    }
-
-    fun userJoinedRoom(roomId: UUID, userId: UUID) {
-        redisTemplate.opsForSet().add(PresenceKeys.roomPresence(roomId), userId.toString())
-    }
-
-    fun userLeftRoom(roomId: UUID, userId: UUID) {
-        redisTemplate.opsForSet().remove(PresenceKeys.roomPresence(roomId), userId.toString())
-    }
-
-    fun getUsersInRoom(roomId: UUID): Set<UUID> {
-        return redisTemplate.opsForSet()
-            .members(PresenceKeys.roomPresence(roomId))
-            ?.mapNotNull {
-                try {
-                    UUID.fromString(it)
-                } catch (_: IllegalArgumentException) {
-                    null
-                }
-            }
-            ?.toSet()
-            ?: emptySet()
     }
 }
