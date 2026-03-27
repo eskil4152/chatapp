@@ -131,8 +131,6 @@ class FriendsService(
             val sessions = sessionRegistry.users[friendId] ?: continue
 
             for (session in sessions) {
-                if (!session.isOpen) continue
-
                 synchronized(session) {
                     if (session.isOpen) session.sendMessage(TextMessage(payload))
                 }

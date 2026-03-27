@@ -151,10 +151,15 @@ class ChatWebSocketHandler(
         val userId = getUserId(session)
         val username = getUsername(session)
 
+        val messageNode = json["message"]
+        if (messageNode == null || messageNode.isNull) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing message field")
+        }
+
         val message = ReceivedMessageDTO(
             roomId,
             userId,
-            json["message"]?.asText() ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing message field"),
+            messageNode.asText(),
             "MESSAGE"
         )
 

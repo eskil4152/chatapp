@@ -17,14 +17,22 @@ import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.just
+import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.ArgumentMatchers.any
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.web.socket.TextMessage
+import org.springframework.web.socket.WebSocketSession
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArraySet
 import kotlin.test.assertFailsWith
 
 @ExtendWith(MockKExtension::class)
@@ -398,5 +406,185 @@ class FriendsServiceTests {
         }
 
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
+    }
+
+    // ==========================
+    // Friend updates
+    // ==========================
+    @Test
+    fun shouldNotifyFriendsWhenUserComesOnline() {
+        val user = UserEntity(username = "user", password = "")
+        val friend = UserEntity(username = "friend", password = "")
+
+        val userId = user.id
+        val friendId = friend.id
+
+        val friendship = FriendsEntity(
+            id = FriendsId(userId, friendId),
+            userA = user,
+            userB = friend
+        )
+
+        val session = mockk<WebSocketSession>(relaxed = true)
+        every { session.isOpen } returns true
+        every { session.sendMessage(any()) } just Runs
+
+        every { friendsRepository.findFriendsForUser(userId) } returns listOf(friendship)
+        every { sessionRegistry.users } returns concurrentMapOf(
+            friendId to CopyOnWriteArraySet(listOf(session))
+        )
+
+        val msgSlot = slot<TextMessage>()
+        every { session.sendMessage(capture(msgSlot)) } just Runs
+
+        friendsService.notifyFriends(userId, true)
+
+        verify(exactly = 1) { session.sendMessage(any()) }
+        assertTrue(msgSlot.captured.payload.contains(userId.toString()))
+        assertTrue(msgSlot.captured.payload.contains("true"))
+    }
+
+    @Test
+    fun shouldNotifyFriendsWhenUserGoesOffline() {
+        val user = UserEntity(username = "user", password = "")
+        val friend = UserEntity(username = "friend", password = "")
+
+        val userId = user.id
+        val friendId = friend.id
+
+        val friendship = FriendsEntity(
+            id = FriendsId(userId, friendId),
+            userA = user,
+            userB = friend
+        )
+
+        val session = mockk<WebSocketSession>(relaxed = true)
+        every { session.isOpen } returns true
+        every { session.sendMessage(any()) } just Runs
+
+        every { friendsRepository.findFriendsForUser(userId) } returns listOf(friendship)
+        every { sessionRegistry.users } returns concurrentMapOf(
+            friendId to CopyOnWriteArraySet<WebSocketSession>(listOf(session))
+        )
+
+        val msgSlot = slot<TextMessage>()
+        every { session.sendMessage(capture(msgSlot)) } just Runs
+
+        friendsService.notifyFriends(userId, false)
+
+        verify(exactly = 1) { session.sendMessage(any()) }
+        assertTrue(msgSlot.captured.payload.contains(userId.toString()))
+        assertTrue(msgSlot.captured.payload.contains("false"))
+    }
+
+    @Test
+    fun shouldSkipFriendsWithoutActiveSessions() {
+        val user = UserEntity(username = "user", password = "")
+        val friend = UserEntity(username = "friend", password = "")
+
+        val userId = user.id
+        val friendId = friend.id
+
+        val friendship = FriendsEntity(
+            id = FriendsId(userId, friendId),
+            userA = user,
+            userB = friend
+        )
+
+        every { friendsRepository.findFriendsForUser(userId) } returns listOf(friendship)
+        every { sessionRegistry.users } returns concurrentMapOf()
+
+        friendsService.notifyFriends(userId, true)
+
+        verify(exactly = 1) { friendsRepository.findFriendsForUser(userId) }
+    }
+
+    @Test
+    fun shouldSkipClosedSessionsWhenNotifyingFriends() {
+        val user = UserEntity(username = "user", password = "")
+        val friend = UserEntity(username = "friend", password = "")
+
+        val userId = user.id
+        val friendId = friend.id
+
+        val friendship = FriendsEntity(
+            id = FriendsId(userId, friendId),
+            userA = user,
+            userB = friend
+        )
+
+        val closedSession = mockk<WebSocketSession>(relaxed = true)
+        every { closedSession.isOpen } returns false
+
+        every { friendsRepository.findFriendsForUser(userId) } returns listOf(friendship)
+        every { sessionRegistry.users } returns concurrentMapOf(
+            friendId to CopyOnWriteArraySet(listOf(closedSession))
+        )
+
+        friendsService.notifyFriends(userId, true)
+
+        verify(exactly = 0) { closedSession.sendMessage(any()) }
+    }
+
+    @Test
+    fun shouldResolveFriendIdCorrectlyWhenUserIsUserB() {
+        val friend = UserEntity(username = "friend", password = "")
+        val user = UserEntity(username = "user", password = "")
+
+        val userId = user.id
+        val friendId = friend.id
+
+        val friendship = FriendsEntity(
+            id = FriendsId(friendId, userId),
+            userA = friend,
+            userB = user
+        )
+
+        val session = mockk<WebSocketSession>(relaxed = true)
+        every { session.isOpen } returns true
+        every { session.sendMessage(any()) } just Runs
+
+        every { friendsRepository.findFriendsForUser(userId) } returns listOf(friendship)
+        every { sessionRegistry.users } returns concurrentMapOf(
+            friendId to CopyOnWriteArraySet(listOf(session))
+        )
+
+        friendsService.notifyFriends(userId, true)
+
+        verify(exactly = 1) { session.sendMessage(any()) }
+    }
+
+    @Test
+    fun shouldNotSendPresenceUpdateToClosedFriendSession() {
+        val friend = UserEntity(username = "friend", password = "")
+        val user = UserEntity(username = "user", password = "")
+
+        val userId = user.id
+        val friendId = friend.id
+
+        val friendship = FriendsEntity(
+            id = FriendsId(userId, friendId),
+            userA = user,
+            userB = friend
+        )
+
+        val session = mockk<WebSocketSession>()
+        every { session.isOpen } returns false
+
+        every { friendsRepository.findFriendsForUser(userId) } returns listOf(friendship)
+        every { sessionRegistry.users } returns concurrentMapOf(
+            friendId to CopyOnWriteArraySet(listOf(session))
+        )
+
+        friendsService.notifyFriends(userId, false)
+
+        verify(exactly = 1) { session.isOpen }
+        verify(exactly = 0) { session.sendMessage(any()) }
+    }
+
+    private fun <K, V> concurrentMapOf(vararg pairs: Pair<K, V>): ConcurrentHashMap<K, V> {
+        val map = ConcurrentHashMap<K, V>()
+        pairs.forEach { (k, v) -> map[k] = v }
+        return map
     }
 }

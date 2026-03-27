@@ -2,9 +2,11 @@ package com.blikeng.chatapp.securityTests.auth
 
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.security.auth.JwtService
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.assertNull
 import java.util.*
 import kotlin.test.Test
+import kotlin.test.assertFailsWith
 
 class JwtServiceTests {
     // ==========================
@@ -45,5 +47,16 @@ class JwtServiceTests {
         val result = jwtService.validateToken("invalid.token")
 
         assertNull(result)
+    }
+
+    @Test
+    fun shouldThrowWhenSecretIsTooShort() {
+        val secret = "short-secret"
+
+        val exception = assertFailsWith<IllegalArgumentException> {
+            JwtService(secret)
+        }
+
+        assertTrue(exception.message!!.contains("Secret must be at least 64 bytes long"))
     }
 }

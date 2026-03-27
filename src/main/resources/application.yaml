@@ -1,3 +1,7 @@
+server:
+  port: ${PORT:5050}
+  shutdown: graceful
+
 spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/chatdb}
@@ -10,7 +14,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
     database: postgresql
-    show-sql: 'true'
+    show-sql: true
     hibernate:
       ddl-auto: none
   flyway:
@@ -62,10 +66,6 @@ chat:
   ping:
     sweepDelayMs: 30000
     ttlMs: 60000
-
-server:
-  port: ${PORT:5050}
-  shutdown: graceful
 
 app:
   crypto:

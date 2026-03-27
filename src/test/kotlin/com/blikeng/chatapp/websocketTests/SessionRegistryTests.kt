@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNull
+import org.springframework.test.util.ReflectionTestUtils
 import org.springframework.web.socket.WebSocketSession
 import java.util.*
 
@@ -25,11 +26,6 @@ class SessionRegistryTests {
         every { presenceHandler.userDisconnected(any()) } just Runs
 
         sessionRegistry = SessionRegistry(presenceHandler, meterRegistry)
-    }
-
-    @Test
-    fun shouldRegisterGauges(){
-
     }
 
     @Test
@@ -155,5 +151,25 @@ class SessionRegistryTests {
 
         assertEquals(2.0, usersGauge.value())
         assertEquals(3.0, sessionsGauge.value())
+    }
+
+    @Test
+    fun shouldReturnSessionWhenSessionIdExists() {
+        val session = mockk<WebSocketSession>()
+        val sessionId = "s1"
+
+        val map = ReflectionTestUtils.getField(sessionRegistry, "sessionIndex") as MutableMap<String, WebSocketSession>
+        map[sessionId] = session
+
+        val result = sessionRegistry.getSessionById(sessionId)
+
+        assertEquals(session, result)
+    }
+
+    @Test
+    fun shouldReturnNullWhenSessionIdDoesNotExist() {
+        val result = sessionRegistry.getSessionById("missing")
+
+        assertNull(result)
     }
 }
