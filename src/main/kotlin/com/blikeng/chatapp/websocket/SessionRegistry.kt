@@ -14,6 +14,7 @@ class SessionRegistry(
     meterRegistry: MeterRegistry
 ) {
     val users = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
+    private val sessionIndex = ConcurrentHashMap<String, WebSocketSession>()
 
     init {
         meterRegistry.gauge("users", users) { it.size.toDouble() }
@@ -24,14 +25,18 @@ class SessionRegistry(
 
     fun registerSession(userId: UUID, session: WebSocketSession) {
         users.computeIfAbsent(userId) { CopyOnWriteArraySet() }.add(session)
+        sessionIndex[session.id] = session
         presenceHandler.userConnected(userId)
     }
 
     fun removeSession(userId: UUID, session: WebSocketSession) {
         users[userId]?.remove(session)
+        sessionIndex.remove(session.id)
         if (users[userId]?.isEmpty() == true) {
             users.remove(userId)
         }
         presenceHandler.userDisconnected(userId)
     }
+
+    fun getSessionById(sessionId: String): WebSocketSession? = sessionIndex[sessionId]
 }

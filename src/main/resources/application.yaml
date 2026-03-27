@@ -55,6 +55,8 @@ info:
 chat:
   flush:
     fixedDelayMs: 10000
+  ping:
+    ttlMs: 60000
 
 server:
   port: ${PORT:5050}

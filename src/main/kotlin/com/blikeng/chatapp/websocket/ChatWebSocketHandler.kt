@@ -7,6 +7,8 @@ import com.blikeng.chatapp.services.ChatService
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.http.HttpStatus
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.socket.CloseStatus
@@ -14,6 +16,7 @@ import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import org.springframework.web.socket.handler.TextWebSocketHandler
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
 
 // ==========================
@@ -27,8 +30,10 @@ class ChatWebSocketHandler(
     private val chatService: ChatService,
     private val objectMapper: ObjectMapper,
     private val wsRateLimitService: WsRateLimitService,
-    private val sessionRegistry: SessionRegistry
+    private val sessionRegistry: SessionRegistry,
+    @Value("\${chat.ping.ttlMs}") private val ttlMs: Long
 ) : TextWebSocketHandler() {
+    private val lastPing = ConcurrentHashMap<String, Long>()
 
     // ==========================
     // Connection lifecycle
@@ -36,6 +41,7 @@ class ChatWebSocketHandler(
     override fun afterConnectionEstablished(session: WebSocketSession) {
         val userId = getUserId(session)
         sessionRegistry.registerSession(userId, session)
+        lastPing[session.id] = System.currentTimeMillis()
     }
 
     // ==========================
@@ -50,7 +56,10 @@ class ChatWebSocketHandler(
                 MessageType.JOIN -> handleJoin(session, json)
                 MessageType.MESSAGE -> handleChatMessage(session, json)
                 MessageType.LEAVE -> handleLeave(session, json)
-                MessageType.PING -> Unit
+                MessageType.PING -> {
+                    lastPing[session.id] = System.currentTimeMillis()
+                    session.sendMessage(TextMessage("pong"))
+                }
             }
         } catch (e: Exception) {
             sendWsError(session, e)
@@ -63,6 +72,7 @@ class ChatWebSocketHandler(
     override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
         val userId = getUserId(session)
 
+        lastPing.remove(session.id)
         chatService.removeSessionFromRooms(userId, session)
         sessionRegistry.removeSession(userId, session)
     }
@@ -74,6 +84,25 @@ class ChatWebSocketHandler(
     // ==========================
     // Internal helpers
     // ==========================
+    @Scheduled(fixedDelayString = "\${chat.ping.sweepDelayMs}")
+    fun sweepStaleSessions() {
+        val cutoff = System.currentTimeMillis() - ttlMs
+
+        lastPing.forEach { (sessionId, time) ->
+            if (time < cutoff) {
+                val session = sessionRegistry.getSessionById(sessionId) ?: run {
+                    lastPing.remove(sessionId)
+                    return@forEach
+                }
+
+                try {
+                    session.close(CloseStatus.SESSION_NOT_RELIABLE)
+                } catch (_: Exception) {}
+
+            }
+        }
+    }
+
     private fun handleJoin(session: WebSocketSession, json: JsonNode) {
         val roomId = getRoomId(json)
         val userId = getUserId(session)
@@ -106,6 +135,7 @@ class ChatWebSocketHandler(
         val userId = getUserId(session)
         val username = getUsername(session)
 
+        lastPing.remove(session.id)
         chatService.leaveRoom(roomId, session)
         val message = ReceivedMessageDTO(roomId, userId, "$username left the room", "LEAVE")
         chatService.broadcast(roomId, message, username)
@@ -159,7 +189,7 @@ class ChatWebSocketHandler(
         }
 
         val payload = objectMapper.writeValueAsString(
-            WsError(code = code, message = msg)
+            WsError(code = code, message = msg!!)
         )
 
         synchronized(session) {
