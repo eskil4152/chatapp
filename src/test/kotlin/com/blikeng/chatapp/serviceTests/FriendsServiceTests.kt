@@ -9,6 +9,8 @@ import com.blikeng.chatapp.repositories.FriendsRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.services.FriendsService
 import com.blikeng.chatapp.services.UserService
+import com.blikeng.chatapp.websocket.SessionRegistry
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.Runs
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
@@ -50,6 +52,11 @@ class FriendsServiceTests {
 
     @MockK
     private lateinit var presenceHandler: PresenceHandler
+
+    @MockK
+    private lateinit var sessionRegistry: SessionRegistry
+
+    private final val objectMapper = ObjectMapper()
 
     val user1 = UserEntity(
         id = UUID.fromString("00000000-0000-0000-0000-000000000001"),

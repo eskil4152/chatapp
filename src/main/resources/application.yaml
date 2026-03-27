@@ -33,6 +33,8 @@ spring:
     virtual-host: ${SPRING_RABBITMQ_VHOST:}
     ssl:
       enabled: ${SPRING_RABBITMQ_SSL:false}
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
 
 management:
   endpoints:
@@ -62,10 +64,6 @@ chat:
 server:
   port: ${PORT:5050}
   shutdown: graceful
-
-spring:
-  lifecycle:
-    timeout-per-shutdown-phase: 30s
 
 app:
   crypto:

@@ -32,36 +32,36 @@ class LocalBroadcasterTests {
     @Test
     fun shouldBroadcastToAllOpenSessionsInRoom() {
         val roomId = UUID.randomUUID()
-        val s1 = mockk<WebSocketSession>()
-        val s2 = mockk<WebSocketSession>()
+        val session1 = mockk<WebSocketSession>()
+        val session2 = mockk<WebSocketSession>()
 
-        every { s1.isOpen } returns true
-        every { s2.isOpen } returns true
-        every { s1.sendMessage(any()) } just Runs
-        every { s2.sendMessage(any()) } just Runs
+        every { session1.isOpen } returns true
+        every { session2.isOpen } returns true
+        every { session1.sendMessage(any()) } just Runs
+        every { session2.sendMessage(any()) } just Runs
         every { chatService.rooms } returns ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
-            put(roomId, CopyOnWriteArraySet(listOf(s1, s2)))
+            put(roomId, CopyOnWriteArraySet(listOf(session1, session2)))
         }
 
         broadcaster.broadcastRaw(roomId, "hello")
 
-        verify(exactly = 1) { s1.sendMessage(TextMessage("hello")) }
-        verify(exactly = 1) { s2.sendMessage(TextMessage("hello")) }
+        verify(exactly = 1) { session1.sendMessage(TextMessage("hello")) }
+        verify(exactly = 1) { session2.sendMessage(TextMessage("hello")) }
     }
 
     @Test
     fun shouldSkipClosedSessions() {
         val roomId = UUID.randomUUID()
-        val s1 = mockk<WebSocketSession>()
+        val session = mockk<WebSocketSession>()
 
-        every { s1.isOpen } returns false
+        every { session.isOpen } returns false
         every { chatService.rooms } returns ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
-            put(roomId, CopyOnWriteArraySet(listOf(s1)))
+            put(roomId, CopyOnWriteArraySet(listOf(session)))
         }
 
         broadcaster.broadcastRaw(roomId, "hello")
 
-        verify(exactly = 0) { s1.sendMessage(any()) }
+        verify(exactly = 0) { session.sendMessage(any()) }
     }
 
     @Test
@@ -69,22 +69,23 @@ class LocalBroadcasterTests {
         val roomId = UUID.randomUUID()
         val userId = UUID.randomUUID()
 
-        val s1 = mockk<WebSocketSession>()
+        val session = mockk<WebSocketSession>()
         val attrs = hashMapOf<String, Any>("userId" to userId)
 
-        every { s1.attributes } returns attrs
-        every { s1.isOpen } returns true
-        every { s1.sendMessage(any()) } throws RuntimeException("boom")
+        every { session.attributes } returns attrs
+        every { session.isOpen } returns true
+        every { session.sendMessage(any()) } throws RuntimeException("boom")
+        every { session.id } returns userId.toString()
 
         val rooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
-        rooms[roomId] = CopyOnWriteArraySet(listOf(s1))
+        rooms[roomId] = CopyOnWriteArraySet(listOf(session))
 
         every { chatService.rooms } returns rooms
         every { chatService.leaveRoom(any(), any()) } just Runs
 
         broadcaster.broadcastRaw(roomId, "hello")
 
-        verify(exactly = 1) { chatService.leaveRoom(any(), s1) }
+        verify(exactly = 1) { chatService.leaveRoom(any(), session) }
     }
 
     @Test
