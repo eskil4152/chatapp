@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.http.HttpStatus
 import org.slf4j.LoggerFactory
+import jakarta.annotation.PreDestroy
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
@@ -81,6 +82,20 @@ class ChatWebSocketHandler(
 
     enum class MessageType {
         MESSAGE, JOIN, LEAVE, PING
+    }
+
+    // ==========================
+    // Shutdown
+    // ==========================
+    @PreDestroy
+    fun shutdown() {
+        sessionRegistry.users.values.flatten().forEach { session ->
+            try {
+                session.close(CloseStatus.GOING_AWAY)
+            } catch (e: Exception) {
+                logger.error("Failed to close session {} on shutdown", session.id, e)
+            }
+        }
     }
 
     // ==========================

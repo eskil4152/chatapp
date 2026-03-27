@@ -6,6 +6,7 @@ import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.services.ChatFlushService
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.rabbitmq.client.Channel
+import jakarta.annotation.PreDestroy
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory.getLogger
 import org.springframework.amqp.core.Message
@@ -79,6 +80,11 @@ class ChatFlushConsumer(
     // =========================
     @Scheduled(fixedDelayString = "\${chat.flush.fixedDelayMs:10000}")
     fun flushOnTimeout() {
+        flushPending()
+    }
+
+    @PreDestroy
+    fun shutdown() {
         flushPending()
     }
 

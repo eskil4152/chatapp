@@ -61,6 +61,11 @@ chat:
 
 server:
   port: ${PORT:5050}
+  shutdown: graceful
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
 
 app:
   crypto:
