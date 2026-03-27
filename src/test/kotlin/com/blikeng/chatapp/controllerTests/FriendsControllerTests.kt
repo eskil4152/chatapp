@@ -7,7 +7,7 @@ import com.blikeng.chatapp.errors.InvalidUserException
 import com.blikeng.chatapp.errors.UserNotFoundException
 import com.blikeng.chatapp.security.auth.JwtAuthFilter
 import com.blikeng.chatapp.security.ratelimit.RateLimitService
-import com.blikeng.chatapp.services.FriendsService
+import com.blikeng.chatapp.services.FriendService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
 import org.junit.jupiter.api.BeforeEach
@@ -45,7 +45,7 @@ class FriendsControllerTests {
     // - HTTP error mapping for service exceptions
     // ==========================
 
-    @MockkBean private lateinit var friendsService: FriendsService
+    @MockkBean private lateinit var friendService: FriendService
 
     @Autowired private lateinit var mockMvc: MockMvc
 
@@ -70,7 +70,7 @@ class FriendsControllerTests {
 
     @Test
     fun shouldGetFriends(){
-        every { friendsService.getFriends() } returns listOf(friend)
+        every { friendService.getFriends() } returns listOf(friend)
 
         mockMvc.get("/api/friends") {
             contentType = MediaType.APPLICATION_JSON
@@ -83,7 +83,7 @@ class FriendsControllerTests {
 
     @Test
     fun shouldAddFriends(){
-        every { friendsService.addFriend("friend") } returns Unit
+        every { friendService.addFriend("friend") } returns Unit
 
         mockMvc.post("/api/friends/add") {
             contentType = MediaType.APPLICATION_JSON
@@ -97,7 +97,7 @@ class FriendsControllerTests {
 
     @Test
     fun shouldRemoveFriends(){
-        every { friendsService.removeFriend("friend") } returns Unit
+        every { friendService.removeFriend("friend") } returns Unit
 
         mockMvc.delete("/api/friends/remove") {
             contentType = MediaType.APPLICATION_JSON
@@ -111,7 +111,7 @@ class FriendsControllerTests {
 
     @Test
     fun shouldGetFriendsInfo(){
-        every { friendsService.getFriendInfo("username") } returns friend
+        every { friendService.getFriendInfo("username") } returns friend
 
         mockMvc.get("/api/friends/username") {
             contentType = MediaType.APPLICATION_JSON
@@ -132,7 +132,7 @@ class FriendsControllerTests {
     // ==========================
     @Test
     fun shouldGetBadRequestFromInvalidUser(){
-        every { friendsService.getFriends() } throws InvalidUserException()
+        every { friendService.getFriends() } throws InvalidUserException()
 
         mockMvc.get("/api/friends") {
             contentType = MediaType.APPLICATION_JSON
@@ -142,7 +142,7 @@ class FriendsControllerTests {
 
     @Test
     fun shouldGetNotFoundUser(){
-        every { friendsService.getFriendInfo("fakeuser") } throws UserNotFoundException()
+        every { friendService.getFriendInfo("fakeuser") } throws UserNotFoundException()
 
         mockMvc.get("/api/friends/fakeuser")
             .andExpect { status { isNotFound() } }
@@ -150,7 +150,7 @@ class FriendsControllerTests {
 
     @Test
     fun shouldGetConflictFromBeingAlreadyFriends(){
-        every { friendsService.addFriend("myself") } throws AlreadyFriendsException()
+        every { friendService.addFriend("myself") } throws AlreadyFriendsException()
 
         mockMvc.post("/api/friends/add"){
             contentType = MediaType.APPLICATION_JSON

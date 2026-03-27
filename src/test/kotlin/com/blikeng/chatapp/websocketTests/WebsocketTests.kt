@@ -3,7 +3,7 @@ package com.blikeng.chatapp.websocketTests
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.security.ratelimit.WsRateLimitService
 import com.blikeng.chatapp.services.ChatService
-import com.blikeng.chatapp.services.FriendsService
+import com.blikeng.chatapp.services.FriendService
 import com.blikeng.chatapp.websocket.ChatWebSocketHandler
 import com.blikeng.chatapp.websocket.SessionRegistry
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -52,7 +52,7 @@ class WebsocketTests {
     private lateinit var sessionRegistry: SessionRegistry
 
     @MockK
-    private lateinit var friendsService: FriendsService
+    private lateinit var friendService: FriendService
 
     @MockK
     private lateinit var presenceHandler: PresenceHandler
@@ -62,7 +62,7 @@ class WebsocketTests {
 
     @BeforeEach
     fun setup() {
-        handler = ChatWebSocketHandler(chatService, objectMapper, wsRateLimitService, sessionRegistry, friendsService, presenceHandler, ttlMs = 30_000)
+        handler = ChatWebSocketHandler(chatService, objectMapper, wsRateLimitService, sessionRegistry, friendService, presenceHandler, ttlMs = 30_000)
         every { wsRateLimitService.tryConsumeMessage(any()) } returns true
     }
 
@@ -79,7 +79,7 @@ class WebsocketTests {
         )
 
         every { sessionRegistry.registerSession(any(), any()) } just Runs
-        every { friendsService.notifyFriends(any(), any()) } just Runs
+        every { friendService.notifyFriends(any(), any()) } just Runs
         every { session.attributes } returns attributes
         every { session.getId() } returns "123"
 
@@ -120,7 +120,7 @@ class WebsocketTests {
         every { sessionRegistry.registerSession(any(), any()) } just Runs
         every { chatService.removeSessionFromRooms(any()) } returns emptyList()
         every { sessionRegistry.removeSession(any(), any()) } just Runs
-        every { friendsService.notifyFriends(any(), any()) } just Runs
+        every { friendService.notifyFriends(any(), any()) } just Runs
         every { presenceHandler.isUserOnline(any()) } returns false
         every { session.attributes } returns attributes
         every { session.getId() } returns "123"
@@ -494,11 +494,11 @@ class WebsocketTests {
         every { chatService.removeSessionFromRooms(session) } returns emptyList()
         every { presenceHandler.isUserOnline(userId) } returns false
         every { sessionRegistry.removeSession(userId, session) } just Runs
-        every { friendsService.notifyFriends(userId, false) } just Runs
+        every { friendService.notifyFriends(userId, false) } just Runs
 
         handler.afterConnectionClosed(session, CloseStatus.NORMAL)
 
-        verify(exactly = 1) { friendsService.notifyFriends(userId, false) }
+        verify(exactly = 1) { friendService.notifyFriends(userId, false) }
     }
 
     @Test
@@ -518,7 +518,7 @@ class WebsocketTests {
 
         handler.afterConnectionClosed(session, CloseStatus.NORMAL)
 
-        verify(exactly = 0) { friendsService.notifyFriends(userId, false) }
+        verify(exactly = 0) { friendService.notifyFriends(userId, false) }
     }
 
     // ==========================

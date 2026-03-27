@@ -21,9 +21,9 @@ import java.util.*
 // ==========================
 @Service
 class UserService(
-    @Autowired private val userRepository: UserRepository,
-    @Autowired private val passwordService: PasswordService,
-    @Autowired private val roomRepository: RoomRepository,
+    private val userRepository: UserRepository,
+    private val passwordService: PasswordService,
+    private val roomRepository: RoomRepository,
 ) {
     fun getUserById(id: UUID): UserEntity? {
         return userRepository.findById(id).orElse(null)

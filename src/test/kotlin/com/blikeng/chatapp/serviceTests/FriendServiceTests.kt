@@ -7,7 +7,7 @@ import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.repositories.FriendsRepository
 import com.blikeng.chatapp.repositories.UserRepository
-import com.blikeng.chatapp.services.FriendsService
+import com.blikeng.chatapp.services.FriendService
 import com.blikeng.chatapp.services.UserService
 import com.blikeng.chatapp.websocket.SessionRegistry
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -24,7 +24,6 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.ArgumentMatchers.any
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
@@ -36,7 +35,7 @@ import java.util.concurrent.CopyOnWriteArraySet
 import kotlin.test.assertFailsWith
 
 @ExtendWith(MockKExtension::class)
-class FriendsServiceTests {
+class FriendServiceTests {
     // ==========================
     // Tests for FriendsService. Verifies:
     // - Retrieving a user's friends
@@ -47,7 +46,7 @@ class FriendsServiceTests {
     // ==========================
 
     @InjectMockKs
-    private lateinit var friendsService: FriendsService
+    private lateinit var friendService: FriendService
 
     @MockK
     private lateinit var friendsRepository: FriendsRepository
@@ -95,7 +94,7 @@ class FriendsServiceTests {
         every { friendsRepository.findFriendsForUser(user1.id) } returns listOf(friendsEntity)
         every { presenceHandler.isUserOnline(user2.id) } returns true
 
-        val friends = friendsService.getFriends()
+        val friends = friendService.getFriends()
 
         assertEquals(friendsEntity.userB.username, friends[0].username)
     }
@@ -109,7 +108,7 @@ class FriendsServiceTests {
         every { friendsRepository.findFriendsForUser(user2.id) } returns listOf(friendsEntity)
         every { presenceHandler.isUserOnline(user1.id) } returns true
 
-        val friends = friendsService.getFriends()
+        val friends = friendService.getFriends()
 
         assertEquals(friendsEntity.userA.username, friends[0].username)
     }
@@ -122,7 +121,7 @@ class FriendsServiceTests {
         every { userService.getUserById(user1.id) } returns null
 
         val exception = assertFailsWith<ApiException> {
-            friendsService.getFriends()
+            friendService.getFriends()
         }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
@@ -143,7 +142,7 @@ class FriendsServiceTests {
         every { friendsRepository.existsById(any()) } returns false
         every { friendsRepository.save(capture(slot)) } answers { firstArg() }
 
-        friendsService.addFriend("username2")
+        friendService.addFriend("username2")
 
         val saved = slot.captured
 
@@ -162,7 +161,7 @@ class FriendsServiceTests {
         every { friendsRepository.existsById(any()) } returns false
         every { friendsRepository.save(capture(slot)) } answers { firstArg() }
 
-        friendsService.addFriend("username1")
+        friendService.addFriend("username1")
 
         val saved = slot.captured
 
@@ -177,7 +176,7 @@ class FriendsServiceTests {
         every { userService.getUserById(user1.id) } returns null
 
         val exception = assertFailsWith<ApiException> {
-            friendsService.addFriend("username")
+            friendService.addFriend("username")
         }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
@@ -192,7 +191,7 @@ class FriendsServiceTests {
         every { userRepository.getUserByUsernameIgnoreCase("non existent") } returns null
 
         val exception = assertFailsWith<ApiException> {
-            friendsService.addFriend("non existent")
+            friendService.addFriend("non existent")
         }
 
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
@@ -207,7 +206,7 @@ class FriendsServiceTests {
         every { userRepository.getUserByUsernameIgnoreCase("username1") } returns user1
 
         val exception = assertFailsWith<ApiException> {
-            friendsService.addFriend("username1")
+            friendService.addFriend("username1")
         }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
@@ -223,7 +222,7 @@ class FriendsServiceTests {
         every { friendsRepository.existsById(any()) } returns true
 
         val exception = assertFailsWith<ApiException> {
-            friendsService.addFriend("username2")
+            friendService.addFriend("username2")
         }
 
         assertEquals(HttpStatus.CONFLICT, exception.status)
@@ -244,7 +243,7 @@ class FriendsServiceTests {
         every { friendsRepository.existsById(any()) } returns true
         every { friendsRepository.deleteById(capture(slot)) } just Runs
 
-        friendsService.removeFriend("username2")
+        friendService.removeFriend("username2")
 
         val deleted = slot.captured
 
@@ -259,7 +258,7 @@ class FriendsServiceTests {
         every { userService.getUserById(user1.id) } returns null
 
         val exception = assertFailsWith<ApiException> {
-            friendsService.removeFriend("username")
+            friendService.removeFriend("username")
         }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
@@ -274,7 +273,7 @@ class FriendsServiceTests {
         every { userRepository.getUserByUsernameIgnoreCase("fake name") } returns null
 
         val exception = assertFailsWith<ApiException> {
-            friendsService.removeFriend("fake name")
+            friendService.removeFriend("fake name")
         }
 
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
@@ -290,7 +289,7 @@ class FriendsServiceTests {
         every { friendsRepository.existsById(any()) } returns false
 
         val exception = assertFailsWith<ApiException> {
-            friendsService.removeFriend("username2")
+            friendService.removeFriend("username2")
         }
 
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
@@ -309,7 +308,7 @@ class FriendsServiceTests {
         every { friendsRepository.existsById(any()) } returns true
         every { presenceHandler.isUserOnline(user2.id) } returns true
 
-       val friend = friendsService.getFriendInfo("username2")
+       val friend = friendService.getFriendInfo("username2")
 
         assertEquals(user2.username, friend.username)
         assertEquals(user2.bio, friend.bio)
@@ -323,7 +322,7 @@ class FriendsServiceTests {
         every { userService.getUserById(user1.id) } returns null
 
         val exception = assertFailsWith<ApiException> {
-            friendsService.getFriendInfo("username")
+            friendService.getFriendInfo("username")
         }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
@@ -338,7 +337,7 @@ class FriendsServiceTests {
         every { userRepository.getUserByUsernameIgnoreCase("fake name") } returns null
 
         val exception = assertFailsWith<ApiException> {
-            friendsService.getFriendInfo("fake name")
+            friendService.getFriendInfo("fake name")
         }
 
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
@@ -354,7 +353,7 @@ class FriendsServiceTests {
         every { friendsRepository.existsById(any()) } returns false
 
         val exception = assertFailsWith<ApiException> {
-            friendsService.getFriendInfo("username2")
+            friendService.getFriendInfo("username2")
         }
 
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
@@ -371,7 +370,7 @@ class FriendsServiceTests {
         every { userRepository.getUserByUsernameIgnoreCase("username2") } returns user2
         every { friendsRepository.existsById(any()) } returns true
 
-        val friend = friendsService.getFriendEntity("username2", user1.id)
+        val friend = friendService.getFriendEntity("username2", user1.id)
 
         assertEquals(user2.username, friend.username)
         assertEquals(user2.bio, friend.bio)
@@ -386,7 +385,7 @@ class FriendsServiceTests {
         every { userRepository.getUserByUsernameIgnoreCase("fake name") } returns null
 
         val exception = assertFailsWith<ApiException> {
-            friendsService.getFriendEntity("fake name", user1.id)
+            friendService.getFriendEntity("fake name", user1.id)
         }
 
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
@@ -402,7 +401,7 @@ class FriendsServiceTests {
         every { friendsRepository.existsById(any()) } returns false
 
         val exception = assertFailsWith<ApiException> {
-            friendsService.getFriendEntity("real name", user1.id)
+            friendService.getFriendEntity("real name", user1.id)
         }
 
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
@@ -437,7 +436,7 @@ class FriendsServiceTests {
         val msgSlot = slot<TextMessage>()
         every { session.sendMessage(capture(msgSlot)) } just Runs
 
-        friendsService.notifyFriends(userId, true)
+        friendService.notifyFriends(userId, true)
 
         verify(exactly = 1) { session.sendMessage(any()) }
         assertTrue(msgSlot.captured.payload.contains(userId.toString()))
@@ -470,7 +469,7 @@ class FriendsServiceTests {
         val msgSlot = slot<TextMessage>()
         every { session.sendMessage(capture(msgSlot)) } just Runs
 
-        friendsService.notifyFriends(userId, false)
+        friendService.notifyFriends(userId, false)
 
         verify(exactly = 1) { session.sendMessage(any()) }
         assertTrue(msgSlot.captured.payload.contains(userId.toString()))
@@ -494,7 +493,7 @@ class FriendsServiceTests {
         every { friendsRepository.findFriendsForUser(userId) } returns listOf(friendship)
         every { sessionRegistry.users } returns concurrentMapOf()
 
-        friendsService.notifyFriends(userId, true)
+        friendService.notifyFriends(userId, true)
 
         verify(exactly = 1) { friendsRepository.findFriendsForUser(userId) }
     }
@@ -521,7 +520,7 @@ class FriendsServiceTests {
             friendId to CopyOnWriteArraySet(listOf(closedSession))
         )
 
-        friendsService.notifyFriends(userId, true)
+        friendService.notifyFriends(userId, true)
 
         verify(exactly = 0) { closedSession.sendMessage(any()) }
     }
@@ -549,7 +548,7 @@ class FriendsServiceTests {
             friendId to CopyOnWriteArraySet(listOf(session))
         )
 
-        friendsService.notifyFriends(userId, true)
+        friendService.notifyFriends(userId, true)
 
         verify(exactly = 1) { session.sendMessage(any()) }
     }
@@ -576,7 +575,7 @@ class FriendsServiceTests {
             friendId to CopyOnWriteArraySet(listOf(session))
         )
 
-        friendsService.notifyFriends(userId, false)
+        friendService.notifyFriends(userId, false)
 
         verify(exactly = 1) { session.isOpen }
         verify(exactly = 0) { session.sendMessage(any()) }

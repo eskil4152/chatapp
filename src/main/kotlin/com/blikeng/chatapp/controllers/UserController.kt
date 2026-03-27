@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*
 // ==========================
 @RestController
 @RequestMapping("/api/user")
-class UserController(@Autowired private val userService: UserService) {
+class UserController(private val userService: UserService) {
     @GetMapping
     fun getInfo(
     ) : ResponseEntity<UserDTO>? {

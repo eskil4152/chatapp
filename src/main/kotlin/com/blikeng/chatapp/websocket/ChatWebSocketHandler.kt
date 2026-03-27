@@ -5,7 +5,7 @@ import com.blikeng.chatapp.dtos.websocket.WsError
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.security.ratelimit.WsRateLimitService
 import com.blikeng.chatapp.services.ChatService
-import com.blikeng.chatapp.services.FriendsService
+import com.blikeng.chatapp.services.FriendService
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.http.HttpStatus
@@ -35,7 +35,7 @@ class ChatWebSocketHandler(
     private val objectMapper: ObjectMapper,
     private val wsRateLimitService: WsRateLimitService,
     private val sessionRegistry: SessionRegistry,
-    private val friendsService: FriendsService,
+    private val friendService: FriendService,
     private val presenceHandler: PresenceHandler,
     @Value("\${chat.ping.ttlMs}") private val ttlMs: Long
 ) : TextWebSocketHandler() {
@@ -50,7 +50,7 @@ class ChatWebSocketHandler(
         sessionRegistry.registerSession(userId, session)
         lastPing[session.id] = System.currentTimeMillis()
 
-        friendsService.notifyFriends(userId, online = true)
+        friendService.notifyFriends(userId, online = true)
     }
 
     override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
@@ -63,7 +63,7 @@ class ChatWebSocketHandler(
         val isStillOnline = presenceHandler.isUserOnline(userId)
 
         if (!isStillOnline) {
-            friendsService.notifyFriends(userId, online = false)
+            friendService.notifyFriends(userId, online = false)
         }
 
         if (affectedRoomIds.isNotEmpty()) {

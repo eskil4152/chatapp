@@ -8,7 +8,7 @@ import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.errors.UserNotFoundException
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
-import com.blikeng.chatapp.services.FriendsService
+import com.blikeng.chatapp.services.FriendService
 import com.blikeng.chatapp.services.RoomService
 import com.blikeng.chatapp.services.UserService
 import io.mockk.*
@@ -43,7 +43,7 @@ class RoomServiceTests {
     @MockK private lateinit var roomRepository: RoomRepository
     @MockK private lateinit var userService: UserService
     @MockK private lateinit var userRoomRepository: UserRoomRepository
-    @MockK private lateinit var friendService: FriendsService
+    @MockK private lateinit var friendService: FriendService
 
     @InjectMockKs
     lateinit var roomService: RoomService

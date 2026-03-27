@@ -24,7 +24,7 @@ import java.util.*
 // Validates friendship existence and enforces deterministic friendship ordering.
 // ==========================
 @Service
-class FriendsService(
+class FriendService(
     private val friendsRepository: FriendsRepository,
     private val userService: UserService,
     private val userRepository: UserRepository,

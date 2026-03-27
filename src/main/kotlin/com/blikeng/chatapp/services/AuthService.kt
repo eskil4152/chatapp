@@ -18,9 +18,9 @@ import org.springframework.stereotype.Service
 // ==========================
 @Service
 class AuthService(
-    @Autowired private val passwordService: PasswordService,
-    @Autowired private val jwtService: JwtService,
-    @Autowired private val authRepository: AuthRepository,
+    private val passwordService: PasswordService,
+    private val jwtService: JwtService,
+    private val authRepository: AuthRepository,
 ) {
     fun registerUser(username: String, password: String): String {
         if (authRepository.existsByUsernameIgnoreCase(username)) throw UsernameAlreadyExistsException()
