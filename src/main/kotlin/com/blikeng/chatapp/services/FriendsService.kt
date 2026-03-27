@@ -128,7 +128,7 @@ class FriendsService(
                 friendship.userA.id
             }
 
-            val sessions = sessionRegistry.users[friendId] ?: continue
+            val sessions = sessionRegistry.users[friendId]?.toList() ?: continue
 
             for (session in sessions) {
                 synchronized(session) {

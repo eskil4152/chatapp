@@ -192,6 +192,53 @@ class ChatServiceTests {
     }
 
     @Test
+    fun shouldJoinRoomWithoutSendingMessagesWhenSessionIsClosed() {
+        val roomId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>()
+
+        every { session.attributes } returns hashMapOf("userId" to UUID.randomUUID())
+        every { session.isOpen } returns false
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
+        every { userRoomRepository.findUsersByRoomId(any()) } returns emptyList()
+        every { roomRepository.findById(any()) } returns Optional.of(
+            RoomEntity(id = roomId, name = "r", type = RoomType.GROUP)
+        )
+
+        chatService.joinRoom(roomId, session)
+
+        assertTrue(chatService.rooms[roomId]?.contains(session) == true)
+        verify(exactly = 0) { session.sendMessage(any()) }
+    }
+
+    @Test
+    fun shouldSkipClosedExistingSessionsWhenSendingJoinPresence() {
+        val roomId = UUID.randomUUID()
+        val userId1 = UUID.randomUUID()
+        val userId2 = UUID.randomUUID()
+
+        val existingSession = mockk<WebSocketSession>(relaxed = true)
+        val joiningSession = mockk<WebSocketSession>(relaxed = true)
+
+        every { existingSession.attributes } returns hashMapOf("userId" to userId1)
+        every { joiningSession.attributes } returns hashMapOf("userId" to userId2)
+
+        every { existingSession.isOpen } returns false
+        every { joiningSession.isOpen } returns true
+
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
+        every { userRoomRepository.findUsersByRoomId(any()) } returns emptyList()
+        every { roomRepository.findById(roomId) } returns Optional.of(
+            RoomEntity(id = roomId, name = "r", type = RoomType.GROUP)
+        )
+
+        chatService.joinRoom(roomId, existingSession)
+        clearMocks(existingSession)
+        chatService.joinRoom(roomId, joiningSession)
+
+        verify(exactly = 0) { existingSession.sendMessage(any()) }
+    }
+
+    @Test
     fun shouldFailToJoinRoomIfNoUserIdInSessionAttributes(){
         val session = mockk<WebSocketSession>()
         every { session.attributes } returns emptyMap()
@@ -207,6 +254,24 @@ class ChatServiceTests {
     @Test
     fun shouldFailToJoinRoomIfNotAMember(){
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns false
+
+        val session = mockk<WebSocketSession>()
+
+        val attrs: MutableMap<String, Any> = hashMapOf("userId" to UUID.randomUUID())
+        every { session.attributes } returns attrs
+
+        val exception = assertFailsWith<ApiException> {
+            chatService.joinRoom(UUID.randomUUID(), session)
+        }
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.status)
+        assertEquals(ErrorMessages.ROOM_NOT_FOUND, exception.message)
+    }
+
+    @Test
+    fun shouldFailToJoinRoomIfMemberButRoomIsInvalid(){
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
+        every { roomRepository.findById(any()) } returns Optional.empty()
 
         val session = mockk<WebSocketSession>()
 
@@ -242,6 +307,42 @@ class ChatServiceTests {
 
         chatService.leaveRoom(roomId, session)
         assertNull(chatService.rooms[roomId])
+    }
+
+    @Test
+    fun shouldSkipClosedRemainingSessionsWhenLeavingRoom() {
+        val roomId = UUID.randomUUID()
+        val userId1 = UUID.randomUUID()
+        val userId2 = UUID.randomUUID()
+
+        val leavingSession = mockk<WebSocketSession>(relaxed = true)
+        val remainingSession = mockk<WebSocketSession>(relaxed = true)
+
+        every { leavingSession.attributes } returns hashMapOf("userId" to userId1)
+        every { remainingSession.attributes } returns hashMapOf("userId" to userId2)
+        every { remainingSession.isOpen } returns false
+        every { presenceHandler.isUserOnline(userId1) } returns false
+
+        chatService.rooms[roomId] = CopyOnWriteArraySet(mutableSetOf(leavingSession, remainingSession))
+
+        chatService.leaveRoom(roomId, leavingSession)
+
+        verify(exactly = 0) { remainingSession.sendMessage(any()) }
+    }
+
+    @Test
+    fun shouldSkipClosedSessionsWhenNotifyingRoomPresence() {
+        val roomId = UUID.randomUUID()
+        val userId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>(relaxed = true)
+
+        every { session.isOpen } returns false
+
+        chatService.rooms[roomId] = CopyOnWriteArraySet(mutableSetOf(session))
+
+        chatService.notifyRoomPresence(listOf(roomId), userId, true)
+
+        verify(exactly = 0) { session.sendMessage(any()) }
     }
 
     @Test
@@ -436,6 +537,31 @@ class ChatServiceTests {
     }
 
     @Test
+    fun shouldNotSendFetchedMessagesWhenSessionIsClosed() {
+        val room = RoomEntity(name = "r", type = RoomType.GROUP)
+        val user = UserEntity(username = "u", password = "")
+
+        val message = SendMessageDTO(
+            id = UUID.randomUUID(),
+            roomId = room.id,
+            userId = user.id,
+            username = user.username,
+            message = "Hello",
+            ciphertext = null,
+            nonce = null,
+            timestamp = Timestamp(System.currentTimeMillis()),
+            keyVersion = null
+        )
+
+        val session = mockk<WebSocketSession>(relaxed = true)
+        every { session.isOpen } returns false
+
+        chatService.fetchAllMessages(listOf(message), session)
+
+        verify(exactly = 0) { session.sendMessage(any()) }
+    }
+
+    @Test
     fun shouldFailToPublishBlankMessage() {
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
 
@@ -463,7 +589,6 @@ class ChatServiceTests {
 
     @Test
     fun shouldFailToPublishTooLongMessage() {
-
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
 
         val user = UserEntity(username = "u", password = "")
@@ -513,6 +638,30 @@ class ChatServiceTests {
         chatService.broadcast(roomId,message,"u")
 
         verify(exactly = 0) { session.sendMessage(any()) }
+    }
+
+    @Test
+    fun shouldThrowWhenEncryptedMessageHasNullNonce() {
+        val room = RoomEntity(name = "r", encrypted = true, keyVersion = 1, type = RoomType.GROUP)
+        val user = UserEntity(username = "u", password = "")
+
+        val message = SendMessageDTO(
+            id = UUID.randomUUID(),
+            roomId = room.id,
+            userId = user.id,
+            username = user.username,
+            message = null,
+            ciphertext = "cipher".toByteArray(),
+            nonce = null,
+            timestamp = Timestamp(System.currentTimeMillis()),
+            keyVersion = 1
+        )
+
+        val session = mockk<WebSocketSession>(relaxed = true)
+
+        assertFailsWith<ApiException> {
+            chatService.fetchAllMessages(listOf(message), session)
+        }
     }
 
     // ==========================
@@ -771,6 +920,24 @@ class ChatServiceTests {
 
         verify(exactly = 1) { session.sendMessage(any()) }
         assertTrue(msgSlot.captured.payload.contains("\"content\":\"Hello\""))
+    }
+
+    @Test
+    fun shouldFailToGetMessagesWhenUsingInvalidParameters(){
+        val pageNumberException = assertFailsWith<ApiException> {
+            chatService.getRoomMessages(UUID.randomUUID(), -1, 25)
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, pageNumberException.status)
+        assertEquals(ErrorMessages.INVALID_PARAMETERS, pageNumberException.message)
+
+
+        val pageSizeException = assertFailsWith<ApiException> {
+            chatService.getRoomMessages(UUID.randomUUID(), 0, 250)
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, pageSizeException.status)
+        assertEquals(ErrorMessages.INVALID_PARAMETERS, pageSizeException.message)
     }
 
     // ==========================
