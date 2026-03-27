@@ -92,17 +92,21 @@ class ChatService (
         rooms.computeIfAbsent(roomId) { CopyOnWriteArraySet() }.add(session)
         presenceHandler.userJoinedRoom(roomId, userId)
 
-        session.sendMessage(
-            TextMessage(
-                objectMapper.writeValueAsString(
-                    WsJoined(
-                        roomId = roomId,
-                        roomName = room.name,
-                        encrypted = room.encrypted
+        synchronized(session) {
+            if (session.isOpen) {
+                session.sendMessage(
+                    TextMessage(
+                        objectMapper.writeValueAsString(
+                            WsJoined(
+                                roomId = roomId,
+                                roomName = room.name,
+                                encrypted = room.encrypted
+                            )
+                        )
                     )
                 )
-            )
-        )
+            }
+        }
 
         broadcastUsersInRoom(roomId)
     }
@@ -116,7 +120,11 @@ class ChatService (
         )
 
         rooms[roomId]?.forEach { session ->
-            session.sendMessage(TextMessage(payload))
+            synchronized(session) {
+                if (session.isOpen) {
+                    session.sendMessage(TextMessage(payload))
+                }
+            }
         }
     }
 
@@ -217,13 +225,17 @@ class ChatService (
                 )
             }
 
-            session.sendMessage(
-                TextMessage(
-                    objectMapper.writeValueAsString(
-                        WsChat(content = content, username = m.username, timestamp = m.timestamp)
+            synchronized(session) {
+                if (session.isOpen) {
+                    session.sendMessage(
+                        TextMessage(
+                            objectMapper.writeValueAsString(
+                                WsChat(content = content, username = m.username, timestamp = m.timestamp)
+                            )
+                        )
                     )
-                )
-            )
+                }
+            }
         }
     }
 
@@ -287,7 +299,7 @@ class ChatService (
     fun getUsersInRoom(roomId: UUID): List<RoomUserDTO> {
         val userIds = presenceHandler.getUsersInRoom(roomId)
 
-        val users = userRepository.findAllById(userIds)
+        val users = userRepository.findAllById(userIds).toList()
 
         return users.map {
             RoomUserDTO(

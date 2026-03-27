@@ -56,6 +56,7 @@ chat:
   flush:
     fixedDelayMs: 10000
   ping:
+    sweepDelayMs: 30000
     ttlMs: 60000
 
 server:

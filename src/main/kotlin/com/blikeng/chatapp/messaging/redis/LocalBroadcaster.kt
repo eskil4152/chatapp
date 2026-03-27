@@ -16,11 +16,13 @@ class LocalBroadcaster(
 ) {
     fun broadcastRaw(roomId: UUID, payload: String) {
         chatService.rooms[roomId]?.forEach { session ->
-            if (session.isOpen) {
-                try {
-                    session.sendMessage(TextMessage(payload))
-                } catch (_: Exception) {
-                    chatService.leaveRoom(roomId, session)
+            synchronized(session) {
+                if (session.isOpen) {
+                    try {
+                        session.sendMessage(TextMessage(payload))
+                    } catch (_: Exception) {
+                        chatService.leaveRoom(roomId, session)
+                    }
                 }
             }
         }
