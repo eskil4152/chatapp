@@ -24,7 +24,7 @@ import java.util.*
 // Validates friendship existence and enforces deterministic friendship ordering.
 // ==========================
 @Service
-class FriendsService(
+class FriendService(
     private val friendsRepository: FriendsRepository,
     private val userService: UserService,
     private val userRepository: UserRepository,
@@ -128,7 +128,7 @@ class FriendsService(
                 friendship.userA.id
             }
 
-            val sessions = sessionRegistry.users[friendId] ?: continue
+            val sessions = sessionRegistry.users[friendId]?.toList() ?: continue
 
             for (session in sessions) {
                 synchronized(session) {

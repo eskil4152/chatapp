@@ -3,11 +3,9 @@ package com.blikeng.chatapp.services
 import com.blikeng.chatapp.dtos.room.RoomDTO
 import com.blikeng.chatapp.entities.*
 import com.blikeng.chatapp.errors.*
-import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.auth.getId
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.*
@@ -18,16 +16,11 @@ import java.util.*
 // ==========================
 @Service
 class RoomService(
-    @Autowired private val roomRepository: RoomRepository,
-    @Autowired private val userRoomRepository: UserRoomRepository,
-    @Autowired private val userService: UserService,
+    private val roomRepository: RoomRepository,
+    private val userRoomRepository: UserRoomRepository,
+    private val userService: UserService,
+    private val friendService: FriendService,
 ) {
-    @Autowired
-    private lateinit var friendsService: FriendsService
-
-    @Autowired
-    private lateinit var chatRepository: ChatRepository
-
     // ==========================
     // Room creation and retrieval
     // ==========================
@@ -169,7 +162,7 @@ class RoomService(
         val userId = getId()
         userService.getUserById(userId) ?: throw InvalidUserException()
 
-        val friend = friendsService.getFriendEntity(username, userId)
+        val friend = friendService.getFriendEntity(username, userId)
 
         val roomId = generatePrivateRoomId(friend.id, userId)
         val roomExists = roomRepository.findById(roomId).orElse(null)

@@ -9,7 +9,10 @@ import com.blikeng.chatapp.dtos.websocket.WsChat
 import com.blikeng.chatapp.dtos.websocket.WsJoined
 import com.blikeng.chatapp.dtos.websocket.WsRoomPresence
 import com.blikeng.chatapp.entities.ChatEntity
+import com.blikeng.chatapp.errors.ApiException
+import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.errors.InvalidMessageException
+import com.blikeng.chatapp.errors.InvalidParametersException
 import com.blikeng.chatapp.errors.InvalidTokenException
 import com.blikeng.chatapp.errors.RoomNotFoundException
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
@@ -247,7 +250,7 @@ class ChatService (
     }
 
     fun getRoomMessages(roomId: UUID, page: Int, size: Int): List<SendMessageDTO> {
-        if (page < 0 || size !in setOf(25, 50, 100)) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid page or size")
+        if (page < 0 || size !in setOf(25, 50, 100)) throw InvalidParametersException()
 
         val persisted = chatRepository
             .findByRoomIdOrderByTimestampDesc(
