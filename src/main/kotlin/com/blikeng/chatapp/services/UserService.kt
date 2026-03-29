@@ -45,6 +45,7 @@ class UserService(
         )
     }
 
+    @Transactional
     fun editProfile(changeUserDTO: ChangeUserDTO) {
         val id = getId()
         val user = getUserById(id) ?: throw InvalidUserException()
@@ -53,10 +54,9 @@ class UserService(
         changeUserDTO.email.let { user.email = it }
         changeUserDTO.fullName.let { user.fullName = it }
         changeUserDTO.avatarUrl.let { user.avatarUrl = it }
-
-        userRepository.save(user)
     }
 
+    @Transactional
     fun editPassword(passwords: EditPasswordDTO) {
         val id = getId()
         val user = getUserById(id) ?: throw InvalidUserException()
@@ -66,8 +66,6 @@ class UserService(
 
         val encoded = passwordService.encodePassword(passwords.newPassword)
         user.password = encoded
-
-        userRepository.save(user)
     }
 
     @Transactional
