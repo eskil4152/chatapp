@@ -7,6 +7,7 @@ import com.blikeng.chatapp.dtos.room.RoomUserDTO
 import com.blikeng.chatapp.dtos.websocket.ReceivedMessage
 import com.blikeng.chatapp.dtos.websocket.WsChat
 import com.blikeng.chatapp.dtos.websocket.WsJoined
+import com.blikeng.chatapp.dtos.websocket.WsRoomMembers
 import com.blikeng.chatapp.dtos.websocket.WsRoomPresence
 import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.errors.InvalidMessageException
@@ -78,15 +79,14 @@ class ChatService (
                 )))
                 getUsersInRoom(roomId).forEach { member ->
                     session.sendMessage(TextMessage(objectMapper.writeValueAsString(
-                        WsRoomPresence(roomId = roomId, userId = member.id, username = member.username, avatarUrl = member.avatarUrl, online = member.online)
+                        WsRoomMembers(roomId = roomId, userId = member.id, username = member.username, avatarUrl = member.avatarUrl, online = member.online)
                     )))
                 }
             }
         }
 
-        val joiningUsername = session.attributes["username"] as? String ?: ""
         val presencePayload = objectMapper.writeValueAsString(
-            WsRoomPresence(roomId = roomId, userId = userId, username = joiningUsername, avatarUrl = null, online = true)
+            WsRoomPresence(roomId = roomId, userId = userId, online = true)
         )
         existingSessions.forEach { existingSession ->
             synchronized(existingSession) {
@@ -107,9 +107,8 @@ class ChatService (
         }
 
         if (userId != null) {
-            val leavingUsername = session.attributes["username"] as? String ?: ""
             val presencePayload = objectMapper.writeValueAsString(
-                WsRoomPresence(roomId = roomId, userId = userId, username = leavingUsername, avatarUrl = null, online = presenceHandler.isUserOnline(userId))
+                WsRoomPresence(roomId = roomId, userId = userId, online = presenceHandler.isUserOnline(userId))
             )
             rooms[roomId]?.forEach { remainingSession ->
                 synchronized(remainingSession) {
@@ -138,10 +137,10 @@ class ChatService (
         return affectedRoomIds
     }
 
-    fun notifyRoomPresence(roomIds: List<UUID>, userId: UUID, username: String, online: Boolean) {
+    fun notifyRoomPresence(roomIds: List<UUID>, userId: UUID, online: Boolean) {
         roomIds.forEach { roomId ->
             val payload = objectMapper.writeValueAsString(
-                WsRoomPresence(roomId = roomId, userId = userId, username = username, avatarUrl = null, online = online)
+                WsRoomPresence(roomId = roomId, userId = userId, online = online)
             )
             rooms[roomId]?.forEach { session ->
                 synchronized(session) {
@@ -176,7 +175,7 @@ class ChatService (
     }
 
     fun addMessage(message: ReceivedMessage, username: String){
-        val room = roomRepository.findById(message.roomId).orElseThrow()
+        val room = roomRepository.findById(message.roomId).orElseThrow { RoomNotFoundException() }
 
         val messageId = UUID.randomUUID()
 
@@ -210,34 +209,6 @@ class ChatService (
 
         rabbitTemplate.convertAndSend("chat.buffer", rabbitMessage)
         redisTemplate.opsForList().rightPush("chat.peek.${message.roomId}", json)
-    }
-
-    fun fetchAllMessages(messages: List<SendMessageDTO>, session: WebSocketSession){
-        for (m in messages) {
-            val content = if (m.ciphertext == null) {
-                m.message ?: ""
-            } else {
-                val nonce = m.nonce ?: throw InvalidMessageException()
-
-                encrypt.decrypt(
-                    ciphertext = m.ciphertext,
-                    nonce = nonce,
-                    aad = configureAad(m.roomId, m.id, m.userId),
-                )
-            }
-
-            synchronized(session) {
-                if (session.isOpen) {
-                    session.sendMessage(
-                        TextMessage(
-                            objectMapper.writeValueAsString(
-                                WsChat(content = content, username = m.username, timestamp = m.timestamp)
-                            )
-                        )
-                    )
-                }
-            }
-        }
     }
 
     private fun getPendingMessages(roomId: UUID): List<RabbitMessageDTO> {
@@ -300,7 +271,7 @@ class ChatService (
     // Helper methods
     // ==========================
     fun getUsersInRoom(roomId: UUID): List<RoomUserDTO> {
-        val foo = userRoomRepository.findUsersByRoomId(roomId).map {
+        return userRoomRepository.findUsersByRoomId(roomId).map {
             RoomUserDTO(
                 id = it.id,
                 username = it.username,
@@ -308,7 +279,5 @@ class ChatService (
                 online = presenceHandler.isUserOnline(it.id)
             )
         }
-
-        return foo;
     }
 }

@@ -78,7 +78,7 @@ class RoomController(
     }
 
     @DeleteMapping("/action")
-    fun kickUser(
+    fun kickOrBanUser(
         @RequestBody administrationDTO: AdministrationDTO
     ) : ResponseEntity<String> {
         roomService.removeUserFromRoom(administrationDTO)

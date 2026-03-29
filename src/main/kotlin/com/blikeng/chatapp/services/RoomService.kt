@@ -161,11 +161,10 @@ class RoomService(
             throw NotPermittedException()
         }
 
-        val room = roomRepository.findById(roomUUID).orElseThrow { RoomNotFoundException() }
         val memberIds = userRoomRepository.findUsersByRoomId(roomUUID).map { it.id }
 
-        userRoomRepository.deleteAllByIdRoomId(roomUUID)
-        roomRepository.deleteById(roomUUID)
+        val room = roomRepository.findById(roomUUID).orElseThrow { RoomNotFoundException() }
+        roomRepository.delete(room)
 
         eventPublisher.publishEvent(RoomDeletedEvent(roomUUID, room.name, memberIds))
     }

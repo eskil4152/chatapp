@@ -2,6 +2,7 @@ package com.blikeng.chatapp.messagingTests
 
 import com.blikeng.chatapp.messaging.redis.LocalBroadcaster
 import com.blikeng.chatapp.services.ChatService
+import com.blikeng.chatapp.websocket.SessionRegistry
 import io.mockk.*
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.Mock
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import java.util.*
@@ -25,9 +27,10 @@ class LocalBroadcasterTests {
     // - Sessions are removed when message sending fails
     // - No action occurs when the room does not exist on the instance
     // ==========================
-    @MockK lateinit var chatService: ChatService
-
     @InjectMockKs lateinit var broadcaster: LocalBroadcaster
+
+    @MockK lateinit var chatService: ChatService
+    @MockK lateinit var sessionRegistry: SessionRegistry
 
     @Test
     fun shouldBroadcastToAllOpenSessionsInRoom() {

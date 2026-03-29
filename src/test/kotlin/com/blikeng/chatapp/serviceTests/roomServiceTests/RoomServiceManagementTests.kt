@@ -4,8 +4,10 @@ import com.blikeng.chatapp.dtos.room.RoomDTO
 import com.blikeng.chatapp.entities.*
 import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.errors.UserNotFoundException
+import com.blikeng.chatapp.events.RoomDeletedEvent
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
+import com.blikeng.chatapp.services.BannedUserService
 import com.blikeng.chatapp.services.FriendService
 import com.blikeng.chatapp.services.RoomService
 import com.blikeng.chatapp.services.UserService
@@ -16,6 +18,7 @@ import io.mockk.junit5.MockKExtension
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.assertNotNull
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
@@ -40,6 +43,8 @@ class RoomServiceManagementTests {
     @MockK private lateinit var userService: UserService
     @MockK private lateinit var userRoomRepository: UserRoomRepository
     @MockK private lateinit var friendService: FriendService
+    @MockK private lateinit var bannedUserService: BannedUserService
+    @MockK private lateinit var eventPublisher: ApplicationEventPublisher
 
     @InjectMockKs lateinit var roomService: RoomService
 
@@ -177,22 +182,25 @@ class RoomServiceManagementTests {
     @Test
     fun shouldDeleteRoom() {
         val userId = UUID.randomUUID()
-        val roomId = UUID.randomUUID()
+        val room = RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP)
 
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(userId, null, emptyList())
 
         every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
-        every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns
-                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.OWNER, type = RoomType.GROUP)
-        every { roomRepository.deleteById(roomId) } just Runs
-        every { userRoomRepository.deleteAllByIdRoomId(roomId) } just Runs
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, room.id) } returns
+                UserRoomEntity(id = UserRoomId(userId, room.id), role = RoomRole.OWNER, type = RoomType.GROUP)
 
-        roomService.deleteRoom(roomId.toString())
+        every { roomRepository.findById(room.id) } returns Optional.of(room)
+        every { userRoomRepository.findUsersByRoomId(any()) } returns emptyList()
+        every { roomRepository.delete(any()) } just Runs
+        every { eventPublisher.publishEvent(any<RoomDeletedEvent>()) } just Runs
+
+        roomService.deleteRoom(room.id.toString())
 
         verify(exactly = 1) {
-            roomRepository.deleteById(roomId)
-            userRoomRepository.deleteAllByIdRoomId(roomId)
+            roomRepository.delete(room)
+            eventPublisher.publishEvent(any<RoomDeletedEvent>())
         }
     }
 
