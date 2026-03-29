@@ -7,6 +7,7 @@ import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
+import com.blikeng.chatapp.services.BannedUserService
 import com.blikeng.chatapp.services.FriendService
 import com.blikeng.chatapp.services.RoomService
 import com.blikeng.chatapp.services.UserService
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.assertNotNull
 import org.junit.jupiter.api.assertNull
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
@@ -40,6 +42,8 @@ class RoomServiceCreationTests {
     @MockK private lateinit var userService: UserService
     @MockK private lateinit var userRoomRepository: UserRoomRepository
     @MockK private lateinit var friendsService: FriendService
+    @MockK private lateinit var bannedUserService: BannedUserService
+    @MockK private lateinit var eventPublisher: ApplicationEventPublisher
 
     @InjectMockKs lateinit var roomService: RoomService
 

@@ -21,13 +21,22 @@ class RedisMessageSubscriber (
     @PostConstruct
     fun register() {
         container.addMessageListener(this, PatternTopic("room:*"))
+        container.addMessageListener(this, PatternTopic("user:*"))
     }
 
     override fun onMessage(message: Message, pattern: ByteArray?) {
         val payload = message.body.toString(Charsets.UTF_8)
         val channel = message.channel.toString(Charsets.UTF_8)
-        val roomId = UUID.fromString(channel.removePrefix("room:"))
 
-        localBroadcaster.broadcastRaw(roomId, payload)
+        when {
+            channel.startsWith("room:") -> {
+                val roomId = UUID.fromString(channel.removePrefix("room:"))
+                localBroadcaster.broadcastRaw(roomId, payload)
+            }
+            channel.startsWith("user:") -> {
+                val userId = UUID.fromString(channel.removePrefix("user:"))
+                localBroadcaster.sendToUser(userId, payload)
+            }
+        }
     }
 }

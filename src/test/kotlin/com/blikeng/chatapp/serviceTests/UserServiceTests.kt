@@ -9,11 +9,12 @@ import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.security.auth.PasswordService
 import com.blikeng.chatapp.services.UserService
+import io.mockk.Runs
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
-import io.mockk.slot
+import io.mockk.just
 import io.mockk.verify
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.assertNotNull
@@ -129,9 +130,6 @@ class UserServiceTests {
 
         every { userRepository.findById(userId) } returns Optional.of(user)
 
-        val slot = slot<UserEntity>()
-        every { userRepository.save(capture(slot)) } answers { slot.captured }
-
         userService.editProfile(
             ChangeUserDTO(
                 bio = "newBio",
@@ -141,13 +139,10 @@ class UserServiceTests {
             ),
         )
 
-        val savedUser = slot.captured
-        assertEquals("newBio", savedUser.bio)
-        assertEquals("newEmail", savedUser.email)
-        assertEquals("newFullName", savedUser.fullName)
-        assertEquals("newAvatar", savedUser.avatarUrl)
-
-        verify(exactly = 1) { userRepository.save(any()) }
+        assertEquals("newBio", user.bio)
+        assertEquals("newEmail", user.email)
+        assertEquals("newFullName", user.fullName)
+        assertEquals("newAvatar", user.avatarUrl)
     }
 
     @Test
@@ -166,9 +161,6 @@ class UserServiceTests {
         every { passwordService.checkPassword(any(), any()) } returns true
         every { passwordService.encodePassword(any()) } returns "encoded"
 
-        val slot = slot<UserEntity>()
-        every { userRepository.save(capture(slot)) } answers { slot.captured }
-
         userService.editPassword(
             EditPasswordDTO(
                 oldPassword = "old password",
@@ -176,11 +168,7 @@ class UserServiceTests {
             )
         )
 
-        val savedUser = slot.captured
-
-        assertEquals("encoded", savedUser.password)
-
-        verify(exactly = 1) { userRepository.save(any()) }
+        assertEquals("encoded", user.password)
     }
 
     @Test
@@ -293,5 +281,42 @@ class UserServiceTests {
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
         assertEquals(ErrorMessages.INVALID_TOKEN, exception.message)
+    }
+
+    @Test
+    fun shouldDeleteUser() {
+        val userId = UUID.randomUUID()
+        val user = UserEntity(
+            id = userId,
+            username = "username",
+            password = "old password",
+        )
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userRepository.findById(userId) } returns Optional.of(user)
+        every { userRepository.delete(user) } just Runs
+
+        userService.deleteUser()
+
+        verify(exactly = 1) { userRepository.delete(user) }
+    }
+
+    @Test
+    fun shouldFailToDeleteInvalidUser() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userRepository.findById(any()) } returns Optional.empty()
+
+        val exception = assertFailsWith<ApiException> {
+            userService.deleteUser()
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.INVALID_USER, exception.message)
+
+        verify(exactly = 0) { userRepository.save(any()) }
     }
 }

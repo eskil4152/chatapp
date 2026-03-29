@@ -28,7 +28,7 @@ class UserController(private val userService: UserService) {
     ) : ResponseEntity<String> {
         userService.editProfile(changeUserDTO)
 
-        return ResponseEntity.ok("Updated successfully")
+        return ResponseEntity.ok("User updated successfully")
     }
 
     @PatchMapping("/edit/password")
@@ -38,5 +38,12 @@ class UserController(private val userService: UserService) {
         userService.editPassword(passwords)
 
         return ResponseEntity.ok("Password changed successfully")
+    }
+
+    @DeleteMapping("/delete")
+    fun deleteUser(): ResponseEntity<String> {
+        userService.deleteUser()
+
+        return ResponseEntity.ok("User deleted successfully")
     }
 }

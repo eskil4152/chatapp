@@ -1,11 +1,15 @@
 package com.blikeng.chatapp.serviceTests.roomServiceTests
 
+import com.blikeng.chatapp.dtos.room.AdministrationDTO
+import com.blikeng.chatapp.dtos.room.RoomAction
 import com.blikeng.chatapp.dtos.room.RoomDTO
 import com.blikeng.chatapp.entities.*
 import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.errors.UserNotFoundException
+import com.blikeng.chatapp.events.RoomDeletedEvent
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
+import com.blikeng.chatapp.services.BannedUserService
 import com.blikeng.chatapp.services.FriendService
 import com.blikeng.chatapp.services.RoomService
 import com.blikeng.chatapp.services.UserService
@@ -16,6 +20,7 @@ import io.mockk.junit5.MockKExtension
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.assertNotNull
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
@@ -40,6 +45,8 @@ class RoomServiceManagementTests {
     @MockK private lateinit var userService: UserService
     @MockK private lateinit var userRoomRepository: UserRoomRepository
     @MockK private lateinit var friendService: FriendService
+    @MockK private lateinit var bannedUserService: BannedUserService
+    @MockK private lateinit var eventPublisher: ApplicationEventPublisher
 
     @InjectMockKs lateinit var roomService: RoomService
 
@@ -177,22 +184,25 @@ class RoomServiceManagementTests {
     @Test
     fun shouldDeleteRoom() {
         val userId = UUID.randomUUID()
-        val roomId = UUID.randomUUID()
+        val room = RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP)
 
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(userId, null, emptyList())
 
         every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
-        every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns
-                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.OWNER, type = RoomType.GROUP)
-        every { roomRepository.deleteById(roomId) } just Runs
-        every { userRoomRepository.deleteAllByIdRoomId(roomId) } just Runs
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, room.id) } returns
+                UserRoomEntity(id = UserRoomId(userId, room.id), role = RoomRole.OWNER, type = RoomType.GROUP)
 
-        roomService.deleteRoom(roomId.toString())
+        every { roomRepository.findById(room.id) } returns Optional.of(room)
+        every { userRoomRepository.findUsersByRoomId(any()) } returns emptyList()
+        every { roomRepository.delete(any()) } just Runs
+        every { eventPublisher.publishEvent(any<RoomDeletedEvent>()) } just Runs
+
+        roomService.deleteRoom(room.id.toString())
 
         verify(exactly = 1) {
-            roomRepository.deleteById(roomId)
-            userRoomRepository.deleteAllByIdRoomId(roomId)
+            roomRepository.delete(room)
+            eventPublisher.publishEvent(any<RoomDeletedEvent>())
         }
     }
 
@@ -326,6 +336,223 @@ class RoomServiceManagementTests {
 
         val exception = assertFailsWith<ApiException> { roomService.getOrStartPrivateMessage("u") }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+    }
+
+    // ==========================
+    // Remove user from room
+    // ==========================
+    @Test
+    fun shouldKickUserFromRoom() {
+        val userId = UUID.randomUUID()
+        val targetId = UUID.randomUUID()
+        val roomId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns
+                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.OWNER, type = RoomType.GROUP)
+        every { userRoomRepository.deleteByIdUserIdAndIdRoomId(targetId, roomId) } just Runs
+        every { eventPublisher.publishEvent(any<Any>()) } just Runs
+
+        roomService.removeUserFromRoom(
+            AdministrationDTO(
+                roomId = roomId.toString(),
+                userId = targetId.toString(),
+                actions = RoomAction.KICK,
+                reason = ""
+            )
+        )
+
+        verify(exactly = 1) { userRoomRepository.deleteByIdUserIdAndIdRoomId(targetId, roomId) }
+        verify(exactly = 0) { bannedUserService.banUser(any(), any()) }
+        verify(exactly = 1) { eventPublisher.publishEvent(any<Any>()) }
+    }
+
+    @Test
+    fun shouldBanUserFromRoom() {
+        val userId = UUID.randomUUID()
+        val targetId = UUID.randomUUID()
+        val roomId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns
+                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.OWNER, type = RoomType.GROUP)
+        every { userRoomRepository.deleteByIdUserIdAndIdRoomId(targetId, roomId) } just Runs
+        every { bannedUserService.banUser(targetId, roomId) } just Runs
+        every { eventPublisher.publishEvent(any<Any>()) } just Runs
+
+        roomService.removeUserFromRoom(
+            AdministrationDTO(
+                roomId = roomId.toString(),
+                userId = targetId.toString(),
+                actions = RoomAction.BAN,
+                reason = ""
+            )
+        )
+
+        verify(exactly = 1) { userRoomRepository.deleteByIdUserIdAndIdRoomId(targetId, roomId) }
+        verify(exactly = 1) { bannedUserService.banUser(targetId, roomId) }
+        verify(exactly = 1) { eventPublisher.publishEvent(any<Any>()) }
+    }
+
+    @Test
+    fun shouldFailToRemoveUserWhenNotInRoom() {
+        val userId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, any()) } returns null
+
+        val exception = assertFailsWith<ApiException> {
+            roomService.removeUserFromRoom(
+                AdministrationDTO(
+                    roomId = UUID.randomUUID().toString(),
+                    userId = UUID.randomUUID().toString(),
+                    actions = RoomAction.KICK,
+                    reason = ""
+                )
+            )
+        }
+        assertEquals(HttpStatus.NOT_FOUND, exception.status)
+    }
+
+    @Test
+    fun shouldFailToRemoveUserWhenNotOwner() {
+        val userId = UUID.randomUUID()
+        val roomId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns
+                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.MEMBER, type = RoomType.GROUP)
+
+        val exception = assertFailsWith<ApiException> {
+            roomService.removeUserFromRoom(
+                AdministrationDTO(
+                    roomId = roomId.toString(),
+                    userId = UUID.randomUUID().toString(),
+                    actions = RoomAction.KICK,
+                    reason = ""
+                )
+            )
+        }
+        assertEquals(HttpStatus.FORBIDDEN, exception.status)
+    }
+
+    @Test
+    fun shouldFailToRemoveUserWithInvalidRoomId() {
+        val userId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
+
+        val exception = assertFailsWith<ApiException> {
+            roomService.removeUserFromRoom(
+                AdministrationDTO(
+                    roomId = "not-a-uuid",
+                    userId = UUID.randomUUID().toString(),
+                    actions = RoomAction.KICK,
+                    reason = ""
+                )
+            )
+        }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+    }
+
+    @Test
+    fun shouldFailToRemoveUserWithInvalidTargetId() {
+        val userId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
+
+        val exception = assertFailsWith<ApiException> {
+            roomService.removeUserFromRoom(
+                AdministrationDTO(
+                    roomId = UUID.randomUUID().toString(),
+                    userId = "not-a-uuid",
+                    actions = RoomAction.KICK,
+                    reason = ""
+                )
+            )
+        }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+    }
+
+    @Test
+    fun shouldFailToRemoveUserWhenTargetIsSelf() {
+        val userId = UUID.randomUUID()
+        val roomId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns
+                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.OWNER, type = RoomType.GROUP)
+
+        val exception = assertFailsWith<ApiException> {
+            roomService.removeUserFromRoom(
+                AdministrationDTO(
+                    roomId = roomId.toString(),
+                    userId = userId.toString(),
+                    actions = RoomAction.KICK,
+                    reason = ""
+                )
+            )
+        }
+        assertEquals(HttpStatus.FORBIDDEN, exception.status)
+    }
+
+    @Test
+    fun shouldFailToRemoveUserWhenInvalidUser() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns null
+
+        val exception = assertFailsWith<ApiException> {
+            roomService.removeUserFromRoom(
+                AdministrationDTO(
+                    roomId = UUID.randomUUID().toString(),
+                    userId = UUID.randomUUID().toString(),
+                    actions = RoomAction.KICK,
+                    reason = ""
+                )
+            )
+        }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+    }
+
+    @Test
+    fun shouldFailToDeleteRoomWhenRoomNotFoundInRepository() {
+        val userId = UUID.randomUUID()
+        val roomId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns
+                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.OWNER, type = RoomType.GROUP)
+        every { roomRepository.findById(roomId) } returns Optional.empty()
+        every { userRoomRepository.findUsersByRoomId(roomId) } returns emptyList()
+
+        val exception = assertFailsWith<ApiException> { roomService.deleteRoom(roomId.toString()) }
+        assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
     @Test

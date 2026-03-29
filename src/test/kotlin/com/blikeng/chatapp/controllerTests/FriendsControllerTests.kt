@@ -24,6 +24,7 @@ import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import java.sql.Date
 import java.time.Instant
+import java.util.UUID
 
 @WebMvcTest(
     controllers = [FriendsController::class],
@@ -58,6 +59,7 @@ class FriendsControllerTests {
     }
 
     val friend = FriendDTO(
+        UUID.randomUUID(),
         "username",
         "bio",
         "email",

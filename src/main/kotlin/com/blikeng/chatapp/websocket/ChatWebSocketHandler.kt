@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.websocket
 
-import com.blikeng.chatapp.dtos.websocket.ReceivedMessageDTO
+import com.blikeng.chatapp.dtos.websocket.ReceivedMessage
 import com.blikeng.chatapp.dtos.websocket.WsError
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.security.ratelimit.WsRateLimitService
@@ -142,7 +142,7 @@ class ChatWebSocketHandler(
 
         chatService.joinRoom(roomId, session)
 
-        val message = ReceivedMessageDTO(roomId, userId, "$username joined the room", "JOIN")
+        val message = ReceivedMessage(roomId, userId, "$username joined the room", "JOIN")
         chatService.broadcast(roomId, message, username)
     }
 
@@ -156,7 +156,7 @@ class ChatWebSocketHandler(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing message field")
         }
 
-        val message = ReceivedMessageDTO(
+        val message = ReceivedMessage(
             roomId,
             userId,
             messageNode.asText(),
@@ -174,7 +174,7 @@ class ChatWebSocketHandler(
 
         lastPing.remove(session.id)
         chatService.leaveRoom(roomId, session)
-        val message = ReceivedMessageDTO(roomId, userId, "$username left the room", "LEAVE")
+        val message = ReceivedMessage(roomId, userId, "$username left the room", "LEAVE")
         chatService.broadcast(roomId, message, username)
     }
 

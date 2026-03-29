@@ -2,8 +2,8 @@ package com.blikeng.chatapp.services
 
 import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.repositories.ChatRepository
-import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 // ==========================
 // Persists batches of chat messages to the database.

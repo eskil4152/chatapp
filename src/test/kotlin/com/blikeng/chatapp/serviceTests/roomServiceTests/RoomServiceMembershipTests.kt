@@ -5,6 +5,7 @@ import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
+import com.blikeng.chatapp.services.BannedUserService
 import com.blikeng.chatapp.services.FriendService
 import com.blikeng.chatapp.services.RoomService
 import com.blikeng.chatapp.services.UserService
@@ -14,6 +15,7 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
@@ -32,11 +34,14 @@ class RoomServiceMembershipTests {
     // - Auth, membership, and UUID validation failure cases
     // ==========================
 
+    @InjectMockKs lateinit var roomService: RoomService
+
     @MockK private lateinit var roomRepository: RoomRepository
     @MockK private lateinit var userService: UserService
     @MockK private lateinit var userRoomRepository: UserRoomRepository
     @MockK private lateinit var friendsService: FriendService
-    @InjectMockKs lateinit var roomService: RoomService
+    @MockK private lateinit var bannedUserService: BannedUserService
+    @MockK private lateinit var eventPublisher: ApplicationEventPublisher
 
     @AfterEach
     fun clearSecurity() { SecurityContextHolder.clearContext() }
@@ -55,6 +60,7 @@ class RoomServiceMembershipTests {
         every { userService.getUserById(userId) } returns UserEntity(id = userId, username = "u", password = "")
         every { roomRepository.findById(roomId) } returns Optional.of(RoomEntity(id = roomId, name = "r", type = RoomType.GROUP))
         every { userRoomRepository.save(any()) } answers { firstArg() }
+        every { bannedUserService.isUserBanned(any(), any()) } returns false
 
         roomService.joinRoom(roomId.toString())
 
@@ -73,6 +79,26 @@ class RoomServiceMembershipTests {
         val exception = assertFailsWith<ApiException> { roomService.joinRoom(UUID.randomUUID().toString()) }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         assertEquals(ErrorMessages.INVALID_USER, exception.message)
+    }
+
+    @Test
+    fun shouldFailToJoinRoomWhenBanned(){
+        val roomId = UUID.randomUUID()
+        val userId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userService.getUserById(userId) } returns UserEntity(id = userId, username = "u", password = "")
+        every { roomRepository.findById(roomId) } returns Optional.of(RoomEntity(id = roomId, name = "r", type = RoomType.GROUP))
+        every { bannedUserService.isUserBanned(any(), any()) } returns true
+
+        val exception = assertFailsWith<ApiException> {
+            roomService.joinRoom(roomId.toString())
+        }
+
+        assertEquals(HttpStatus.FORBIDDEN, exception.status)
+        assertEquals(ErrorMessages.BANNED, exception.message)
     }
 
     @Test

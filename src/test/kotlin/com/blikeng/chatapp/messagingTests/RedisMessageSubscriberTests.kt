@@ -30,14 +30,14 @@ class RedisMessageSubscriberTests {
     @InjectMockKs lateinit var subscriber: RedisMessageSubscriber
 
     @Test
-    fun shouldRegisterListenerOnRoomPattern() {
+    fun shouldRegisterListenersOnRoomAndUserPatterns() {
         every { container.addMessageListener(any<MessageListener>(), any<PatternTopic>()) } just Runs
 
         subscriber.register()
 
-        val topicSlot = slot<PatternTopic>()
-        verify(exactly = 1) { container.addMessageListener(subscriber, capture(topicSlot)) }
-        assertEquals("room:*", topicSlot.captured.topic)
+        val topicSlots = mutableListOf<PatternTopic>()
+        verify(exactly = 2) { container.addMessageListener(subscriber, capture(topicSlots)) }
+        assertEquals(setOf("room:*", "user:*"), topicSlots.map { it.topic }.toSet())
     }
 
     @Test
@@ -54,5 +54,33 @@ class RedisMessageSubscriberTests {
         subscriber.onMessage(message, null)
 
         verify(exactly = 1) { localBroadcaster.broadcastRaw(roomId, payload) }
+    }
+
+    @Test
+    fun shouldIgnoreMessageOnUnknownChannel() {
+        val message = mockk<Message>()
+        every { message.body } returns "payload".toByteArray(Charsets.UTF_8)
+        every { message.channel } returns "unknown:something".toByteArray(Charsets.UTF_8)
+
+        subscriber.onMessage(message, null)
+
+        verify(exactly = 0) { localBroadcaster.broadcastRaw(any(), any()) }
+        verify(exactly = 0) { localBroadcaster.sendToUser(any(), any()) }
+    }
+
+    @Test
+    fun shouldForwardMessageToUserWhenChannelIsUserChannel() {
+        val userId = UUID.randomUUID()
+        val payload = """{"type":"ROOM_ACTION","action":"KICKED"}"""
+
+        val message = mockk<Message>()
+        every { message.body } returns payload.toByteArray(Charsets.UTF_8)
+        every { message.channel } returns "user:$userId".toByteArray(Charsets.UTF_8)
+
+        every { localBroadcaster.sendToUser(any(), any()) } just Runs
+
+        subscriber.onMessage(message, null)
+
+        verify(exactly = 1) { localBroadcaster.sendToUser(userId, payload) }
     }
 }

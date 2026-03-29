@@ -30,3 +30,7 @@ class InvalidParametersException : ApiException(HttpStatus.BAD_REQUEST, ErrorMes
 class UserNotFoundException : ApiException(HttpStatus.NOT_FOUND, ErrorMessages.USER_NOT_FOUND)
 class AlreadyFriendsException : ApiException(HttpStatus.CONFLICT, ErrorMessages.ALREADY_FRIEND)
 class FriendYourselfException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.CANT_FRIEND_YOURSELF)
+
+// Bans
+class BannedException : ApiException(HttpStatus.FORBIDDEN, ErrorMessages.BANNED)
+class InvalidBanException : ApiException(HttpStatus.FORBIDDEN, ErrorMessages.INVALID_BAN)

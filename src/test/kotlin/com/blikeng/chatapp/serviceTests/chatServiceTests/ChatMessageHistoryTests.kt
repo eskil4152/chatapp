@@ -153,6 +153,21 @@ class ChatMessageHistoryTests {
         assertTrue(chatService.getRoomMessages(room.id, 0, 25).isEmpty())
     }
 
+    @Test
+    fun shouldFailToGetMessagesWhenUsingInvalidParameters() {
+        val pageNumberException = assertFailsWith<ApiException> {
+            chatService.getRoomMessages(UUID.randomUUID(), -1, 25)
+        }
+        assertEquals(HttpStatus.BAD_REQUEST, pageNumberException.status)
+        assertEquals(ErrorMessages.INVALID_PARAMETERS, pageNumberException.message)
+
+        val pageSizeException = assertFailsWith<ApiException> {
+            chatService.getRoomMessages(UUID.randomUUID(), 0, 250)
+        }
+        assertEquals(HttpStatus.BAD_REQUEST, pageSizeException.status)
+        assertEquals(ErrorMessages.INVALID_PARAMETERS, pageSizeException.message)
+    }
+
     // ==========================
     // Encrypted history
     // ==========================
@@ -176,166 +191,6 @@ class ChatMessageHistoryTests {
         assertArrayEquals("cipher".toByteArray(), result[0].ciphertext)
         assertArrayEquals("nonce".toByteArray(), result[0].nonce)
         assertEquals(1, result[0].keyVersion)
-    }
-
-    // ==========================
-    // fetchAllMessages
-    // ==========================
-    @Test
-    fun shouldDecryptEncryptedMessageWhenFetchingAllMessages() {
-        val room = RoomEntity(name = "r", encrypted = true, keyVersion = 1, type = RoomType.GROUP)
-        val user = UserEntity(username = "u", password = "")
-
-        val ciphertext = "cipher".toByteArray()
-        val nonce = "nonce".toByteArray()
-
-        val message = SendMessageDTO(
-            id = UUID.randomUUID(),
-            roomId = room.id,
-            userId = user.id,
-            username = user.username,
-            message = null,
-            keyVersion = 1,
-            ciphertext = ciphertext,
-            nonce = nonce,
-            timestamp = Timestamp(System.currentTimeMillis())
-        )
-
-        every {
-            encrypt.decrypt(
-                ciphertext = ciphertext,
-                nonce = nonce,
-                aad = any(),
-            )
-        } returns "decrypted message"
-
-        val session = mockk<WebSocketSession>(relaxed = true)
-        every { session.isOpen } returns true
-
-        val msgSlot = slot<TextMessage>()
-        every { session.sendMessage(capture(msgSlot)) } just Runs
-
-        chatService.fetchAllMessages(listOf(message), session)
-
-        verify(exactly = 1) {
-            encrypt.decrypt(
-                ciphertext = ciphertext,
-                nonce = nonce,
-                aad = any(),
-            )
-        }
-        verify(exactly = 1) { session.sendMessage(any()) }
-        assertTrue(msgSlot.captured.payload.contains("\"content\":\"decrypted message\""))
-    }
-
-    @Test
-    fun shouldSendEmptyStringWhenCiphertextNullAndMessageNull() {
-        val room = RoomEntity(name = "r", encrypted = false, keyVersion = null, type = RoomType.GROUP)
-        val user = UserEntity(username = "u", password = "")
-
-        val chat = SendMessageDTO(
-            id = UUID.randomUUID(), roomId = room.id, userId = user.id, username = user.username,
-            message = null, keyVersion = null, ciphertext = null, nonce = null,
-            timestamp = Timestamp(System.currentTimeMillis())
-        )
-
-        val session = mockk<WebSocketSession>(relaxed = true)
-        val msgSlot = slot<TextMessage>()
-        every { session.sendMessage(capture(msgSlot)) } just Runs
-        every { session.isOpen } returns true
-
-        chatService.fetchAllMessages(listOf(chat), session)
-
-        verify(exactly = 1) { session.sendMessage(any()) }
-        assertTrue(msgSlot.captured.payload.contains("\"content\":\"\""))
-    }
-
-    @Test
-    fun shouldSendPlainMessageWhenCiphertextIsNullAndMessageExists() {
-        val room = RoomEntity(name = "r", encrypted = false, keyVersion = null, type = RoomType.GROUP)
-        val user = UserEntity(username = "u", password = "")
-
-        val chat = SendMessageDTO(
-            id = UUID.randomUUID(), roomId = room.id, userId = user.id, username = user.username,
-            message = "Hello", keyVersion = null, ciphertext = null, nonce = null,
-            timestamp = Timestamp(System.currentTimeMillis())
-        )
-
-        val session = mockk<WebSocketSession>(relaxed = true)
-        val msgSlot = slot<TextMessage>()
-        every { session.sendMessage(capture(msgSlot)) } just Runs
-        every { session.isOpen } returns true
-
-        chatService.fetchAllMessages(listOf(chat), session)
-
-        verify(exactly = 1) { session.sendMessage(any()) }
-        assertTrue(msgSlot.captured.payload.contains("\"content\":\"Hello\""))
-    }
-
-    @Test
-    fun shouldNotSendFetchedMessagesWhenSessionIsClosed() {
-        val room = RoomEntity(name = "r", type = RoomType.GROUP)
-        val user = UserEntity(username = "u", password = "")
-
-        val message = SendMessageDTO(
-            id = UUID.randomUUID(),
-            roomId = room.id,
-            userId = user.id,
-            username = user.username,
-            message = "Hello",
-            ciphertext = null,
-            nonce = null,
-            timestamp = Timestamp(System.currentTimeMillis()),
-            keyVersion = null
-        )
-
-        val session = mockk<WebSocketSession>(relaxed = true)
-        every { session.isOpen } returns false
-
-        chatService.fetchAllMessages(listOf(message), session)
-
-        verify(exactly = 0) { session.sendMessage(any()) }
-    }
-
-    @Test
-    fun shouldFailToGetMessagesWhenUsingInvalidParameters() {
-        val pageNumberException = assertFailsWith<ApiException> {
-            chatService.getRoomMessages(UUID.randomUUID(), -1, 25)
-        }
-
-        assertEquals(HttpStatus.BAD_REQUEST, pageNumberException.status)
-        assertEquals(ErrorMessages.INVALID_PARAMETERS, pageNumberException.message)
-
-        val pageSizeException = assertFailsWith<ApiException> {
-            chatService.getRoomMessages(UUID.randomUUID(), 0, 250)
-        }
-
-        assertEquals(HttpStatus.BAD_REQUEST, pageSizeException.status)
-        assertEquals(ErrorMessages.INVALID_PARAMETERS, pageSizeException.message)
-    }
-
-    @Test
-    fun shouldThrowWhenEncryptedMessageHasNullNonce() {
-        val room = RoomEntity(name = "r", encrypted = true, keyVersion = 1, type = RoomType.GROUP)
-        val user = UserEntity(username = "u", password = "")
-
-        val message = SendMessageDTO(
-            id = UUID.randomUUID(),
-            roomId = room.id,
-            userId = user.id,
-            username = user.username,
-            message = null,
-            ciphertext = "cipher".toByteArray(),
-            nonce = null,
-            timestamp = Timestamp(System.currentTimeMillis()),
-            keyVersion = 1
-        )
-
-        val session = mockk<WebSocketSession>(relaxed = true)
-
-        assertFailsWith<ApiException> {
-            chatService.fetchAllMessages(listOf(message), session)
-        }
     }
 
     // ==========================

@@ -17,6 +17,7 @@ import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.FilterType
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.patch
 import org.springframework.test.web.servlet.put
@@ -93,7 +94,7 @@ class UserControllerTests {
             """.trimIndent()
         }
             .andExpect { status { isOk() } }
-            .andExpect { content { string("Updated successfully") } }
+            .andExpect { content { string("User updated successfully") } }
     }
 
     @Test
@@ -111,6 +112,15 @@ class UserControllerTests {
         }
             .andExpect { status { isOk() } }
             .andExpect { content { string("Password changed successfully") } }
+    }
+
+    @Test
+    fun shouldDeleteUser(){
+        every { userService.deleteUser() } returns Unit
+
+        mockMvc.delete("/api/user/delete")
+            .andExpect { status { isOk() } }
+            .andExpect { content { string("User deleted successfully") } }
     }
 
     // ==========================
