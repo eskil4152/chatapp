@@ -23,6 +23,7 @@ class RoomService(
     private val userService: UserService,
     private val friendService: FriendService,
     private val notificationService: NotificationService,
+    private val bannedUserService: BannedUserService,
 ) {
     // ==========================
     // Room creation and retrieval
@@ -80,6 +81,8 @@ class RoomService(
         }
 
         roomRepository.findById(roomUUID).orElse(null) ?: throw RoomNotFoundException()
+
+        if (bannedUserService.isUserBanned(userId, roomUUID)) throw BannedException()
 
         val userRoom = UserRoomEntity(UserRoomId(userId, roomUUID), RoomRole.MEMBER, RoomType.GROUP)
         userRoomRepository.save(userRoom)
@@ -158,6 +161,7 @@ class RoomService(
         roomRepository.deleteById(roomUUID)
     }
 
+    @Transactional
     fun removeUserFromRoom(administrationDTO: AdministrationDTO){
         val userId = getId()
         userService.getUserById(userId) ?: throw InvalidUserException()
@@ -181,12 +185,16 @@ class RoomService(
             throw NotPermittedException()
         }
 
+        if (targetId == userId) {
+            throw InvalidBanException()
+        }
+
         userRoomRepository.deleteByIdUserIdAndIdRoomId(targetId, roomId)
 
         when (action) {
             RoomAction.KICK -> notificationService.notifyRoomAction(targetId, roomId, "KICKED", administrationDTO.reason)
             RoomAction.BAN -> {
-                // TODO: persist ban to BannedTable
+                bannedUserService.banUser(targetId, roomId)
                 notificationService.notifyRoomAction(targetId, roomId, "BANNED", administrationDTO.reason)
             }
         }

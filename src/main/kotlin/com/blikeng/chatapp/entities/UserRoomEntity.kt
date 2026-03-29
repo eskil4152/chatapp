@@ -8,19 +8,19 @@ import java.util.*
 @Table(name = "user_rooms")
 class UserRoomEntity (
     @EmbeddedId
-    val id: UserRoomId,
+    var id: UserRoomId,
 
     @Enumerated(EnumType.STRING)
-    val role: RoomRole,
+    var role: RoomRole,
 
     @Enumerated(EnumType.STRING)
-    val type: RoomType,
+    var type: RoomType,
 )
 
 @Embeddable
 class UserRoomId(
-    val userId: UUID,
-    val roomId: UUID
+    var userId: UUID,
+    var roomId: UUID
 ) : Serializable
 
 enum class RoomRole {

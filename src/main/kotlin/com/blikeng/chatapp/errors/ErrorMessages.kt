@@ -26,4 +26,7 @@ object ErrorMessages {
     const val CANT_FRIEND_YOURSELF = "You can not friend yourself"
 
     const val INVALID_PARAMETERS = "Invalid parameters"
+
+    const val BANNED = "You have been banned from this room"
+    const val INVALID_BAN = "You can not ban this user"
 }
