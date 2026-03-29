@@ -76,12 +76,12 @@ allowing the chat service to scale horizontally without coupling WebSocket throu
 - Registration and login issue a signed JWT stored as an `HttpOnly`, `SameSite=Strict` cookie with a 24-hour expiration.
 - The token encodes `userID` as the subject and `username` as a claim for efficient identity extraction.
 - A dedicated `JwtAuthFilter` is responsible for all authentication checks.
-- After token validation, user existence is re-verified in the database. A valid token for a deleted user results in 400 Bad Request.
+- After token validation, user existence is re-verified in the database. A valid token for a deleted user results in a `400 Bad Request`.
 
 **Password Handling**
 - Passwords are hashed with **BCrypt**, plaintext passwords are never persisted.
 - Password changes require the current password to be verified against the stored hash before a new hash is saved.
-- Minimum length is enforced for both usernames and passwords during registration and password changes.
+- A minimum length is enforced for both usernames and passwords during registration and password changes.
 
 **WebSocket Handshake Authentication**
 - An `AuthHandshakeInterceptor` intercepts every WebSocket request and validates the JWT from the cookie before any connection is established.
@@ -106,7 +106,8 @@ To support horizontal scaling and decouple real-time messaging from persistence,
 
 **Redis Pub/Sub**
 - All WebSocket broadcasts are published to Redis channels (`room:{roomId}`).
-- Each instance subscribes to these channels and rebroadcasts messages locally to connected WebSocket sessions.
+- Targeted user notifications (kick, ban, room deletion) are published to `user:{userId}` channels.
+- Each instance subscribes to both channel patterns and routes messages to the appropriate local WebSocket sessions.
 - This ensures messages reach users connected to different application instances.
 
 **RabbitMQ Message Queue**
@@ -154,7 +155,7 @@ the same response as a non-existent user, preventing user enumeration.
 - Duplicate room memberships are prevented via database constraints and repository checks.
 
 **DTOs**
-- All API responses use Data Transfer Objects to decouple the API surface from internal entity structure and minimize data exposure to clients.
+- All API responses use Data Transfer Objects to decouple the API surface from the internal entity structure and minimize data exposure to clients.
 
 ---
 
@@ -163,11 +164,16 @@ the same response as a non-existent user, preventing user enumeration.
 **Rooms**
 - The user who creates a room is assigned the `OWNER` role; users who join are assigned `MEMBER`.
 - Membership is stored in the `user_rooms` join table and fetched via an indexed join query.
+- Room owners can kick or ban members. Banned users cannot rejoin the room.
+- Kick and ban actions include an optional reason and notify the target user via a real-time WebSocket event (`ROOM_ACTION`).
+- When a room is deleted, all members receive a `ROOM_DELETED` WebSocket notification.
+- Notifications are delivered via Redis pub/sub and fire only after the database transaction commits, using `@TransactionalEventListener`.
 
 **Users**
 - Duplicate usernames are rejected with `409 Conflict`.
 - Login with an unknown username or incorrect password returns `401 Unauthorized`.
 - Users can retrieve and update their own profile fields (bio, avatar, etc.) and change their password.
+- Account deletion preserves chat history — messages are reassigned to a sentinel `[deleted]` user rather than removed.
 
 ---
 
@@ -178,8 +184,10 @@ User presence is tracked using Redis.
 - Each active user session increments a Redis counter.
 - When sessions close, the counter is decremented.
 - A user is considered online when the counter is greater than zero.
+- Stale presence keys from previous server runs are cleared on startup.
 
-Room presence is also tracked using Redis sets to allow efficient lookup of users currently active in a room.
+Room presence events are broadcast to all members of a room when a user connects or disconnects.
+On room join, a full `ROOM_MEMBERS` snapshot is sent to the joining session. Subsequent presence updates use a lightweight `ROOM_PRESENCE` event containing only the user ID and online status.
 
 ---
 
@@ -222,10 +230,12 @@ This design ensures:
 | PUT    | /api/rooms/edit         | Edit room                |
 | DELETE | /api/rooms/leave        | Leave room               |
 | DELETE | /api/rooms/delete       | Delete room              |
+| DELETE | /api/rooms/action       | Kick or ban a user       |
 | POST   | /api/rooms/dm           | Make or get private room |
 | GET    | /api/user               | Get user info            |
 | PUT    | /api/user/edit          | Edit user profile        |
 | PATCH  | /api/user/password      | Edit password            |
+| DELETE | /api/user/delete        | Delete account           |
 | GET    | /api/friends            | Get all friends          |
 | POST   | /api/friends/add        | Add friend               |
 | DELETE | /api/friends/remove     | Remove friend            |
