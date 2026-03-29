@@ -3,6 +3,8 @@ package com.blikeng.chatapp.services
 import com.blikeng.chatapp.dtos.room.AdministrationDTO
 import com.blikeng.chatapp.dtos.room.RoomAction
 import com.blikeng.chatapp.dtos.room.RoomDTO
+import com.blikeng.chatapp.dtos.room.RoomUserDTO
+import com.blikeng.chatapp.dtos.room.UnbanDTO
 import com.blikeng.chatapp.entities.*
 import com.blikeng.chatapp.errors.*
 import com.blikeng.chatapp.events.RoomDeletedEvent
@@ -186,6 +188,10 @@ class RoomService(
             throw InvalidUUIDException()
         }
 
+        if (targetId == userId) {
+            throw InvalidBanException()
+        }
+
         val userRoom = userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
             ?: throw RoomNotFoundException()
 
@@ -193,15 +199,70 @@ class RoomService(
             throw NotPermittedException()
         }
 
-        if (targetId == userId) {
-            throw InvalidBanException()
-        }
-
         userRoomRepository.deleteByIdUserIdAndIdRoomId(targetId, roomId)
 
         if (action == RoomAction.BAN) bannedUserService.banUser(targetId, roomId)
 
         eventPublisher.publishEvent(UserRemovedEvent(targetId, roomId, action, administrationDTO.reason))
+    }
+
+    fun unbanUser(unbanDTO: UnbanDTO) {
+        val userId = getId()
+        userService.getUserById(userId) ?: throw InvalidUserException()
+
+        val roomId: UUID;
+        val targetId: UUID;
+
+        try {
+            roomId = UUID.fromString(unbanDTO.roomId)
+            targetId = UUID.fromString(unbanDTO.userId)
+        } catch (_: IllegalArgumentException) {
+            throw InvalidUUIDException()
+        }
+
+        if (targetId == userId) {
+            throw InvalidBanException()
+        }
+
+        val userRoom = userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
+            ?: throw RoomNotFoundException()
+
+        if (userRoom.role != RoomRole.OWNER) {
+            throw NotPermittedException()
+        }
+
+        bannedUserService.unbanUser(targetId, roomId)
+        // TODO: Determine if we want to publish this event
+    }
+
+    fun getAllBansForRoom(roomIdString: String?): List<RoomUserDTO> {
+        val userId = getId()
+        userService.getUserById(userId) ?: throw InvalidUserException()
+
+        val roomId = try {
+            UUID.fromString(roomIdString)
+        } catch (_: IllegalArgumentException) {
+            throw InvalidUUIDException()
+        }
+
+        val userRoom = userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
+            ?: throw RoomNotFoundException()
+
+        if (userRoom.role != RoomRole.OWNER) {
+            throw NotPermittedException()
+        }
+
+        val bannedUserIds = bannedUserService.getBannedUserIds(roomId)
+        val bannedUsers = userService.getAllById(bannedUserIds)
+
+        return bannedUsers.map { user ->
+            RoomUserDTO(
+                id = user.id,
+                username = user.username,
+                avatarUrl = user.avatarUrl,
+                online = false
+            )
+        }
     }
 
     // ==========================

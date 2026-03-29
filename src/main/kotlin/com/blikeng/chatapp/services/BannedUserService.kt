@@ -23,4 +23,8 @@ class BannedUserService(
         val id = BannedUserId(userId, roomId)
         bannedUserRepository.deleteById(id)
     }
+
+    fun getBannedUserIds(roomId: UUID): List<UUID> {
+        return bannedUserRepository.findAllByIdRoomId(roomId).map { it.id.userId }
+    }
 }
