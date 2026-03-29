@@ -153,6 +153,21 @@ class ChatMessageHistoryTests {
         assertTrue(chatService.getRoomMessages(room.id, 0, 25).isEmpty())
     }
 
+    @Test
+    fun shouldFailToGetMessagesWhenUsingInvalidParameters() {
+        val pageNumberException = assertFailsWith<ApiException> {
+            chatService.getRoomMessages(UUID.randomUUID(), -1, 25)
+        }
+        assertEquals(HttpStatus.BAD_REQUEST, pageNumberException.status)
+        assertEquals(ErrorMessages.INVALID_PARAMETERS, pageNumberException.message)
+
+        val pageSizeException = assertFailsWith<ApiException> {
+            chatService.getRoomMessages(UUID.randomUUID(), 0, 250)
+        }
+        assertEquals(HttpStatus.BAD_REQUEST, pageSizeException.status)
+        assertEquals(ErrorMessages.INVALID_PARAMETERS, pageSizeException.message)
+    }
+
     // ==========================
     // Encrypted history
     // ==========================

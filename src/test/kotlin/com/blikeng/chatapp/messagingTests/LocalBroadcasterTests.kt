@@ -105,4 +105,66 @@ class LocalBroadcasterTests {
 
         assertTrue(rooms.isEmpty())
     }
+
+    @Test
+    fun shouldSendToAllOpenUserSessions() {
+        val userId = UUID.randomUUID()
+        val session1 = mockk<WebSocketSession>()
+        val session2 = mockk<WebSocketSession>()
+
+        every { session1.isOpen } returns true
+        every { session2.isOpen } returns true
+        every { session1.sendMessage(any()) } just Runs
+        every { session2.sendMessage(any()) } just Runs
+        every { sessionRegistry.users } returns ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
+            put(userId, CopyOnWriteArraySet(listOf(session1, session2)))
+        }
+
+        broadcaster.sendToUser(userId, "payload")
+
+        verify(exactly = 1) { session1.sendMessage(TextMessage("payload")) }
+        verify(exactly = 1) { session2.sendMessage(TextMessage("payload")) }
+    }
+
+    @Test
+    fun shouldSkipClosedUserSession() {
+        val userId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>()
+
+        every { session.isOpen } returns false
+        every { sessionRegistry.users } returns ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
+            put(userId, CopyOnWriteArraySet(listOf(session)))
+        }
+
+        broadcaster.sendToUser(userId, "payload")
+
+        verify(exactly = 0) { session.sendMessage(any()) }
+    }
+
+    @Test
+    fun shouldContinueWhenSendToUserSessionFails() {
+        val userId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>()
+
+        every { session.isOpen } returns true
+        every { session.sendMessage(any()) } throws RuntimeException("error")
+        every { session.id } returns userId.toString()
+        every { sessionRegistry.users } returns ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
+            put(userId, CopyOnWriteArraySet(listOf(session)))
+        }
+
+        assertDoesNotThrow { broadcaster.sendToUser(userId, "payload") }
+        verify(exactly = 0) { chatService.leaveRoom(any(), any()) }
+    }
+
+    @Test
+    fun shouldDoNothingIfUserNotPresentOnInstance() {
+        val userId = UUID.randomUUID()
+
+        every { sessionRegistry.users } returns ConcurrentHashMap()
+
+        assertDoesNotThrow {
+            broadcaster.sendToUser(userId, "payload")
+        }
+    }
 }

@@ -82,6 +82,26 @@ class RoomServiceMembershipTests {
     }
 
     @Test
+    fun shouldFailToJoinRoomWhenBanned(){
+        val roomId = UUID.randomUUID()
+        val userId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userService.getUserById(userId) } returns UserEntity(id = userId, username = "u", password = "")
+        every { roomRepository.findById(roomId) } returns Optional.of(RoomEntity(id = roomId, name = "r", type = RoomType.GROUP))
+        every { bannedUserService.isUserBanned(any(), any()) } returns true
+
+        val exception = assertFailsWith<ApiException> {
+            roomService.joinRoom(roomId.toString())
+        }
+
+        assertEquals(HttpStatus.FORBIDDEN, exception.status)
+        assertEquals(ErrorMessages.BANNED, exception.message)
+    }
+
+    @Test
     fun shouldFailToJoinNonExistingRoom() {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())

@@ -57,6 +57,18 @@ class RedisMessageSubscriberTests {
     }
 
     @Test
+    fun shouldIgnoreMessageOnUnknownChannel() {
+        val message = mockk<Message>()
+        every { message.body } returns "payload".toByteArray(Charsets.UTF_8)
+        every { message.channel } returns "unknown:something".toByteArray(Charsets.UTF_8)
+
+        subscriber.onMessage(message, null)
+
+        verify(exactly = 0) { localBroadcaster.broadcastRaw(any(), any()) }
+        verify(exactly = 0) { localBroadcaster.sendToUser(any(), any()) }
+    }
+
+    @Test
     fun shouldForwardMessageToUserWhenChannelIsUserChannel() {
         val userId = UUID.randomUUID()
         val payload = """{"type":"ROOM_ACTION","action":"KICKED"}"""

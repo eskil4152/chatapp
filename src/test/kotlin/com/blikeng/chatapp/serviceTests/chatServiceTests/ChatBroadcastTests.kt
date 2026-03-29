@@ -186,6 +186,23 @@ class ChatBroadcastTests {
     }
 
     @Test
+    fun shouldFailToAddMessageWhenRoomNotFoundInRepository() {
+        val roomId = UUID.randomUUID()
+        val userId = UUID.randomUUID()
+
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(userId, roomId) } returns true
+        every { roomRepository.findById(roomId) } returns Optional.empty()
+
+        val exception = assertFailsWith<ApiException> {
+            chatService.broadcast(roomId, ReceivedMessage(roomId, userId, "hello", "MESSAGE"), "u")
+        }
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.status)
+        assertEquals(ErrorMessages.ROOM_NOT_FOUND, exception.message)
+        verify(exactly = 0) { rabbitTemplate.convertAndSend("chat.buffer", any<Any>()) }
+    }
+
+    @Test
     fun shouldNotSendMessageIfRoomNotInInstanceMemory() {
         val roomId = UUID.randomUUID()
         val userId = UUID.randomUUID()

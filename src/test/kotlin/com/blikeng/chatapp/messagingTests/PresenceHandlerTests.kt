@@ -6,6 +6,8 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.just
+import io.mockk.Runs
 import io.mockk.verify
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -28,6 +30,18 @@ class PresenceHandlerTests {
     @MockK lateinit var valueOps: ValueOperations<String, String>
 
     @InjectMockKs lateinit var presenceHandler: PresenceHandler
+
+    @Test
+    fun shouldDeleteAllStalePresenceKeysOnStartup() {
+        val keys = setOf("presence:user:abc", "presence:user:def")
+
+        every { redisTemplate.keys("presence:user:*") } returns keys
+        every { redisTemplate.delete(keys) } returns 2L
+
+        presenceHandler.clearStalePresence()
+
+        verify(exactly = 1) { redisTemplate.delete(keys) }
+    }
 
     @Test
     fun shouldIncrementUserPresenceOnConnect() {

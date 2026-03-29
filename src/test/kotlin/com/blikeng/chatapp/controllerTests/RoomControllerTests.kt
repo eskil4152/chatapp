@@ -6,6 +6,7 @@ import com.blikeng.chatapp.entities.RoomRole
 import com.blikeng.chatapp.entities.RoomType
 import com.blikeng.chatapp.errors.InvalidRoomNameException
 import com.blikeng.chatapp.errors.InvalidTokenException
+import com.blikeng.chatapp.errors.NotPermittedException
 import com.blikeng.chatapp.errors.RoomNotFoundException
 import com.blikeng.chatapp.security.auth.JwtAuthFilter
 import com.blikeng.chatapp.security.ratelimit.RateLimitService
@@ -154,6 +155,28 @@ class RoomControllerTests {
             .andExpect { status { isCreated() } }
     }
 
+    @Test
+    fun shouldKickOrBanUser(){
+        val roomId = UUID.randomUUID()
+        val targetId = UUID.randomUUID()
+
+        every { roomService.removeUserFromRoom(any()) } returns Unit
+
+        mockMvc.delete("/api/rooms/action") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                    "roomId":"$roomId",
+                    "userId":"$targetId",
+                    "actions":"KICK",
+                    "reason":"because"
+                }
+            """.trimIndent()
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { content { string("Removed user successfully") } }
+    }
+
     // ==========================
     // HTTP error mapping
     // ==========================
@@ -207,5 +230,27 @@ class RoomControllerTests {
         }
             .andExpect { status { isNotFound() }}
             .andExpect { content { string("Room not found") }}
+    }
+
+    @Test
+    fun shouldGetForbiddenWhenNotPermittedToKickOrBanUser(){
+        val roomId = UUID.randomUUID()
+        val targetId = UUID.randomUUID()
+
+        every { roomService.removeUserFromRoom(any()) } throws NotPermittedException()
+
+        mockMvc.delete("/api/rooms/action") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                    "roomId":"$roomId",
+                    "userId":"$targetId",
+                    "actions":"KICK",
+                    "reason":""
+                }
+            """.trimIndent()
+        }
+            .andExpect { status { isForbidden() } }
+            .andExpect { content { string("Not permitted") } }
     }
 }
