@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.serviceTests.chatServiceTests
 
-import com.blikeng.chatapp.dtos.websocket.ReceivedMessageDTO
+import com.blikeng.chatapp.dtos.websocket.ReceivedMessage
 import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.entities.RoomType
 import com.blikeng.chatapp.entities.UserEntity
@@ -71,7 +71,7 @@ class ChatBroadcastTests {
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns false
 
         val ex = assertFailsWith<ApiException> {
-            chatService.broadcast(UUID.randomUUID(), ReceivedMessageDTO(UUID.randomUUID(), UUID.randomUUID(), "hello", "MESSAGE"), "u")
+            chatService.broadcast(UUID.randomUUID(), ReceivedMessage(UUID.randomUUID(), UUID.randomUUID(), "hello", "MESSAGE"), "u")
         }
 
         assertEquals(HttpStatus.NOT_FOUND, ex.status)
@@ -94,7 +94,7 @@ class ChatBroadcastTests {
         chatService.joinRoom(roomId, session1)
         chatService.joinRoom(roomId, session2)
 
-        chatService.broadcast(roomId, ReceivedMessageDTO(roomId, userId, "hello", "MESSAGE"), "u")
+        chatService.broadcast(roomId, ReceivedMessage(roomId, userId, "hello", "MESSAGE"), "u")
 
         verify(exactly = 1) { rabbitTemplate.convertAndSend("chat.buffer", any<Any>()) }
         verify(exactly = 1) { listOps.rightPush("chat.peek.${roomId}", any<String>()) }
@@ -111,7 +111,7 @@ class ChatBroadcastTests {
         every { session.attributes } returns hashMapOf("userId" to UUID.randomUUID())
 
         chatService.joinRoom(roomId, session)
-        chatService.broadcast(roomId, ReceivedMessageDTO(roomId, UUID.randomUUID(), "join", "JOIN"), "u")
+        chatService.broadcast(roomId, ReceivedMessage(roomId, UUID.randomUUID(), "join", "JOIN"), "u")
 
         verify(exactly = 0) { session.sendMessage(any()) }
     }
@@ -131,7 +131,7 @@ class ChatBroadcastTests {
         every { session.attributes } returns hashMapOf("userId" to user.id)
 
         chatService.joinRoom(room.id, session)
-        chatService.broadcast(room.id, ReceivedMessageDTO(room.id, user.id, "secret", "MESSAGE"), "u")
+        chatService.broadcast(room.id, ReceivedMessage(room.id, user.id, "secret", "MESSAGE"), "u")
 
         verify(exactly = 1) { rabbitTemplate.convertAndSend("chat.buffer", any<Any>()) }
         verify(exactly = 1) { listOps.rightPush("chat.peek.${room.id}", any<String>()) }
@@ -153,7 +153,7 @@ class ChatBroadcastTests {
         chatService.joinRoom(room.id, session)
 
         val exception = assertFailsWith<ApiException> {
-            chatService.broadcast(room.id, ReceivedMessageDTO(room.id, user.id, "         ", "MESSAGE"), "u")
+            chatService.broadcast(room.id, ReceivedMessage(room.id, user.id, "         ", "MESSAGE"), "u")
         }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
@@ -176,7 +176,7 @@ class ChatBroadcastTests {
         chatService.joinRoom(room.id, session)
 
         val exception = assertFailsWith<ApiException> {
-            chatService.broadcast(room.id, ReceivedMessageDTO(room.id, user.id, "a".repeat(10000), "MESSAGE"), "u")
+            chatService.broadcast(room.id, ReceivedMessage(room.id, user.id, "a".repeat(10000), "MESSAGE"), "u")
         }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
@@ -201,7 +201,7 @@ class ChatBroadcastTests {
 
         clearMocks(session)
 
-        chatService.broadcast(roomId, ReceivedMessageDTO(roomId, userId, "hello", "MESSAGE"), "u")
+        chatService.broadcast(roomId, ReceivedMessage(roomId, userId, "hello", "MESSAGE"), "u")
 
         verify(exactly = 0) { session.sendMessage(any()) }
     }

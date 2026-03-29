@@ -1,5 +1,7 @@
 package com.blikeng.chatapp.services
 
+import com.blikeng.chatapp.dtos.room.AdministrationDTO
+import com.blikeng.chatapp.dtos.room.RoomAction
 import com.blikeng.chatapp.dtos.room.RoomDTO
 import com.blikeng.chatapp.entities.*
 import com.blikeng.chatapp.errors.*
@@ -20,6 +22,7 @@ class RoomService(
     private val userRoomRepository: UserRoomRepository,
     private val userService: UserService,
     private val friendService: FriendService,
+    private val notificationService: NotificationService,
 ) {
     // ==========================
     // Room creation and retrieval
@@ -153,6 +156,40 @@ class RoomService(
 
         userRoomRepository.deleteAllByIdRoomId(roomUUID)
         roomRepository.deleteById(roomUUID)
+    }
+
+    fun removeUserFromRoom(administrationDTO: AdministrationDTO){
+        val userId = getId()
+        userService.getUserById(userId) ?: throw InvalidUserException()
+
+        val roomId: UUID;
+        val targetId: UUID;
+        val action: RoomAction;
+
+        try {
+            roomId = UUID.fromString(administrationDTO.roomId)
+            targetId = UUID.fromString(administrationDTO.userId)
+            action = administrationDTO.actions
+        } catch (_: IllegalArgumentException) {
+            throw InvalidUUIDException()
+        }
+
+        val userRoom = userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
+            ?: throw RoomNotFoundException()
+
+        if (userRoom.role != RoomRole.OWNER) {
+            throw NotPermittedException()
+        }
+
+        userRoomRepository.deleteByIdUserIdAndIdRoomId(targetId, roomId)
+
+        when (action) {
+            RoomAction.KICK -> notificationService.notifyRoomAction(targetId, roomId, "KICKED", administrationDTO.reason)
+            RoomAction.BAN -> {
+                // TODO: persist ban to BannedTable
+                notificationService.notifyRoomAction(targetId, roomId, "BANNED", administrationDTO.reason)
+            }
+        }
     }
 
     // ==========================

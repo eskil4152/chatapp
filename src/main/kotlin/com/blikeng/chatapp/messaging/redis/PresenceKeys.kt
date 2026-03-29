@@ -7,4 +7,5 @@ import java.util.*
 // ==========================
 object PresenceKeys {
     fun userPresence(userId: UUID): String = "presence:user:$userId"
+    fun userChannel(userId: UUID): String = "user:$userId"
 }

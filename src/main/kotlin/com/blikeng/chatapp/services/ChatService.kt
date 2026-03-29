@@ -4,13 +4,11 @@ import com.blikeng.chatapp.config.configureAad
 import com.blikeng.chatapp.dtos.messaging.RabbitMessageDTO
 import com.blikeng.chatapp.dtos.messaging.SendMessageDTO
 import com.blikeng.chatapp.dtos.room.RoomUserDTO
-import com.blikeng.chatapp.dtos.websocket.ReceivedMessageDTO
+import com.blikeng.chatapp.dtos.websocket.ReceivedMessage
 import com.blikeng.chatapp.dtos.websocket.WsChat
 import com.blikeng.chatapp.dtos.websocket.WsJoined
 import com.blikeng.chatapp.dtos.websocket.WsRoomPresence
 import com.blikeng.chatapp.entities.ChatEntity
-import com.blikeng.chatapp.errors.ApiException
-import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.errors.InvalidMessageException
 import com.blikeng.chatapp.errors.InvalidParametersException
 import com.blikeng.chatapp.errors.InvalidTokenException
@@ -25,9 +23,7 @@ import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.redis.core.RedisTemplate
-import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
-import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import java.sql.Timestamp
@@ -160,7 +156,7 @@ class ChatService (
     // ==========================
     // Message publishing and fetching
     // ==========================
-    fun broadcast(roomId: UUID, message: ReceivedMessageDTO, username: String) {
+    fun broadcast(roomId: UUID, message: ReceivedMessage, username: String) {
         val timestamp = Timestamp(System.currentTimeMillis())
         if (!userRoomRepository.existsByIdUserIdAndIdRoomId(message.userId, roomId)) throw RoomNotFoundException()
 
@@ -179,7 +175,7 @@ class ChatService (
         redisTemplate.convertAndSend("room:${roomId}", json)
     }
 
-    fun addMessage(message: ReceivedMessageDTO, username: String){
+    fun addMessage(message: ReceivedMessage, username: String){
         val room = roomRepository.findById(message.roomId).orElseThrow()
 
         val messageId = UUID.randomUUID()

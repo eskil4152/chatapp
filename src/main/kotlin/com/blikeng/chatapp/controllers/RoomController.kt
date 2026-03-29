@@ -1,9 +1,9 @@
 package com.blikeng.chatapp.controllers
 
 import com.blikeng.chatapp.dtos.UsernameDTO
+import com.blikeng.chatapp.dtos.room.AdministrationDTO
 import com.blikeng.chatapp.dtos.room.RoomDTO
 import com.blikeng.chatapp.services.RoomService
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -75,5 +75,14 @@ class RoomController(
         @RequestBody usernameDTO: UsernameDTO
     ) : ResponseEntity<String> {
         return ResponseEntity.status(201).body(roomService.getOrStartPrivateMessage(usernameDTO.username).toString())
+    }
+
+    @DeleteMapping("/action")
+    fun kickUser(
+        @RequestBody administrationDTO: AdministrationDTO
+    ) : ResponseEntity<String> {
+        roomService.removeUserFromRoom(administrationDTO)
+
+        return ResponseEntity.ok("Removed user successfully")
     }
 }
