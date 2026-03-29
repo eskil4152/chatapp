@@ -82,14 +82,15 @@ class ChatService (
                 )))
                 getUsersInRoom(roomId).forEach { member ->
                     session.sendMessage(TextMessage(objectMapper.writeValueAsString(
-                        WsRoomPresence(roomId = roomId, userId = member.id, online = member.online)
+                        WsRoomPresence(roomId = roomId, userId = member.id, username = member.username, avatarUrl = member.avatarUrl, online = member.online)
                     )))
                 }
             }
         }
 
+        val joiningUsername = session.attributes["username"] as? String ?: ""
         val presencePayload = objectMapper.writeValueAsString(
-            WsRoomPresence(roomId = roomId, userId = userId, online = true)
+            WsRoomPresence(roomId = roomId, userId = userId, username = joiningUsername, avatarUrl = null, online = true)
         )
         existingSessions.forEach { existingSession ->
             synchronized(existingSession) {
@@ -110,8 +111,9 @@ class ChatService (
         }
 
         if (userId != null) {
+            val leavingUsername = session.attributes["username"] as? String ?: ""
             val presencePayload = objectMapper.writeValueAsString(
-                WsRoomPresence(roomId = roomId, userId = userId, online = presenceHandler.isUserOnline(userId))
+                WsRoomPresence(roomId = roomId, userId = userId, username = leavingUsername, avatarUrl = null, online = presenceHandler.isUserOnline(userId))
             )
             rooms[roomId]?.forEach { remainingSession ->
                 synchronized(remainingSession) {
@@ -140,10 +142,10 @@ class ChatService (
         return affectedRoomIds
     }
 
-    fun notifyRoomPresence(roomIds: List<UUID>, userId: UUID, online: Boolean) {
+    fun notifyRoomPresence(roomIds: List<UUID>, userId: UUID, username: String, online: Boolean) {
         roomIds.forEach { roomId ->
             val payload = objectMapper.writeValueAsString(
-                WsRoomPresence(roomId = roomId, userId = userId, online = online)
+                WsRoomPresence(roomId = roomId, userId = userId, username = username, avatarUrl = null, online = online)
             )
             rooms[roomId]?.forEach { session ->
                 synchronized(session) {
@@ -302,7 +304,7 @@ class ChatService (
     // Helper methods
     // ==========================
     fun getUsersInRoom(roomId: UUID): List<RoomUserDTO> {
-        return userRoomRepository.findUsersByRoomId(roomId).map {
+        val foo = userRoomRepository.findUsersByRoomId(roomId).map {
             RoomUserDTO(
                 id = it.id,
                 username = it.username,
@@ -310,5 +312,7 @@ class ChatService (
                 online = presenceHandler.isUserOnline(it.id)
             )
         }
+
+        return foo;
     }
 }

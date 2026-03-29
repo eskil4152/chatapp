@@ -42,6 +42,7 @@ class FriendService(
             val friend = if (friendship.userA.id == id) friendship.userB else friendship.userA
 
             FriendDTO (
+                userId = friend.id,
                 username = friend.username,
                 bio = friend.bio,
                 email = friend.email,
@@ -93,6 +94,7 @@ class FriendService(
         if (!friendsRepository.existsById(friendshipId)) throw UserNotFoundException()
 
         return FriendDTO(
+            userId = friend.id,
             username = friend.username,
             bio = friend.bio,
             email = friend.email,

@@ -67,7 +67,8 @@ class ChatWebSocketHandler(
         }
 
         if (affectedRoomIds.isNotEmpty()) {
-            chatService.notifyRoomPresence(affectedRoomIds, userId, isStillOnline)
+            val username = session.attributes["username"] as? String ?: ""
+            chatService.notifyRoomPresence(affectedRoomIds, userId, username, isStillOnline)
         }
     }
 
