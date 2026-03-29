@@ -5,9 +5,13 @@ import com.blikeng.chatapp.dtos.room.RoomAction
 import com.blikeng.chatapp.dtos.room.RoomDTO
 import com.blikeng.chatapp.entities.*
 import com.blikeng.chatapp.errors.*
+import com.blikeng.chatapp.events.RoomDeletedEvent
+import com.blikeng.chatapp.events.UserRemovedEvent
+
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.auth.getId
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.*
@@ -22,8 +26,8 @@ class RoomService(
     private val userRoomRepository: UserRoomRepository,
     private val userService: UserService,
     private val friendService: FriendService,
-    private val notificationService: NotificationService,
     private val bannedUserService: BannedUserService,
+    private val eventPublisher: ApplicationEventPublisher,
 ) {
     // ==========================
     // Room creation and retrieval
@@ -157,8 +161,13 @@ class RoomService(
             throw NotPermittedException()
         }
 
+        val room = roomRepository.findById(roomUUID).orElseThrow { RoomNotFoundException() }
+        val memberIds = userRoomRepository.findUsersByRoomId(roomUUID).map { it.id }
+
         userRoomRepository.deleteAllByIdRoomId(roomUUID)
         roomRepository.deleteById(roomUUID)
+
+        eventPublisher.publishEvent(RoomDeletedEvent(roomUUID, room.name, memberIds))
     }
 
     @Transactional
@@ -191,13 +200,9 @@ class RoomService(
 
         userRoomRepository.deleteByIdUserIdAndIdRoomId(targetId, roomId)
 
-        when (action) {
-            RoomAction.KICK -> notificationService.notifyRoomAction(targetId, roomId, "KICKED", administrationDTO.reason)
-            RoomAction.BAN -> {
-                bannedUserService.banUser(targetId, roomId)
-                notificationService.notifyRoomAction(targetId, roomId, "BANNED", administrationDTO.reason)
-            }
-        }
+        if (action == RoomAction.BAN) bannedUserService.banUser(targetId, roomId)
+
+        eventPublisher.publishEvent(UserRemovedEvent(targetId, roomId, action, administrationDTO.reason))
     }
 
     // ==========================
