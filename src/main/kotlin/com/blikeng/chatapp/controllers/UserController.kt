@@ -39,4 +39,11 @@ class UserController(private val userService: UserService) {
 
         return ResponseEntity.ok("Password changed successfully")
     }
+
+    @DeleteMapping("/delete")
+    fun deleteUser(): ResponseEntity<String> {
+        userService.deleteUser()
+
+        return ResponseEntity.ok("User deleted successfully")
+    }
 }

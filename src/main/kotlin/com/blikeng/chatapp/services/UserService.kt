@@ -11,8 +11,8 @@ import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.security.auth.PasswordService
 import com.blikeng.chatapp.security.auth.getId
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.util.*
 
 // ==========================
@@ -68,5 +68,13 @@ class UserService(
         user.password = encoded
 
         userRepository.save(user)
+    }
+
+    @Transactional
+    fun deleteUser() {
+        val id = getId()
+        val user = getUserById(id) ?: throw InvalidUserException()
+
+        userRepository.delete(user)
     }
 }
