@@ -76,7 +76,7 @@ class UserService(
         userRepository.delete(user)
     }
 
-    fun getAllById(bannedUserIds: List<UUID>): List<UserEntity> {
-        return userRepository.findAllById(bannedUserIds)
+    fun getAllById(userIds: List<UUID>): List<UserEntity> {
+        return userRepository.findAllById(userIds)
     }
 }

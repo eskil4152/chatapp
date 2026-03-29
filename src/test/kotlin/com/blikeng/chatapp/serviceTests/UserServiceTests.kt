@@ -319,4 +319,20 @@ class UserServiceTests {
 
         verify(exactly = 0) { userRepository.save(any()) }
     }
+
+    @Test
+    fun shouldGetAllUsersById(){
+        val user1 = UserEntity(username = "u1", password = "")
+        val user2 = UserEntity(username = "u2", password = "")
+        val user3 = UserEntity(username = "u3", password = "")
+
+        every { userRepository.findAllById(listOf(user1.id, user2.id, user3.id)) } returns listOf(user1, user2, user3)
+
+        val users = userService.getAllById(listOf(user1.id, user2.id, user3.id))
+
+        assertEquals(
+            listOf(user1, user2, user3),
+            users
+        )
+    }
 }

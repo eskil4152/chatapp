@@ -1,5 +1,6 @@
 package com.blikeng.chatapp.serviceTests
 
+import com.blikeng.chatapp.entities.BannedUser
 import com.blikeng.chatapp.entities.BannedUserId
 import com.blikeng.chatapp.repositories.BannedUserRepository
 import com.blikeng.chatapp.services.BannedUserService
@@ -13,6 +14,7 @@ import io.mockk.verify
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import java.util.*
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -71,5 +73,21 @@ class BannedUserServiceTests {
         bannedUserService.unbanUser(userId, roomId)
 
         verify(exactly = 1) { bannedUserRepository.deleteById(match { it.userId == userId && it.roomId == roomId }) }
+    }
+
+    @Test
+    fun shouldGetBannedUserIds() {
+        val roomId = UUID.randomUUID()
+        val bannedUsers: List<BannedUser> = listOf(
+            BannedUser(BannedUserId(UUID.randomUUID(), roomId)),
+            BannedUser(BannedUserId(UUID.randomUUID(), roomId))
+        )
+
+        every { bannedUserRepository.findAllByIdRoomId(roomId) } returns bannedUsers
+
+        val userIds = bannedUserService.getBannedUserIds(roomId)
+
+        assertEquals(userIds.size, 2)
+        assertTrue(userIds.containsAll(bannedUsers.map { it.id.userId }))
     }
 }

@@ -3,6 +3,7 @@ package com.blikeng.chatapp.serviceTests.roomServiceTests
 import com.blikeng.chatapp.dtos.room.AdministrationDTO
 import com.blikeng.chatapp.dtos.room.RoomAction
 import com.blikeng.chatapp.dtos.room.RoomDTO
+import com.blikeng.chatapp.dtos.room.UnbanDTO
 import com.blikeng.chatapp.entities.*
 import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.errors.UserNotFoundException
@@ -553,6 +554,181 @@ class RoomServiceManagementTests {
 
         val exception = assertFailsWith<ApiException> { roomService.deleteRoom(roomId.toString()) }
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
+    }
+
+    // ==========================
+    // Get banned users
+    // ==========================
+    @Test
+    fun shouldReturnBannedUsers() {
+        val userId = UUID.randomUUID()
+        val roomId = UUID.randomUUID()
+        val bannedId = UUID.randomUUID()
+        val bannedUser = UserEntity(id = bannedId, username = "banned", password = "")
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns
+                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.OWNER, type = RoomType.GROUP)
+        every { bannedUserService.getBannedUserIds(roomId) } returns listOf(bannedId)
+        every { userService.getAllById(listOf(bannedId)) } returns listOf(bannedUser)
+
+        val result = roomService.getAllBansForRoom(roomId.toString())
+
+        assertEquals(1, result.size)
+        assertEquals(bannedId, result[0].id)
+        assertEquals("banned", result[0].username)
+    }
+
+    @Test
+    fun shouldFailToGetBannedUsersWhenInvalidUser() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns null
+
+        val exception = assertFailsWith<ApiException> { roomService.getAllBansForRoom(UUID.randomUUID().toString()) }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+    }
+
+    @Test
+    fun shouldFailToGetBannedUsersWithInvalidRoomId() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+
+        val exception = assertFailsWith<ApiException> { roomService.getAllBansForRoom("not-a-uuid") }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+    }
+
+    @Test
+    fun shouldFailToGetBannedUsersWhenRoomNotFound() {
+        val userId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, any()) } returns null
+
+        val exception = assertFailsWith<ApiException> { roomService.getAllBansForRoom(UUID.randomUUID().toString()) }
+        assertEquals(HttpStatus.NOT_FOUND, exception.status)
+    }
+
+    @Test
+    fun shouldFailToGetBannedUsersWhenNotOwner() {
+        val userId = UUID.randomUUID()
+        val roomId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns
+                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.MEMBER, type = RoomType.GROUP)
+
+        val exception = assertFailsWith<ApiException> { roomService.getAllBansForRoom(roomId.toString()) }
+        assertEquals(HttpStatus.FORBIDDEN, exception.status)
+    }
+
+    // ==========================
+    // Unban user
+    // ==========================
+    @Test
+    fun shouldUnbanUser() {
+        val userId = UUID.randomUUID()
+        val targetId = UUID.randomUUID()
+        val roomId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns
+                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.OWNER, type = RoomType.GROUP)
+        every { bannedUserService.unbanUser(targetId, roomId) } just Runs
+
+        roomService.unbanUser(UnbanDTO(roomId = roomId.toString(), userId = targetId.toString()))
+
+        verify(exactly = 1) { bannedUserService.unbanUser(targetId, roomId) }
+    }
+
+    @Test
+    fun shouldFailToUnbanWhenInvalidUser() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns null
+
+        val exception = assertFailsWith<ApiException> {
+            roomService.unbanUser(UnbanDTO(roomId = UUID.randomUUID().toString(), userId = UUID.randomUUID().toString()))
+        }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+    }
+
+    @Test
+    fun shouldFailToUnbanWithInvalidUUID() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+
+        val exception = assertFailsWith<ApiException> {
+            roomService.unbanUser(UnbanDTO(roomId = "not-a-uuid", userId = UUID.randomUUID().toString()))
+        }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+    }
+
+    @Test
+    fun shouldFailToUnbanSelf() {
+        val userId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
+
+        val exception = assertFailsWith<ApiException> {
+            roomService.unbanUser(UnbanDTO(roomId = UUID.randomUUID().toString(), userId = userId.toString()))
+        }
+        assertEquals(HttpStatus.FORBIDDEN, exception.status)
+    }
+
+    @Test
+    fun shouldFailToUnbanWhenRoomNotFound() {
+        val userId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, any()) } returns null
+
+        val exception = assertFailsWith<ApiException> {
+            roomService.unbanUser(UnbanDTO(roomId = UUID.randomUUID().toString(), userId = UUID.randomUUID().toString()))
+        }
+        assertEquals(HttpStatus.NOT_FOUND, exception.status)
+    }
+
+    @Test
+    fun shouldFailToUnbanWhenNotOwner() {
+        val userId = UUID.randomUUID()
+        val roomId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns
+                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.MEMBER, type = RoomType.GROUP)
+
+        val exception = assertFailsWith<ApiException> {
+            roomService.unbanUser(UnbanDTO(roomId = roomId.toString(), userId = UUID.randomUUID().toString()))
+        }
+        assertEquals(HttpStatus.FORBIDDEN, exception.status)
     }
 
     @Test
