@@ -57,8 +57,4 @@ class SessionRegistry(
     }
 
     fun getSessionById(sessionId: String): WebSocketSession? = sessionIndex[sessionId]
-
-    private fun removeSession(session: WebSocketSession) {
-
-    }
 }

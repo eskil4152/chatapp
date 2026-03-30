@@ -41,7 +41,7 @@ class WebsocketSweepTests {
 
     @BeforeEach
     fun setup() {
-        handler = ChatWebSocketHandler(chatService, objectMapper, wsRateLimitService, sessionRegistry, friendsService, presenceHandler, ttlMs = 30_000)
+        handler = ChatWebSocketHandler(chatService, objectMapper, wsRateLimitService, sessionRegistry, ttlMs = 30_000)
         every { wsRateLimitService.tryConsumeMessage(any()) } returns true
     }
 

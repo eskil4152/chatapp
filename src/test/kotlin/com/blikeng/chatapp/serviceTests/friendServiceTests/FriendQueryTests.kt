@@ -18,6 +18,7 @@ import io.mockk.junit5.MockKExtension
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
@@ -38,8 +39,8 @@ class FriendQueryTests {
     @MockK private lateinit var friendsRepository: FriendsRepository
     @MockK private lateinit var userService: UserService
     @MockK private lateinit var userRepository: UserRepository
+    @MockK private lateinit var redisTemplate: RedisTemplate<String, String>
     @MockK private lateinit var presenceHandler: PresenceHandler
-    @MockK private lateinit var sessionRegistry: SessionRegistry
     private val objectMapper = ObjectMapper()
 
     val user1 = UserEntity(id = UUID.randomUUID(), username = "username1", password = "password")
