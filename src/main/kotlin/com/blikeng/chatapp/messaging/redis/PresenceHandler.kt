@@ -19,17 +19,19 @@ class PresenceHandler(
         if (keys.isNotEmpty()) redisTemplate.delete(keys)
     }
 
-    fun userConnected(userId: UUID) {
-        redisTemplate.opsForValue().increment(PresenceKeys.userPresence(userId))
+    fun userConnected(userId: UUID): Long {
+        return redisTemplate.opsForValue().increment(PresenceKeys.userPresence(userId))
     }
 
-    fun userDisconnected(userId: UUID) {
+    fun userDisconnected(userId: UUID): Long {
         val key = PresenceKeys.userPresence(userId)
         val value = redisTemplate.opsForValue().decrement(key)
 
         if (value == null || value <= 0) {
             redisTemplate.delete(key)
         }
+
+        return value ?: 0L
     }
 
     fun isUserOnline(userId: UUID): Boolean {

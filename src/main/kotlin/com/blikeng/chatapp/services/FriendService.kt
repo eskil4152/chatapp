@@ -13,10 +13,11 @@ import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.repositories.FriendsRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.security.auth.getId
-import com.blikeng.chatapp.websocket.SessionRegistry
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
 import org.springframework.web.socket.TextMessage
+import org.springframework.web.socket.WebSocketSession
 import java.util.*
 
 // ==========================
@@ -29,8 +30,8 @@ class FriendService(
     private val userService: UserService,
     private val userRepository: UserRepository,
     private val presenceHandler: PresenceHandler,
-    private val sessionRegistry: SessionRegistry,
     private val objectMapper: ObjectMapper,
+    private val redisTemplate: RedisTemplate<String, String>,
 ) {
     fun getFriends(): List<FriendDTO> {
         val id = getId()
@@ -50,7 +51,6 @@ class FriendService(
                 avatarUrl = friend.avatarUrl,
                 birthday = friend.birthday,
                 createdAt = friend.createdAt,
-                online = presenceHandler.isUserOnline(friend.id)
             )
         }
     }
@@ -102,7 +102,6 @@ class FriendService(
             avatarUrl = friend.avatarUrl,
             birthday = friend.birthday,
             createdAt = friend.createdAt,
-            online = presenceHandler.isUserOnline(friend.id)
         )
     }
 
@@ -130,12 +129,27 @@ class FriendService(
                 friendship.userA.id
             }
 
-            val sessions = sessionRegistry.users[friendId]?.toList() ?: continue
+            redisTemplate.convertAndSend("user:${friendId}", payload)
+        }
+    }
 
-            for (session in sessions) {
-                synchronized(session) {
-                    if (session.isOpen) session.sendMessage(TextMessage(payload))
-                }
+    fun getFriendsOnlineStatus(userId: UUID, session: WebSocketSession){
+        for (friendship in friendsRepository.findFriendsForUser(userId)) {
+            val friendId = if (friendship.userA.id == userId) {
+                friendship.userB.id
+            } else {
+                friendship.userA.id
+            }
+
+            if (presenceHandler.isUserOnline(friendId)) {
+                val payload = objectMapper.writeValueAsString(
+                    WsFriendPresence(
+                        userId = friendId,
+                        online = true
+                    )
+                )
+
+                session.sendMessage(TextMessage(payload))
             }
         }
     }

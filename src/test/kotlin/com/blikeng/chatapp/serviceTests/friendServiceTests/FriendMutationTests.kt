@@ -21,6 +21,7 @@ import io.mockk.slot
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
@@ -42,8 +43,9 @@ class FriendMutationTests {
     @MockK private lateinit var friendsRepository: FriendsRepository
     @MockK private lateinit var userService: UserService
     @MockK private lateinit var userRepository: UserRepository
+    @MockK private lateinit var redisTemplate: RedisTemplate<String, String>
     @MockK private lateinit var presenceHandler: PresenceHandler
-    @MockK private lateinit var sessionRegistry: SessionRegistry
+
     private val objectMapper = ObjectMapper()
 
     val user1 = UserEntity(id = UUID.randomUUID(), username = "username1", password = "password")
@@ -82,6 +84,52 @@ class FriendMutationTests {
         friendService.addFriend("username1")
 
         assertEquals(setOf(user1.id, user2.id), setOf(slot.captured.userA.id, slot.captured.userB.id))
+    }
+
+    @Test
+    fun shouldOrderUsersCorrectlyWhenAddingFriendAndCurrentUserIdIsLower() {
+        val lowId = UUID.fromString("00000000-0000-0000-0000-000000000001")
+        val highId = UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff")
+
+        val lowUser = UserEntity(id = lowId, username = "low", password = "password")
+        val highUser = UserEntity(id = highId, username = "high", password = "password")
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(lowId, null, emptyList())
+
+        val slot = slot<FriendsEntity>()
+        every { userService.getUserById(lowId) } returns lowUser
+        every { userRepository.getUserByUsernameIgnoreCase("high") } returns highUser
+        every { friendsRepository.existsById(any()) } returns false
+        every { friendsRepository.save(capture(slot)) } answers { firstArg() }
+
+        friendService.addFriend("high")
+
+        assertEquals(lowId, slot.captured.userA.id)
+        assertEquals(highId, slot.captured.userB.id)
+    }
+
+    @Test
+    fun shouldOrderUsersCorrectlyWhenAddingFriendAndCurrentUserIdIsHigher() {
+        val lowId = UUID.fromString("00000000-0000-0000-0000-000000000001")
+        val highId = UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff")
+
+        val lowUser = UserEntity(id = lowId, username = "low", password = "password")
+        val highUser = UserEntity(id = highId, username = "high", password = "password")
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(highId, null, emptyList())
+
+        val slot = slot<FriendsEntity>()
+        every { userService.getUserById(highId) } returns highUser
+        every { userRepository.getUserByUsernameIgnoreCase("low") } returns lowUser
+        every { friendsRepository.existsById(any()) } returns false
+        every { friendsRepository.save(capture(slot)) } answers { firstArg() }
+
+        friendService.addFriend("low")
+
+        assertEquals(lowId, slot.captured.userA.id)
+        assertEquals(highId, slot.captured.userB.id)
     }
 
     @Test
@@ -149,6 +197,29 @@ class FriendMutationTests {
         friendService.removeFriend("username2")
 
         assertEquals(setOf(user1.id, user2.id), setOf(slot.captured.userA, slot.captured.userB))
+    }
+
+    @Test
+    fun shouldOrderUsersCorrectlyWhenRemovingFriendAndCurrentUserIdIsHigher() {
+        val lowId = UUID.fromString("00000000-0000-0000-0000-000000000001")
+        val highId = UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff")
+
+        val lowUser = UserEntity(id = lowId, username = "low", password = "password")
+        val highUser = UserEntity(id = highId, username = "high", password = "password")
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(highId, null, emptyList())
+
+        val slot = slot<FriendsId>()
+        every { userService.getUserById(highId) } returns highUser
+        every { userRepository.getUserByUsernameIgnoreCase("low") } returns lowUser
+        every { friendsRepository.existsById(any()) } returns true
+        every { friendsRepository.deleteById(capture(slot)) } just Runs
+
+        friendService.removeFriend("low")
+
+        assertEquals(lowId, slot.captured.userA)
+        assertEquals(highId, slot.captured.userB)
     }
 
     @Test

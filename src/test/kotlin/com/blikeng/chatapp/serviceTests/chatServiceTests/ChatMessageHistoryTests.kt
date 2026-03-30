@@ -1,7 +1,6 @@
 package com.blikeng.chatapp.serviceTests.chatServiceTests
 
 import com.blikeng.chatapp.dtos.messaging.RabbitMessageDTO
-import com.blikeng.chatapp.dtos.messaging.SendMessageDTO
 import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.entities.RoomType
@@ -31,8 +30,6 @@ import org.springframework.data.domain.PageImpl
 import org.springframework.data.redis.core.ListOperations
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.http.HttpStatus
-import org.springframework.web.socket.TextMessage
-import org.springframework.web.socket.WebSocketSession
 import java.sql.Timestamp
 import java.util.*
 import java.util.Collections.emptyList

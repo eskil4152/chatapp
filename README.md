@@ -23,6 +23,7 @@ It supports chat rooms, private DMs, optional AES-256-GCM message encryption, an
 - [Architecture](#architecture)
 - [Features](#features)
   - [Authentication & Security](#authentication--security)
+  - [Rate Limiting](#rate-limiting)
   - [WebSocket & Real-Time Messaging](#websocket--real-time-messaging)
   - [Distributed Messaging Pipeline](#distributed-messaging-pipeline)
   - [Message Encryption](#message-encryption)
@@ -35,6 +36,7 @@ It supports chat rooms, private DMs, optional AES-256-GCM message encryption, an
 - [Deployment](#deployment)
 - [CI/CD Pipeline](#cicd-pipeline)
 - [Testing](#testing)
+- [Load Testing & Multi-Instance Testing](#load-testing-and-multi-instance-testing)
 - [License](#license)
 
 ---
@@ -55,6 +57,7 @@ It supports chat rooms, private DMs, optional AES-256-GCM message encryption, an
 | Containerization  | Docker                                    |
 | Cloud             | Azure Web App + Azure Container Registry  |
 | CI/CD             | GitHub Actions                            |
+| Rate Limiting     | Bucket4j                                  |
 | Code Quality      | SonarCloud                                |
 
 ---
@@ -76,12 +79,12 @@ allowing the chat service to scale horizontally without coupling WebSocket throu
 - Registration and login issue a signed JWT stored as an `HttpOnly`, `SameSite=Strict` cookie with a 24-hour expiration.
 - The token encodes `userID` as the subject and `username` as a claim for efficient identity extraction.
 - A dedicated `JwtAuthFilter` is responsible for all authentication checks.
-- After token validation, user existence is re-verified in the database. A valid token for a deleted user results in 400 Bad Request.
+- After token validation, user existence is re-verified in the database. A valid token for a deleted user results in a `400 Bad Request`.
 
 **Password Handling**
 - Passwords are hashed with **BCrypt**, plaintext passwords are never persisted.
 - Password changes require the current password to be verified against the stored hash before a new hash is saved.
-- Minimum length is enforced for both usernames and passwords during registration and password changes.
+- A minimum length is enforced for both usernames and passwords during registration and password changes.
 
 **WebSocket Handshake Authentication**
 - An `AuthHandshakeInterceptor` intercepts every WebSocket request and validates the JWT from the cookie before any connection is established.
@@ -90,13 +93,56 @@ allowing the chat service to scale horizontally without coupling WebSocket throu
 
 ---
 
+### Rate Limiting
+
+Rate limiting is applied at both the HTTP and WebSocket layers using **Bucket4j** token buckets.
+
+**HTTP** — limits are per IP address:
+| Endpoint                  | Limit          |
+|---------------------------|----------------|
+| `POST /api/login`         | 5 / minute     |
+| `POST /api/register`      | 10 / minute    |
+| `PUT /api/user/edit`      | 2 / minute     |
+| `PATCH /api/user/edit/password` | 2 / minute |
+| All other `/api/**` paths | 60 / minute    |
+
+Exceeded requests return `429 Too Many Requests`.
+
+**WebSocket**
+- Chat messages are limited to **10 messages per minute** per user.
+- Excess messages receive a structured WebSocket error response instead of being broadcast.
+
+---
+
 ### WebSocket & Real-Time Messaging
 
 - Messages are broadcast in real-time to all active sessions in a room.
 - Room session state is managed with thread-safe data structures: `ConcurrentHashMap` for room-to-sessions mapping and `CopyOnWriteArraySet` for per-room session sets.
-- WebSocket messages use a typed event structure with centralized exception handling. Four event types are supported: `MESSAGE`, `JOIN`, `LEAVE`, and `PING`.
 - Only `MESSAGE` events are persisted to the database. `JOIN` and `LEAVE` are broadcast-only.
 - On room join, history is assembled from both the database and the current Redis message buffer to ensure no messages are missed between persistence batches.
+
+**Session Liveness (PING/TTL)**
+- Clients send a `PING` event at regular intervals. The server resets a per-session last-seen timestamp and responds with `pong`.
+- A background sweep runs every **30 seconds** and closes any session that has not sent a `PING` in the last **60 seconds**.
+- Closing a stale session triggers the normal disconnect flow — presence counters are decremented and friends/room members are notified — keeping online status accurate even when clients crash without a clean disconnect.
+
+**WebSocket Events**
+
+| Direction       | Type              | Description                                              |
+|-----------------|-------------------|----------------------------------------------------------|
+| Client → Server | `MESSAGE`         | Send a chat message to a room                            |
+| Client → Server | `JOIN`            | Join a room WebSocket session                            |
+| Client → Server | `LEAVE`           | Leave a room WebSocket session                           |
+| Client → Server | `PING`            | Keep-alive heartbeat; resets session TTL                 |
+| Server → Client | `MESSAGE`         | Chat message broadcast                                   |
+| Server → Client | `JOIN` / `LEAVE`  | User join/leave announcement broadcast to room           |
+| Server → Client | `ROOM_MEMBERS`    | Full member snapshot sent once to the joining session    |
+| Server → Client | `ROOM_PRESENCE`   | Lightweight online/offline update for a room member      |
+| Server → Client | `FRIEND_PRESENCE` | Friend online/offline status update                      |
+| Server → Client | `ROOM_ACTION`     | Kick or ban notification sent to the target user         |
+| Server → Client | `ROOM_DELETED`    | Room deletion notification sent to all members           |
+| Server → Client | `pong`            | Response to client `PING`                                |
+| Server → Client | `ERROR`           | Structured error with HTTP status code and message       |
 
 ---
 
@@ -106,7 +152,8 @@ To support horizontal scaling and decouple real-time messaging from persistence,
 
 **Redis Pub/Sub**
 - All WebSocket broadcasts are published to Redis channels (`room:{roomId}`).
-- Each instance subscribes to these channels and rebroadcasts messages locally to connected WebSocket sessions.
+- Targeted user notifications (kick, ban, room deletion, friend presence) are published to `user:{userId}` channels.
+- Each instance subscribes to both channel patterns and routes messages to the appropriate local WebSocket sessions.
 - This ensures messages reach users connected to different application instances.
 
 **RabbitMQ Message Queue**
@@ -138,8 +185,8 @@ Encryption is **optional** and configured per room.
 - Users can add friends by username.
 - Friends can open a private DM conversation, backed by the same WebSocket and message persistence infrastructure as rooms.
 - Friend and DM data are fetched via optimized repository queries.
-- Friend status is intentionally never exposed to outside parties. Looking up a non-friend returns 
-the same response as a non-existent user, preventing user enumeration.
+- Friend status is intentionally never exposed to outside parties. Looking up a non-friend returns the same response as a non-existent user, preventing user enumeration.
+- `FRIEND_PRESENCE` notifications are published to each friend's `user:{friendId}` Redis channel, ensuring delivery across all instances. On connect, a presence snapshot is sent to the joining session with the current online status of all friends.
 
 ---
 
@@ -154,7 +201,7 @@ the same response as a non-existent user, preventing user enumeration.
 - Duplicate room memberships are prevented via database constraints and repository checks.
 
 **DTOs**
-- All API responses use Data Transfer Objects to decouple the API surface from internal entity structure and minimize data exposure to clients.
+- All API responses use Data Transfer Objects to decouple the API surface from the internal entity structure and minimize data exposure to clients.
 
 ---
 
@@ -163,11 +210,16 @@ the same response as a non-existent user, preventing user enumeration.
 **Rooms**
 - The user who creates a room is assigned the `OWNER` role; users who join are assigned `MEMBER`.
 - Membership is stored in the `user_rooms` join table and fetched via an indexed join query.
+- Room owners can kick or ban members. Banned users cannot rejoin the room.
+- Kick and ban actions include an optional reason and notify the target user via a real-time WebSocket event (`ROOM_ACTION`).
+- When a room is deleted, all members receive a `ROOM_DELETED` WebSocket notification.
+- Notifications are delivered via Redis pub/sub and fire only after the database transaction commits, using `@TransactionalEventListener`.
 
 **Users**
 - Duplicate usernames are rejected with `409 Conflict`.
 - Login with an unknown username or incorrect password returns `401 Unauthorized`.
 - Users can retrieve and update their own profile fields (bio, avatar, etc.) and change their password.
+- Account deletion preserves chat history — messages are reassigned to a sentinel `[deleted]` user rather than removed.
 
 ---
 
@@ -178,8 +230,12 @@ User presence is tracked using Redis.
 - Each active user session increments a Redis counter.
 - When sessions close, the counter is decremented.
 - A user is considered online when the counter is greater than zero.
+- Stale presence keys from previous server runs are cleared on startup.
 
-Room presence is also tracked using Redis sets to allow efficient lookup of users currently active in a room.
+Room presence events are broadcast to all members of a room when a user connects or disconnects.
+On room join, a full `ROOM_MEMBERS` snapshot is sent to the joining session. Subsequent presence updates use a lightweight `ROOM_PRESENCE` event containing only the user ID and online status.
+
+On WebSocket connect, a `FRIEND_PRESENCE` snapshot is sent to the session with the current online status of all friends, so clients have accurate presence state immediately without waiting for a change event.
 
 ---
 
@@ -210,36 +266,43 @@ This design ensures:
 ---
 
 ## API Overview
-| Method | Endpoint                | Description              |
-|--------|-------------------------|--------------------------|
-| POST   | /api/register           | Register                 |
-| POST   | /api/login              | Login                    |
-| POST   | /api/logout             | Log out                  |
-| GET    | /api/auth               | Check auth status        |
-| GET    | /api/rooms              | List all rooms           |
-| POST   | /api/rooms/make         | Create room              |
-| POST   | /api/rooms/join         | Join room                |
-| PUT    | /api/rooms/edit         | Edit room                |
-| DELETE | /api/rooms/leave        | Leave room               |
-| DELETE | /api/rooms/delete       | Delete room              |
-| POST   | /api/rooms/dm           | Make or get private room |
-| GET    | /api/user               | Get user info            |
-| PUT    | /api/user/edit          | Edit user profile        |
-| PATCH  | /api/user/password      | Edit password            |
-| GET    | /api/friends            | Get all friends          |
-| POST   | /api/friends/add        | Add friend               |
-| DELETE | /api/friends/remove     | Remove friend            |
-| GET    | /api/friends/{username} | Get friend info          |
-| WS     | /ws                     | WebSocket endpoint       |
+| Method | Endpoint                | Description                                                                  |
+|--------|-------------------------|------------------------------------------------------------------------------|
+| POST   | /api/register           | Register                                                                     |
+| POST   | /api/login              | Login                                                                        |
+| POST   | /api/logout             | Log out                                                                      |
+| GET    | /api/auth               | Check auth status                                                            |
+| GET    | /api/rooms              | List all rooms                                                               |
+| POST   | /api/rooms/make         | Create room                                                                  |
+| POST   | /api/rooms/join         | Join room                                                                    |
+| PUT    | /api/rooms/edit         | Edit room                                                                    |
+| DELETE | /api/rooms/leave        | Leave room                                                                   |
+| DELETE | /api/rooms/delete       | Delete room                                                                  |
+| POST   | /api/rooms/action       | Kick or ban a user                                                           |
+| DELETE | /api/rooms/unban        | Unban a user                                                                 |
+| GET    | /api/rooms/bans         | Get banned users for a room                                                  |
+| POST   | /api/rooms/dm           | Make or get private room                                                     |
+| GET    | /api/user               | Get user info                                                                |
+| PUT    | /api/user/edit          | Edit user profile                                                            |
+| PATCH  | /api/user/edit/password | Edit password                                                                |
+| DELETE | /api/user/delete        | Delete account                                                               |
+| GET    | /api/chats/{roomId}     | Get message history (paginated: `page`, `size` — allowed sizes: 25, 50, 100) |
+| GET    | /api/friends            | Get all friends                                                              |
+| POST   | /api/friends/add        | Add friend                                                                   |
+| DELETE | /api/friends/remove     | Remove friend                                                                |
+| GET    | /api/friends/{username} | Get friend info                                                              |
+| WS     | /ws                     | WebSocket endpoint                                                           |
 
 ---
 
 ## Deployment
 
-The application runs as a Docker container on Azure Web App, with Docker images built and tagged using the 
+The application runs as a Docker container on Azure Web App, with Docker images built and tagged using the
 Git commit SHA and stored in Azure Container Registry.
 
 The CI/CD pipeline handles building, pushing, and redeploying the container automatically on every merge to `main`.
+
+The server uses **graceful shutdown** with a 30-second drain window, allowing in-flight requests and active WebSocket sessions to close cleanly before the process exits.
 
 ---
 

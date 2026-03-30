@@ -75,4 +75,8 @@ class UserService(
 
         userRepository.delete(user)
     }
+
+    fun getAllById(userIds: List<UUID>): List<UserEntity> {
+        return userRepository.findAllById(userIds)
+    }
 }

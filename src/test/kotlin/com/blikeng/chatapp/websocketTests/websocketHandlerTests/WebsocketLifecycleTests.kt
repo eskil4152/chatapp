@@ -1,9 +1,7 @@
 package com.blikeng.chatapp.websocketTests.websocketHandlerTests
 
-import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.security.ratelimit.WsRateLimitService
 import com.blikeng.chatapp.services.ChatService
-import com.blikeng.chatapp.services.FriendService
 import com.blikeng.chatapp.websocket.ChatWebSocketHandler
 import com.blikeng.chatapp.websocket.SessionRegistry
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -25,15 +23,13 @@ import kotlin.test.assertEquals
 @ExtendWith(MockKExtension::class)
 class WebsocketLifecycleTests {
     // ==========================
-    // Tests for ChatWebSocketHandler connection lifecycle, friend presence
-    // notifications, and graceful shutdown.
+    // Tests for ChatWebSocketHandler connection lifecycle and graceful shutdown.
+    // Presence and notification logic is tested in SessionRegistryTests.
     // ==========================
 
     @MockK private lateinit var chatService: ChatService
     @MockK private lateinit var wsRateLimitService: WsRateLimitService
     @MockK private lateinit var sessionRegistry: SessionRegistry
-    @MockK private lateinit var friendsService: FriendService
-    @MockK private lateinit var presenceHandler: PresenceHandler
     @MockK private lateinit var session: WebSocketSession
 
     private val objectMapper = jacksonObjectMapper()
@@ -41,7 +37,7 @@ class WebsocketLifecycleTests {
 
     @BeforeEach
     fun setup() {
-        handler = ChatWebSocketHandler(chatService, objectMapper, wsRateLimitService, sessionRegistry, friendsService, presenceHandler, ttlMs = 30_000)
+        handler = ChatWebSocketHandler(chatService, objectMapper, wsRateLimitService, sessionRegistry, ttlMs = 30_000)
         every { wsRateLimitService.tryConsumeMessage(any()) } returns true
     }
 
@@ -54,13 +50,14 @@ class WebsocketLifecycleTests {
         val attributes: MutableMap<String, Any> = mutableMapOf("userId" to userId, "username" to "u")
 
         every { sessionRegistry.registerSession(any(), any()) } just Runs
-        every { friendsService.notifyFriends(any(), any()) } just Runs
+        every { sessionRegistry.sendFriendPresenceSnapshot(any(), any()) } just Runs
         every { session.attributes } returns attributes
-        every { session.getId() } returns "123"
+        every { session.id } returns "123"
 
         handler.afterConnectionEstablished(session)
 
         verify(exactly = 1) { sessionRegistry.registerSession(userId, session) }
+        verify(exactly = 1) { sessionRegistry.sendFriendPresenceSnapshot(userId, session) }
         verify(exactly = 0) { chatService.joinRoom(any(), any()) }
     }
 
@@ -86,18 +83,15 @@ class WebsocketLifecycleTests {
         val attributes: MutableMap<String, Any> = mutableMapOf("userId" to userId, "username" to "u")
 
         every { sessionRegistry.registerSession(any(), any()) } just Runs
-        every { chatService.removeSessionFromRooms(any()) } returns emptyList()
+        every { sessionRegistry.sendFriendPresenceSnapshot(any(), any()) } just Runs
         every { sessionRegistry.removeSession(any(), any()) } just Runs
-        every { friendsService.notifyFriends(any(), any()) } just Runs
-        every { presenceHandler.isUserOnline(any()) } returns false
         every { session.attributes } returns attributes
-        every { session.getId() } returns "123"
+        every { session.id } returns "123"
 
         handler.afterConnectionEstablished(session)
         handler.afterConnectionClosed(session, CloseStatus.NORMAL)
 
         verify(exactly = 1) { sessionRegistry.registerSession(userId, session) }
-        verify(exactly = 1) { chatService.removeSessionFromRooms(session) }
         verify(exactly = 1) { sessionRegistry.removeSession(userId, session) }
     }
 
@@ -111,44 +105,7 @@ class WebsocketLifecycleTests {
 
         assertEquals(HttpStatus.UNAUTHORIZED, ex.statusCode)
         assertEquals("No userID found", ex.reason)
-        verify(exactly = 0) { chatService.removeSessionFromRooms(any()) }
         verify(exactly = 0) { sessionRegistry.removeSession(any(), any()) }
-    }
-
-    // ==========================
-    // Friend presence notifications on disconnect
-    // ==========================
-    @Test
-    fun shouldNotifyFriendsOfflineWhenUserIsNoLongerOnline() {
-        val userId = UUID.randomUUID()
-        val session = mockk<WebSocketSession>(relaxed = true)
-
-        every { session.id } returns "s1"
-        every { session.attributes } returns mutableMapOf("userId" to userId, "username" to "user")
-        every { chatService.removeSessionFromRooms(session) } returns emptyList()
-        every { presenceHandler.isUserOnline(userId) } returns false
-        every { sessionRegistry.removeSession(userId, session) } just Runs
-        every { friendsService.notifyFriends(userId, false) } just Runs
-
-        handler.afterConnectionClosed(session, CloseStatus.NORMAL)
-
-        verify(exactly = 1) { friendsService.notifyFriends(userId, false) }
-    }
-
-    @Test
-    fun shouldNotNotifyFriendsOfflineWhenUserIsStillOnline() {
-        val userId = UUID.randomUUID()
-        val session = mockk<WebSocketSession>(relaxed = true)
-
-        every { session.id } returns "s1"
-        every { session.attributes } returns mutableMapOf("userId" to userId, "username" to "user")
-        every { chatService.removeSessionFromRooms(session) } returns emptyList()
-        every { presenceHandler.isUserOnline(userId) } returns true
-        every { sessionRegistry.removeSession(userId, session) } just Runs
-
-        handler.afterConnectionClosed(session, CloseStatus.NORMAL)
-
-        verify(exactly = 0) { friendsService.notifyFriends(userId, false) }
     }
 
     // ==========================

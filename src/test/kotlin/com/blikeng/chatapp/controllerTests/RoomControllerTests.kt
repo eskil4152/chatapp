@@ -162,7 +162,7 @@ class RoomControllerTests {
 
         every { roomService.removeUserFromRoom(any()) } returns Unit
 
-        mockMvc.delete("/api/rooms/action") {
+        mockMvc.post("/api/rooms/action") {
             contentType = MediaType.APPLICATION_JSON
             content = """
                 {
@@ -239,7 +239,7 @@ class RoomControllerTests {
 
         every { roomService.removeUserFromRoom(any()) } throws NotPermittedException()
 
-        mockMvc.delete("/api/rooms/action") {
+        mockMvc.post("/api/rooms/action") {
             contentType = MediaType.APPLICATION_JSON
             content = """
                 {
@@ -252,5 +252,32 @@ class RoomControllerTests {
         }
             .andExpect { status { isForbidden() } }
             .andExpect { content { string("Not permitted") } }
+    }
+
+    @Test
+    fun shouldUnbanUser() {
+        val roomId = UUID.randomUUID()
+        val targetId = UUID.randomUUID()
+
+        every { roomService.unbanUser(any()) } returns Unit
+
+        mockMvc.delete("/api/rooms/unban") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"roomId":"$roomId","userId":"$targetId"}"""
+        }
+            .andExpect { status { isOk() } }
+    }
+
+    @Test
+    fun shouldGetBannedUsers() {
+        val roomId = UUID.randomUUID()
+
+        every { roomService.getAllBansForRoom(any()) } returns emptyList()
+
+        mockMvc.get("/api/rooms/bans") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"roomId":"$roomId"}"""
+        }
+            .andExpect { status { isOk() } }
     }
 }
