@@ -5,8 +5,9 @@ import com.blikeng.chatapp.dtos.messaging.RabbitMessageDTO
 import com.blikeng.chatapp.dtos.messaging.SendMessageDTO
 import com.blikeng.chatapp.dtos.room.RoomUserDTO
 import com.blikeng.chatapp.dtos.websocket.ReceivedMessage
+import com.blikeng.chatapp.dtos.websocket.RoomMember
 import com.blikeng.chatapp.dtos.websocket.WsChat
-import com.blikeng.chatapp.dtos.websocket.WsRoomMembers
+import com.blikeng.chatapp.dtos.websocket.WsRoomJoined
 import com.blikeng.chatapp.dtos.websocket.WsRoomPresence
 import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.errors.InvalidMessageException
@@ -61,19 +62,30 @@ class ChatService (
         val userId = session.attributes["userId"] as? UUID
             ?: throw InvalidTokenException()
 
-        if (!userRoomRepository.existsByIdUserIdAndIdRoomId(userId, roomId)) {
-            throw RoomNotFoundException()
-        }
+        val role = userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) ?: throw RoomNotFoundException()
+
+        val room = roomRepository.findById(roomId).orElseThrow { RoomNotFoundException() }
 
         rooms.computeIfAbsent(roomId) { CopyOnWriteArraySet() }.add(session)
 
         synchronized(session) {
             if (session.isOpen) {
-                getUsersInRoom(roomId).forEach { member ->
-                    session.sendMessage(TextMessage(objectMapper.writeValueAsString(
-                        WsRoomMembers(roomId = roomId, userId = member.id, username = member.username, avatarUrl = member.avatarUrl, online = member.online)
-                    )))
+                val users = getUsersInRoom(roomId).map { member ->
+                    RoomMember(
+                        id = member.id,
+                        username = member.username,
+                        avatar = member.avatarUrl,
+                        online = member.online
+                    )
                 }
+
+                session.sendMessage(TextMessage(objectMapper.writeValueAsString(WsRoomJoined(
+                    roomId = roomId,
+                    roomName = room.name,
+                    members = users,
+                    encrypted = room.encrypted,
+                    role = role.role,
+                ))))
             }
         }
     }

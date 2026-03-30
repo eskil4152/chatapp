@@ -183,7 +183,7 @@ class RoomService(
         try {
             roomId = UUID.fromString(administrationDTO.roomId)
             targetId = UUID.fromString(administrationDTO.userId)
-            action = administrationDTO.actions
+            action = administrationDTO.action
         } catch (_: IllegalArgumentException) {
             throw InvalidUUIDException()
         }
