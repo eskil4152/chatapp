@@ -16,6 +16,8 @@ import com.blikeng.chatapp.security.auth.getId
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
+import org.springframework.web.socket.TextMessage
+import org.springframework.web.socket.WebSocketSession
 import java.util.*
 
 // ==========================
@@ -130,6 +132,27 @@ class FriendService(
             }
 
             redisTemplate.convertAndSend("user:${friendId}", payload)
+        }
+    }
+
+    fun getFriendsOnlineStatus(userId: UUID, session: WebSocketSession){
+        for (friendship in friendsRepository.findFriendsForUser(userId)) {
+            val friendId = if (friendship.userA.id == userId) {
+                friendship.userB.id
+            } else {
+                friendship.userA.id
+            }
+
+            if (presenceHandler.isUserOnline(friendId)) {
+                val payload = objectMapper.writeValueAsString(
+                    WsFriendPresence(
+                        userId = friendId,
+                        online = true
+                    )
+                )
+
+                session.sendMessage(TextMessage(payload))
+            }
         }
     }
 

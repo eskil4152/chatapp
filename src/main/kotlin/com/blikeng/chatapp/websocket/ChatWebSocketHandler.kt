@@ -46,6 +46,7 @@ class ChatWebSocketHandler(
     override fun afterConnectionEstablished(session: WebSocketSession) {
         val userId = getUserId(session)
         sessionRegistry.registerSession(userId, session)
+        sessionRegistry.sendFriendPresenceSnapshot(userId, session)
 
         lastPing[session.id] = System.currentTimeMillis()
     }

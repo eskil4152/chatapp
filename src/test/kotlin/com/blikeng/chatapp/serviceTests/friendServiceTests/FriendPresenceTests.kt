@@ -17,6 +17,8 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.web.socket.TextMessage
+import org.springframework.web.socket.WebSocketSession
 
 @ExtendWith(MockKExtension::class)
 class FriendPresenceTests {
@@ -113,5 +115,72 @@ class FriendPresenceTests {
 
         verify(exactly = 1) { redisTemplate.convertAndSend("user:${friend1.id}", any()) }
         verify(exactly = 1) { redisTemplate.convertAndSend("user:${friend2.id}", any()) }
+    }
+
+    // ==========================
+    // getFriendsOnlineStatus (on-connect snapshot)
+    // ==========================
+    @Test
+    fun shouldSendPresenceSnapshotForOnlineFriends() {
+        val user = UserEntity(username = "user", password = "")
+        val friend = UserEntity(username = "friend", password = "")
+        val friendship = FriendsEntity(id = FriendsId(user.id, friend.id), userA = user, userB = friend)
+        val session = mockk<WebSocketSession>()
+        val msgSlot = slot<TextMessage>()
+
+        every { friendsRepository.findFriendsForUser(user.id) } returns listOf(friendship)
+        every { presenceHandler.isUserOnline(friend.id) } returns true
+        every { session.sendMessage(capture(msgSlot)) } just Runs
+
+        friendService.getFriendsOnlineStatus(user.id, session)
+
+        verify(exactly = 1) { session.sendMessage(any()) }
+        assertTrue(msgSlot.captured.payload.contains(friend.id.toString()))
+        assertTrue(msgSlot.captured.payload.contains("true"))
+    }
+
+    @Test
+    fun shouldSkipOfflineFriendsInPresenceSnapshot() {
+        val user = UserEntity(username = "user", password = "")
+        val friend = UserEntity(username = "friend", password = "")
+        val friendship = FriendsEntity(id = FriendsId(user.id, friend.id), userA = user, userB = friend)
+        val session = mockk<WebSocketSession>(relaxed = true)
+
+        every { friendsRepository.findFriendsForUser(user.id) } returns listOf(friendship)
+        every { presenceHandler.isUserOnline(friend.id) } returns false
+
+        friendService.getFriendsOnlineStatus(user.id, session)
+
+        verify(exactly = 0) { session.sendMessage(any()) }
+    }
+
+    @Test
+    fun shouldSendNoSnapshotWhenUserHasNoFriends() {
+        val user = UserEntity(username = "user", password = "")
+        val session = mockk<WebSocketSession>(relaxed = true)
+
+        every { friendsRepository.findFriendsForUser(user.id) } returns emptyList()
+
+        friendService.getFriendsOnlineStatus(user.id, session)
+
+        verify(exactly = 0) { session.sendMessage(any()) }
+    }
+
+    @Test
+    fun shouldResolveCorrectFriendIdInSnapshotWhenUserIsUserB() {
+        val friend = UserEntity(username = "friend", password = "")
+        val user = UserEntity(username = "user", password = "")
+        val friendship = FriendsEntity(id = FriendsId(friend.id, user.id), userA = friend, userB = user)
+        val session = mockk<WebSocketSession>()
+        val msgSlot = slot<TextMessage>()
+
+        every { friendsRepository.findFriendsForUser(user.id) } returns listOf(friendship)
+        every { presenceHandler.isUserOnline(friend.id) } returns true
+        every { session.sendMessage(capture(msgSlot)) } just Runs
+
+        friendService.getFriendsOnlineStatus(user.id, session)
+
+        verify(exactly = 1) { session.sendMessage(any()) }
+        assertTrue(msgSlot.captured.payload.contains(friend.id.toString()))
     }
 }

@@ -39,6 +39,10 @@ class SessionRegistry(
         }
     }
 
+    fun sendFriendPresenceSnapshot(userId: UUID, session: WebSocketSession) {
+        friendService.getFriendsOnlineStatus(userId, session)
+    }
+
     fun removeSession(userId: UUID, session: WebSocketSession) {
         val sessions = users[userId] ?: return
         val removed = sessions.remove(session)

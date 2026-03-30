@@ -175,6 +175,19 @@ class SessionRegistryTests {
     }
 
     @Test
+    fun shouldSendFriendPresenceSnapshotOnConnect() {
+        val userId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>()
+
+        every { session.id } returns userId.toString()
+        every { friendService.getFriendsOnlineStatus(userId, session) } just Runs
+
+        sessionRegistry.sendFriendPresenceSnapshot(userId, session)
+
+        verify(exactly = 1) { friendService.getFriendsOnlineStatus(userId, session) }
+    }
+
+    @Test
     fun shouldNotifyFriendsAndRoomsOnlineWhenFirstSessionRegistered() {
         val userId = UUID.randomUUID()
         val session = mockk<WebSocketSession>()
