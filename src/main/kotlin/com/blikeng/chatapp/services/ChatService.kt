@@ -120,35 +120,15 @@ class ChatService (
         }
     }
 
-    fun removeSessionFromRooms(session: WebSocketSession): List<UUID> {
-        val affectedRoomIds = rooms
-            .filterValues { it.contains(session) }
-            .keys
-            .toList()
+    fun notifyRoomPresence(userId: UUID, online: Boolean) {
+        val roomIds = userRoomRepository.findAllIdRoomIdsByIdUserId(userId);
 
-        affectedRoomIds.forEach { roomId ->
-            val roomSessions = rooms[roomId] ?: return@forEach
-            roomSessions.remove(session)
-            if (roomSessions.isEmpty()) {
-                rooms.remove(roomId)
-            }
-        }
-
-        return affectedRoomIds
-    }
-
-    fun notifyRoomPresence(roomIds: List<UUID>, userId: UUID, online: Boolean) {
         roomIds.forEach { roomId ->
             val payload = objectMapper.writeValueAsString(
                 WsRoomPresence(roomId = roomId, userId = userId, online = online)
             )
-            rooms[roomId]?.forEach { session ->
-                synchronized(session) {
-                    if (session.isOpen) {
-                        session.sendMessage(TextMessage(payload))
-                    }
-                }
-            }
+
+            redisTemplate.convertAndSend("room:${roomId}", payload)
         }
     }
 

@@ -35,8 +35,6 @@ class ChatWebSocketHandler(
     private val objectMapper: ObjectMapper,
     private val wsRateLimitService: WsRateLimitService,
     private val sessionRegistry: SessionRegistry,
-    private val friendService: FriendService,
-    private val presenceHandler: PresenceHandler,
     @Value("\${chat.ping.ttlMs}") private val ttlMs: Long
 ) : TextWebSocketHandler() {
     private val logger = LoggerFactory.getLogger(this::class.java)
@@ -48,27 +46,15 @@ class ChatWebSocketHandler(
     override fun afterConnectionEstablished(session: WebSocketSession) {
         val userId = getUserId(session)
         sessionRegistry.registerSession(userId, session)
-        lastPing[session.id] = System.currentTimeMillis()
 
-        friendService.notifyFriends(userId, online = true)
+        lastPing[session.id] = System.currentTimeMillis()
     }
 
     override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
         val userId = getUserId(session)
 
         lastPing.remove(session.id)
-        val affectedRoomIds = chatService.removeSessionFromRooms(session)
         sessionRegistry.removeSession(userId, session)
-
-        val isStillOnline = presenceHandler.isUserOnline(userId)
-
-        if (!isStillOnline) {
-            friendService.notifyFriends(userId, online = false)
-        }
-
-        if (affectedRoomIds.isNotEmpty()) {
-            chatService.notifyRoomPresence(affectedRoomIds, userId, isStillOnline)
-        }
     }
 
     // ==========================

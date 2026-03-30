@@ -33,4 +33,10 @@ interface UserRoomRepository: JpaRepository<UserRoomEntity, UserRoomId> {
     )
 """)
     fun findOtherUser(roomId: UUID, userId: UUID): UserEntity?
+
+    @Query("""
+        SELECT ur.id.roomId 
+        FROM UserRoomEntity ur 
+        WHERE ur.id.userId = :userId""")
+    fun findAllIdRoomIdsByIdUserId(userId: UUID): List<UUID>
 }
