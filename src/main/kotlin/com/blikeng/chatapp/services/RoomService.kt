@@ -232,7 +232,6 @@ class RoomService(
         }
 
         bannedUserService.unbanUser(targetId, roomId)
-        // TODO: Determine if we want to publish this event
     }
 
     fun getAllBansForRoom(roomIdString: String?): List<RoomUserDTO> {

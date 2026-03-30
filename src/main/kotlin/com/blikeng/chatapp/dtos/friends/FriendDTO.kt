@@ -11,5 +11,4 @@ data class FriendDTO (
     val avatarUrl: String?,
     val birthday: Date?,
     val createdAt: Date?,
-    val online: Boolean?,
 )

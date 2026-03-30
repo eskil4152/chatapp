@@ -51,7 +51,6 @@ class FriendService(
                 avatarUrl = friend.avatarUrl,
                 birthday = friend.birthday,
                 createdAt = friend.createdAt,
-                online = presenceHandler.isUserOnline(friend.id)
             )
         }
     }
@@ -103,7 +102,6 @@ class FriendService(
             avatarUrl = friend.avatarUrl,
             birthday = friend.birthday,
             createdAt = friend.createdAt,
-            online = presenceHandler.isUserOnline(friend.id)
         )
     }
 
