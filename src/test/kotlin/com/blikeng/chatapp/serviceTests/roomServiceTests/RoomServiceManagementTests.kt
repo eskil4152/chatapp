@@ -361,7 +361,7 @@ class RoomServiceManagementTests {
             AdministrationDTO(
                 roomId = roomId.toString(),
                 userId = targetId.toString(),
-                actions = RoomAction.KICK,
+                action = RoomAction.KICK,
                 reason = ""
             )
         )
@@ -391,7 +391,7 @@ class RoomServiceManagementTests {
             AdministrationDTO(
                 roomId = roomId.toString(),
                 userId = targetId.toString(),
-                actions = RoomAction.BAN,
+                action = RoomAction.BAN,
                 reason = ""
             )
         )
@@ -416,7 +416,7 @@ class RoomServiceManagementTests {
                 AdministrationDTO(
                     roomId = UUID.randomUUID().toString(),
                     userId = UUID.randomUUID().toString(),
-                    actions = RoomAction.KICK,
+                    action = RoomAction.KICK,
                     reason = ""
                 )
             )
@@ -441,7 +441,7 @@ class RoomServiceManagementTests {
                 AdministrationDTO(
                     roomId = roomId.toString(),
                     userId = UUID.randomUUID().toString(),
-                    actions = RoomAction.KICK,
+                    action = RoomAction.KICK,
                     reason = ""
                 )
             )
@@ -463,7 +463,7 @@ class RoomServiceManagementTests {
                 AdministrationDTO(
                     roomId = "not-a-uuid",
                     userId = UUID.randomUUID().toString(),
-                    actions = RoomAction.KICK,
+                    action = RoomAction.KICK,
                     reason = ""
                 )
             )
@@ -485,7 +485,7 @@ class RoomServiceManagementTests {
                 AdministrationDTO(
                     roomId = UUID.randomUUID().toString(),
                     userId = "not-a-uuid",
-                    actions = RoomAction.KICK,
+                    action = RoomAction.KICK,
                     reason = ""
                 )
             )
@@ -510,7 +510,7 @@ class RoomServiceManagementTests {
                 AdministrationDTO(
                     roomId = roomId.toString(),
                     userId = userId.toString(),
-                    actions = RoomAction.KICK,
+                    action = RoomAction.KICK,
                     reason = ""
                 )
             )
@@ -530,7 +530,7 @@ class RoomServiceManagementTests {
                 AdministrationDTO(
                     roomId = UUID.randomUUID().toString(),
                     userId = UUID.randomUUID().toString(),
-                    actions = RoomAction.KICK,
+                    action = RoomAction.KICK,
                     reason = ""
                 )
             )

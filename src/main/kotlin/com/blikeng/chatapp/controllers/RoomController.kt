@@ -6,6 +6,7 @@ import com.blikeng.chatapp.dtos.room.RoomDTO
 import com.blikeng.chatapp.dtos.room.RoomUserDTO
 import com.blikeng.chatapp.dtos.room.UnbanDTO
 import com.blikeng.chatapp.services.RoomService
+import io.lettuce.core.dynamic.annotation.Param
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -97,11 +98,11 @@ class RoomController(
         return ResponseEntity.ok("Unbanned user successfully")
     }
 
-    @GetMapping("/bans")
+    @GetMapping("/bans/{roomId}")
     fun getBans(
-        @RequestBody roomDTO: RoomDTO
+        @PathVariable roomId: String
     ) : ResponseEntity<List<RoomUserDTO>> {
-        val bannedUsers = roomService.getAllBansForRoom(roomDTO.roomId)
+        val bannedUsers = roomService.getAllBansForRoom(roomId)
 
         return ResponseEntity.ok(bannedUsers)
     }

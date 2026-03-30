@@ -3,7 +3,7 @@ package com.blikeng.chatapp.dtos.room;
 data class AdministrationDTO (
     val roomId: String,
     val userId: String,
-    val actions: RoomAction,
+    val action: RoomAction,
     val reason: String
 )
 

@@ -492,7 +492,7 @@ class E2ETests : ContainerBase() {
 
         assertTrue(latch.await(5, TimeUnit.SECONDS))
 
-        assertTrue(received.any { it.contains("ROOM_MEMBERS") })
+        assertTrue(received.any { it.contains("ROOM_JOINED") })
 
         session.close()
     }
@@ -531,7 +531,7 @@ class E2ETests : ContainerBase() {
         )
 
         assertTrue(latch.await(5, TimeUnit.SECONDS))
-        assertTrue(received.any { it.contains("ROOM_MEMBERS") })
+        assertTrue(received.any { it.contains("ROOM_JOINED") })
 
         session.close()
     }
@@ -640,7 +640,7 @@ class E2ETests : ContainerBase() {
 
         assertTrue(latch.await(5, TimeUnit.SECONDS))
 
-        assertTrue(received.any { it.contains("ROOM_MEMBERS") })
+        assertTrue(received.any { it.contains("ROOM_JOINED") })
 
         session.close()
     }
@@ -679,7 +679,7 @@ class E2ETests : ContainerBase() {
         )
 
         assertTrue(latch.await(5, TimeUnit.SECONDS))
-        assertTrue(received.any { it.contains("ROOM_MEMBERS") })
+        assertTrue(received.any { it.contains("ROOM_JOINED") })
 
         session.close()
     }
