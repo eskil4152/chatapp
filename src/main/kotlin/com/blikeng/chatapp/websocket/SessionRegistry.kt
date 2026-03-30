@@ -46,6 +46,7 @@ class SessionRegistry(
         if (sessions.isEmpty()) users.remove(userId, sessions)
 
         sessionIndex.remove(session.id)
+        chatService.removeSessionFromRooms(session)
 
         val count = presenceHandler.userDisconnected(userId)
 
@@ -56,4 +57,8 @@ class SessionRegistry(
     }
 
     fun getSessionById(sessionId: String): WebSocketSession? = sessionIndex[sessionId]
+
+    private fun removeSession(session: WebSocketSession) {
+
+    }
 }

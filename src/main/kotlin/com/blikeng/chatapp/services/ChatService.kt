@@ -6,7 +6,6 @@ import com.blikeng.chatapp.dtos.messaging.SendMessageDTO
 import com.blikeng.chatapp.dtos.room.RoomUserDTO
 import com.blikeng.chatapp.dtos.websocket.ReceivedMessage
 import com.blikeng.chatapp.dtos.websocket.WsChat
-import com.blikeng.chatapp.dtos.websocket.WsJoined
 import com.blikeng.chatapp.dtos.websocket.WsRoomMembers
 import com.blikeng.chatapp.dtos.websocket.WsRoomPresence
 import com.blikeng.chatapp.entities.ChatEntity
@@ -66,17 +65,10 @@ class ChatService (
             throw RoomNotFoundException()
         }
 
-        val room = roomRepository.findById(roomId).orElseThrow { RoomNotFoundException() }
-
-        val existingSessions = rooms[roomId]?.toSet() ?: emptySet()
-
         rooms.computeIfAbsent(roomId) { CopyOnWriteArraySet() }.add(session)
 
         synchronized(session) {
             if (session.isOpen) {
-                session.sendMessage(TextMessage(objectMapper.writeValueAsString(
-                    WsJoined(roomId = roomId, roomName = room.name, encrypted = room.encrypted)
-                )))
                 getUsersInRoom(roomId).forEach { member ->
                     session.sendMessage(TextMessage(objectMapper.writeValueAsString(
                         WsRoomMembers(roomId = roomId, userId = member.id, username = member.username, avatarUrl = member.avatarUrl, online = member.online)
@@ -84,39 +76,20 @@ class ChatService (
                 }
             }
         }
-
-        val presencePayload = objectMapper.writeValueAsString(
-            WsRoomPresence(roomId = roomId, userId = userId, online = true)
-        )
-        existingSessions.forEach { existingSession ->
-            synchronized(existingSession) {
-                if (existingSession.isOpen) {
-                    existingSession.sendMessage(TextMessage(presencePayload))
-                }
-            }
-        }
     }
 
     fun leaveRoom(roomId: UUID, session: WebSocketSession) {
-        val userId = session.attributes["userId"] as? UUID
-
         rooms[roomId]?.remove(session)
 
         if (rooms[roomId]?.isEmpty() == true) {
             rooms.remove(roomId)
         }
+    }
 
-        if (userId != null) {
-            val presencePayload = objectMapper.writeValueAsString(
-                WsRoomPresence(roomId = roomId, userId = userId, online = presenceHandler.isUserOnline(userId))
-            )
-            rooms[roomId]?.forEach { remainingSession ->
-                synchronized(remainingSession) {
-                    if (remainingSession.isOpen) {
-                        remainingSession.sendMessage(TextMessage(presencePayload))
-                    }
-                }
-            }
+    fun removeSessionFromRooms(session: WebSocketSession) {
+        rooms.entries.removeIf { (_, sessions) ->
+            sessions.remove(session)
+            sessions.isEmpty()
         }
     }
 
