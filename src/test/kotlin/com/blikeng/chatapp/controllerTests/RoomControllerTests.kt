@@ -168,7 +168,7 @@ class RoomControllerTests {
                 {
                     "roomId":"$roomId",
                     "userId":"$targetId",
-                    "actions":"KICK",
+                    "action":"KICK",
                     "reason":"because"
                 }
             """.trimIndent()
@@ -245,7 +245,7 @@ class RoomControllerTests {
                 {
                     "roomId":"$roomId",
                     "userId":"$targetId",
-                    "actions":"KICK",
+                    "action":"KICK",
                     "reason":""
                 }
             """.trimIndent()
@@ -274,7 +274,7 @@ class RoomControllerTests {
 
         every { roomService.getAllBansForRoom(any()) } returns emptyList()
 
-        mockMvc.get("/api/rooms/bans") {
+        mockMvc.get("/api/rooms/bans/$roomId") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"roomId":"$roomId"}"""
         }

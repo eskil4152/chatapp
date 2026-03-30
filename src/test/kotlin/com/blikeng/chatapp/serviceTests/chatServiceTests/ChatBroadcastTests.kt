@@ -2,8 +2,11 @@ package com.blikeng.chatapp.serviceTests.chatServiceTests
 
 import com.blikeng.chatapp.dtos.websocket.ReceivedMessage
 import com.blikeng.chatapp.entities.RoomEntity
+import com.blikeng.chatapp.entities.RoomRole
 import com.blikeng.chatapp.entities.RoomType
 import com.blikeng.chatapp.entities.UserEntity
+import com.blikeng.chatapp.entities.UserRoomEntity
+import com.blikeng.chatapp.entities.UserRoomId
 import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
@@ -82,6 +85,7 @@ class ChatBroadcastTests {
     fun shouldBroadcastMessageToAllSessionsInRoom() {
         every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
 
         val roomId = UUID.randomUUID()
         val userId = UUID.randomUUID()
@@ -105,6 +109,7 @@ class ChatBroadcastTests {
     fun shouldNotPublishMessageIfNoMessageType() {
         every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
 
         val roomId = UUID.randomUUID()
         val session = mockk<WebSocketSession>(relaxed = true)
@@ -124,6 +129,7 @@ class ChatBroadcastTests {
         val room = RoomEntity(name = "r", encrypted = true, keyVersion = 1, type = RoomType.GROUP)
 
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
         every { roomRepository.findById(room.id) } returns Optional.of(room)
         every { encrypt.encrypt(plaintext = "secret", aad = any()) } returns Encrypted(ciphertext, nonce)
 
@@ -145,6 +151,7 @@ class ChatBroadcastTests {
         val room = RoomEntity(name = "r", encrypted = false, type = RoomType.GROUP)
 
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
         every { roomRepository.findById(room.id) } returns Optional.of(room)
 
         val session = mockk<WebSocketSession>(relaxed = true)
@@ -168,6 +175,7 @@ class ChatBroadcastTests {
         val room = RoomEntity(name = "r", encrypted = false, type = RoomType.GROUP)
 
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
         every { roomRepository.findById(room.id) } returns Optional.of(room)
 
         val session = mockk<WebSocketSession>(relaxed = true)
@@ -208,6 +216,7 @@ class ChatBroadcastTests {
         val userId = UUID.randomUUID()
 
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(userId, roomId) } returns true
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
         every { roomRepository.findById(roomId) } returns Optional.of(RoomEntity(id = roomId, name = "r", type = RoomType.GROUP))
 
         val session = mockk<WebSocketSession>(relaxed = true)
