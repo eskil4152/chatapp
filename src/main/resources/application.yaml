@@ -14,7 +14,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
     database: postgresql
-    show-sql: true
+    show-sql: false
     hibernate:
       ddl-auto: none
   flyway:
@@ -41,6 +41,16 @@ spring:
       enabled: ${SPRING_RABBITMQ_SSL:false}
   lifecycle:
     timeout-per-shutdown-phase: 30s
+
+logging:
+  level:
+    root: INFO
+    org.springframework: WARN
+    org.springframework.web: INFO
+    org.hibernate: WARN
+    org.hibernate.SQL: OFF
+    org.hibernate.orm.jdbc.bind: OFF
+    com.blikeng.chatapp: INFO
 
 management:
   endpoints:

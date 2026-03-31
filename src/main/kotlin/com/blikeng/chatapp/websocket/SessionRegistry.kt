@@ -3,6 +3,7 @@ package com.blikeng.chatapp.websocket
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.services.ChatService
 import com.blikeng.chatapp.services.FriendService
+import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.WebSocketSession
@@ -22,7 +23,7 @@ class SessionRegistry(
 
     init {
         meterRegistry.gauge("users", users) { it.size.toDouble() }
-        meterRegistry.gauge("users.sessions", users) {
+        meterRegistry.gauge("user.sessions", users) {
             it.values.sumOf { sessions -> sessions.size.toDouble() }
         }
     }

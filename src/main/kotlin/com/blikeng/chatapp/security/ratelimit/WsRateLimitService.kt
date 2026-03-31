@@ -2,6 +2,7 @@ package com.blikeng.chatapp.security.ratelimit
 
 import io.github.bucket4j.Bandwidth
 import io.github.bucket4j.Bucket
+import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.stereotype.Service
 import java.time.Duration
@@ -19,7 +20,11 @@ class WsRateLimitService(
     private val buckets = ConcurrentHashMap<UUID, Bucket>()
 
     init {
-        meterRegistry.gauge("ws.rate_limit.buckets", buckets) { it.size.toDouble() }
+        meterRegistry.gauge("ws.rate.limit.buckets", buckets) { it.size.toDouble() }
+        Gauge.builder("ws.rate.limit.buckets", buckets) { it.size.toDouble() }
+            .description("Number of WebSocket rate limit buckets")
+            .tag("component", "websocket")
+            .register(meterRegistry)
     }
 
     fun tryConsumeMessage(userId: UUID): Boolean {
@@ -27,8 +32,8 @@ class WsRateLimitService(
             Bucket.builder()
                 .addLimit(
                     Bandwidth.builder()
-                        .capacity(10)
-                        .refillGreedy(10, Duration.ofMinutes(1))
+                        .capacity(60)
+                        .refillGreedy(30, Duration.ofMinutes(1))
                         .build()
                 )
                 .build()

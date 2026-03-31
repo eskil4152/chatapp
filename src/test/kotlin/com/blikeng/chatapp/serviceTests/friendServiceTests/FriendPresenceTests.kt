@@ -131,6 +131,7 @@ class FriendPresenceTests {
         every { friendsRepository.findFriendsForUser(user.id) } returns listOf(friendship)
         every { presenceHandler.isUserOnline(friend.id) } returns true
         every { session.sendMessage(capture(msgSlot)) } just Runs
+        every { session.isOpen } returns true
 
         friendService.getOnlineFriends(user.id, session)
 
@@ -177,6 +178,7 @@ class FriendPresenceTests {
         every { friendsRepository.findFriendsForUser(user.id) } returns listOf(friendship)
         every { presenceHandler.isUserOnline(friend.id) } returns true
         every { session.sendMessage(capture(msgSlot)) } just Runs
+        every { session.isOpen } returns true
 
         friendService.getOnlineFriends(user.id, session)
 
