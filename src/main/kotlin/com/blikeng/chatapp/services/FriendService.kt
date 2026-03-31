@@ -1,7 +1,9 @@
 package com.blikeng.chatapp.services
 
 import com.blikeng.chatapp.dtos.friends.FriendDTO
+import com.blikeng.chatapp.dtos.websocket.OnlineFriend
 import com.blikeng.chatapp.dtos.websocket.WsFriendPresence
+import com.blikeng.chatapp.dtos.websocket.WsFriendSnapshot
 import com.blikeng.chatapp.entities.FriendsEntity
 import com.blikeng.chatapp.entities.FriendsId
 import com.blikeng.chatapp.entities.UserEntity
@@ -133,23 +135,33 @@ class FriendService(
         }
     }
 
-    fun getFriendsOnlineStatus(userId: UUID, session: WebSocketSession){
+    fun getOnlineFriends(userId: UUID, session: WebSocketSession){
+        val friends = mutableListOf<OnlineFriend>()
+
         for (friendship in friendsRepository.findFriendsForUser(userId)) {
-            val friendId = if (friendship.userA.id == userId) {
-                friendship.userB.id
+            val friend = if (friendship.userA.id == userId) {
+                friendship.userB
             } else {
-                friendship.userA.id
+                friendship.userA
             }
 
-            if (presenceHandler.isUserOnline(friendId)) {
-                val payload = objectMapper.writeValueAsString(
-                    WsFriendPresence(
-                        userId = friendId,
-                        online = true
+            friends.add(OnlineFriend(
+                userId = friend.id,
+                username = friend.username,
+                avatarUrl = friend.avatarUrl,
+                online = presenceHandler.isUserOnline(friend.id)
+            ))
+        }
+
+        synchronized(session) {
+            if (session.isOpen) {
+                session.sendMessage(
+                    TextMessage(
+                        objectMapper.writeValueAsString(
+                            WsFriendSnapshot(friends = friends)
+                        )
                     )
                 )
-
-                session.sendMessage(TextMessage(payload))
             }
         }
     }

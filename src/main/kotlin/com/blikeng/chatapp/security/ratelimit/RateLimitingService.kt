@@ -14,7 +14,7 @@ class RateLimitService(
     private val buckets = ConcurrentHashMap<String, Bucket>()
 
     init {
-        meterRegistry.gauge("rate_limit.buckets", buckets) { it.size.toDouble() }
+        meterRegistry.gauge("rate.limit.buckets", buckets) { it.size.toDouble() }
     }
 
     fun tryConsume(key: String, maxTokens: Long, window: Duration): Boolean {

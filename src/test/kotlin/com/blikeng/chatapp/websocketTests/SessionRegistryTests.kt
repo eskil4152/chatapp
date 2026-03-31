@@ -148,7 +148,7 @@ class SessionRegistryTests {
     @Test
     fun shouldRegisterAndEvaluateGauges() {
         val usersGauge = meterRegistry.get("users").gauge()
-        val sessionsGauge = meterRegistry.get("users.sessions").gauge()
+        val sessionsGauge = meterRegistry.get("user.sessions").gauge()
 
         assertEquals(0.0, usersGauge.value())
         assertEquals(0.0, sessionsGauge.value())
@@ -180,11 +180,11 @@ class SessionRegistryTests {
         val session = mockk<WebSocketSession>()
 
         every { session.id } returns userId.toString()
-        every { friendService.getFriendsOnlineStatus(userId, session) } just Runs
+        every { friendService.getOnlineFriends(userId, session) } just Runs
 
         sessionRegistry.sendFriendPresenceSnapshot(userId, session)
 
-        verify(exactly = 1) { friendService.getFriendsOnlineStatus(userId, session) }
+        verify(exactly = 1) { friendService.getOnlineFriends(userId, session) }
     }
 
     @Test

@@ -44,6 +44,7 @@ class E2ETests : ContainerBase() {
     // - Room changes and DELETE endpoints
     // - Friend management
     // ==========================
+
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var objectMapper: ObjectMapper
 
@@ -501,12 +502,15 @@ class E2ETests : ContainerBase() {
     @Order(27)
     fun shouldEnterRoom() {
         val received = CopyOnWriteArrayList<String>()
-        val latch = CountDownLatch(1)
+        val joinedLatch = CountDownLatch(1)
 
         val handler = object : TextWebSocketHandler() {
             override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
                 received += message.payload
-                latch.countDown()
+
+                if (message.payload.contains("ROOM_JOINED")) {
+                    joinedLatch.countDown()
+                }
             }
         }
 
@@ -530,8 +534,8 @@ class E2ETests : ContainerBase() {
             )
         )
 
-        assertTrue(latch.await(5, TimeUnit.SECONDS))
-        assertTrue(received.any { it.contains("ROOM_JOINED") })
+        assertTrue(joinedLatch.await(5, TimeUnit.SECONDS), "Did not receive ROOM_JOINED. Received: $received")
+        assertTrue(received.any { it.contains("ROOM_JOINED") }, "Received: $received")
 
         session.close()
     }
@@ -649,12 +653,15 @@ class E2ETests : ContainerBase() {
     @Order(32)
     fun shouldEnterEncryptedRoom() {
         val received = CopyOnWriteArrayList<String>()
-        val latch = CountDownLatch(1)
+        val joinedLatch = CountDownLatch(1)
 
         val handler = object : TextWebSocketHandler() {
             override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
                 received += message.payload
-                latch.countDown()
+
+                if (message.payload.contains("ROOM_JOINED")) {
+                    joinedLatch.countDown()
+                }
             }
         }
 
@@ -678,8 +685,8 @@ class E2ETests : ContainerBase() {
             )
         )
 
-        assertTrue(latch.await(5, TimeUnit.SECONDS))
-        assertTrue(received.any { it.contains("ROOM_JOINED") })
+        assertTrue(joinedLatch.await(5, TimeUnit.SECONDS), "Did not receive ROOM_JOINED. Received: $received")
+        assertTrue(received.any { it.contains("ROOM_JOINED") }, "Received: $received")
 
         session.close()
     }

@@ -33,7 +33,7 @@ class WsRateLimitServiceTests {
 
         val userId = UUID.randomUUID()
 
-        repeat(10) {
+        repeat(60) {
             assertTrue(service.tryConsumeMessage(userId))
         }
 
@@ -45,7 +45,7 @@ class WsRateLimitServiceTests {
         val registry = SimpleMeterRegistry()
         val service = WsRateLimitService(registry)
 
-        val gauge = registry.get("ws.rate_limit.buckets").gauge()
+        val gauge = registry.get("ws.rate.limit.buckets").gauge()
 
         assertEquals(0.0, gauge.value())
 
@@ -66,7 +66,7 @@ class WsRateLimitServiceTests {
         val user1 = UUID.randomUUID()
         val user2 = UUID.randomUUID()
 
-        repeat(10) {
+        repeat(60) {
             assertTrue(service.tryConsumeMessage(user1))
         }
 
