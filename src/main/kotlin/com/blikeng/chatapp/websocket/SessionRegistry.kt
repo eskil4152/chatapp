@@ -40,7 +40,7 @@ class SessionRegistry(
     }
 
     fun sendFriendPresenceSnapshot(userId: UUID, session: WebSocketSession) {
-        friendService.getFriendsOnlineStatus(userId, session)
+        friendService.getOnlineFriends(userId, session)
     }
 
     fun removeSession(userId: UUID, session: WebSocketSession) {

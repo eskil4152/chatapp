@@ -132,7 +132,7 @@ class FriendPresenceTests {
         every { presenceHandler.isUserOnline(friend.id) } returns true
         every { session.sendMessage(capture(msgSlot)) } just Runs
 
-        friendService.getFriendsOnlineStatus(user.id, session)
+        friendService.getOnlineFriends(user.id, session)
 
         verify(exactly = 1) { session.sendMessage(any()) }
         assertTrue(msgSlot.captured.payload.contains(friend.id.toString()))
@@ -149,7 +149,7 @@ class FriendPresenceTests {
         every { friendsRepository.findFriendsForUser(user.id) } returns listOf(friendship)
         every { presenceHandler.isUserOnline(friend.id) } returns false
 
-        friendService.getFriendsOnlineStatus(user.id, session)
+        friendService.getOnlineFriends(user.id, session)
 
         verify(exactly = 0) { session.sendMessage(any()) }
     }
@@ -161,7 +161,7 @@ class FriendPresenceTests {
 
         every { friendsRepository.findFriendsForUser(user.id) } returns emptyList()
 
-        friendService.getFriendsOnlineStatus(user.id, session)
+        friendService.getOnlineFriends(user.id, session)
 
         verify(exactly = 0) { session.sendMessage(any()) }
     }
@@ -178,7 +178,7 @@ class FriendPresenceTests {
         every { presenceHandler.isUserOnline(friend.id) } returns true
         every { session.sendMessage(capture(msgSlot)) } just Runs
 
-        friendService.getFriendsOnlineStatus(user.id, session)
+        friendService.getOnlineFriends(user.id, session)
 
         verify(exactly = 1) { session.sendMessage(any()) }
         assertTrue(msgSlot.captured.payload.contains(friend.id.toString()))
