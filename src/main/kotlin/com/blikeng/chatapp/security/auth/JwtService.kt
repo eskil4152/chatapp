@@ -33,13 +33,14 @@ class JwtService(
         return Jwts.builder()
             .setSubject(user.id.toString())
             .claim("username", user.username)
+            .claim("role", user.role)
             .setIssuedAt(Date())
             .setExpiration(Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
             .signWith(key(), SignatureAlgorithm.HS512)
             .compact()
     }
 
-    fun validateToken(token: String): Pair<String, UUID>? {
+    fun validateToken(token: String): JwtPrincipal? {
         return try {
             val claims = Jwts.parserBuilder()
                 .setSigningKey(key())
@@ -47,12 +48,19 @@ class JwtService(
                 .parseClaimsJws(token)
 
             val username: String = claims.body["username"].toString()
+            val role = claims.body["role"].toString()
             val id = UUID.fromString(claims.body.subject)
 
-            return Pair(username, id)
+            return JwtPrincipal(username, id, role)
         } catch (e: Exception){
             logger.error("Invalid token: $e")
             null
         }
     }
+
+    data class JwtPrincipal(
+        val username: String,
+        val userId: UUID,
+        val role: String
+    )
 }

@@ -19,6 +19,9 @@ spring:
       ddl-auto: none
   flyway:
     baseline-on-migrate: true
+    placeholders:
+      admin.password: ${admin.password}
+
   web:
     error:
       include-message: always
@@ -76,6 +79,9 @@ chat:
   ping:
     sweepDelayMs: 30000
     ttlMs: 60000
+
+admin:
+  password: ${ADMIN_PASSWORD:$2a$04$o28fE4YRCTx2sn4ymsnRCu3cPfzTX.0yvzW9yaZiv8ZaYUJaj/mOe}
 
 app:
   crypto:

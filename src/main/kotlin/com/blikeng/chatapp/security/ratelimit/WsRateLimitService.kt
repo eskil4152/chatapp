@@ -21,10 +21,6 @@ class WsRateLimitService(
 
     init {
         meterRegistry.gauge("ws.rate.limit.buckets", buckets) { it.size.toDouble() }
-        Gauge.builder("ws.rate.limit.buckets", buckets) { it.size.toDouble() }
-            .description("Number of WebSocket rate limit buckets")
-            .tag("component", "websocket")
-            .register(meterRegistry)
     }
 
     fun tryConsumeMessage(userId: UUID): Boolean {

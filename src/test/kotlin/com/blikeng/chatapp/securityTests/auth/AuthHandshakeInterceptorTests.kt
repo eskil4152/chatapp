@@ -49,7 +49,11 @@ class AuthHandshakeInterceptorTests {
 
         val userId = UUID.randomUUID()
 
-        every { jwtService.validateToken("token") } returns Pair("user", userId)
+        every { jwtService.validateToken("token") } returns JwtService.JwtPrincipal(
+            username = "user",
+            userId = userId,
+            role = "USER"
+        )
 
         val servletRequest = mockk<HttpServletRequest> {
             every { cookies } returns cookiesList
