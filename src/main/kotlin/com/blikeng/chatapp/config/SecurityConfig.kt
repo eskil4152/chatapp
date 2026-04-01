@@ -23,15 +23,17 @@ class SecurityConfig(
     fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
 
     @Bean
-    fun securityWebFilterChain(http: HttpSecurity): SecurityFilterChain {
+    fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http
             .authorizeHttpRequests { authRequest ->
                 authRequest.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 authRequest.requestMatchers("/api/login").permitAll()
                 authRequest.requestMatchers("/api/register").permitAll()
                 authRequest.requestMatchers("/error").permitAll()
-                authRequest.requestMatchers("/actuator/**").permitAll()
-                authRequest.anyRequest().authenticated()
+                authRequest.requestMatchers("/actuator/health").permitAll()
+                authRequest.requestMatchers("/actuator/info").permitAll()
+                authRequest.requestMatchers("/actuator/**").hasRole("ADMIN")
+                authRequest.anyRequest().hasRole("USER")
             }
             .httpBasic { it.disable() }
             .formLogin { it.disable() }

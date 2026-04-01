@@ -24,7 +24,7 @@ class JwtServiceTests {
         val token = jwtService.generateToken(user)
 
         assert(token.isNotBlank())
-        assert(jwtService.validateToken(token) == Pair("u", user.id))
+        assert(jwtService.validateToken(token) == JwtService.JwtPrincipal("u", user.id, "USER"))
     }
 
     @Test
@@ -35,11 +35,11 @@ class JwtServiceTests {
         val token = jwtService.generateToken(user)
         val secondToken = jwtService.generateToken(secondUser)
 
-        assert(jwtService.validateToken(secondToken)?.second == secondUser.id)
-        assert(jwtService.validateToken(token)?.second != secondUser.id)
+        assert(jwtService.validateToken(secondToken)?.userId == secondUser.id)
+        assert(jwtService.validateToken(token)?.userId != secondUser.id)
 
-        assert(jwtService.validateToken(token)?.first == user.username)
-        assert(jwtService.validateToken(token)?.first != secondUser.username)
+        assert(jwtService.validateToken(token)?.username == user.username)
+        assert(jwtService.validateToken(token)?.username != secondUser.username)
     }
 
     @Test

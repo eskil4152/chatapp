@@ -7,6 +7,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import jakarta.servlet.http.Cookie
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.mock.web.MockFilterChain
@@ -78,7 +79,11 @@ class JwtAuthFilterTests {
     @Test
     fun shouldSetAuthenticationWhenTokenIsValid() {
         val userId = UUID.randomUUID()
-        every { jwtService.validateToken("good") } returns ("u" to userId)
+        every { jwtService.validateToken("good") } returns JwtService.JwtPrincipal(
+            username = "u",
+            userId = userId,
+            role = "ADMIN"
+        )
 
         val req = MockHttpServletRequest()
         req.setCookies(Cookie("AUTH", "good"))
@@ -91,7 +96,9 @@ class JwtAuthFilterTests {
         val auth = SecurityContextHolder.getContext().authentication
         assertNotNull(auth)
         assertEquals(userId, auth.principal)
-        assertEquals(0, auth.authorities.size)
+        assertEquals("u", auth.credentials)
+        assertEquals(1, auth.authorities.size)
+        assertTrue(auth.authorities.any { it.authority == "ROLE_ADMIN" })
     }
 
     @Test
