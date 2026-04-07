@@ -6,6 +6,7 @@ import com.blikeng.chatapp.dtos.room.RoomDTO
 import com.blikeng.chatapp.dtos.room.UnbanDTO
 import com.blikeng.chatapp.entities.*
 import com.blikeng.chatapp.errors.ApiException
+import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.errors.UserNotFoundException
 import com.blikeng.chatapp.events.RoomDeletedEvent
 import com.blikeng.chatapp.repositories.RoomRepository
@@ -100,6 +101,20 @@ class RoomServiceManagementTests {
             roomService.editRoom(RoomDTO(roomId = UUID.randomUUID().toString(), encrypted = false, roomName = "", role = RoomRole.OWNER, type = RoomType.GROUP))
         }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+    }
+
+    @Test
+    fun shouldFailToEditRoomNameWithTooLongName() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+
+        val exception = assertFailsWith<ApiException> {
+            roomService.editRoom(RoomDTO(roomId = UUID.randomUUID().toString(), roomName = "a".repeat(101), encrypted = false, role = RoomRole.OWNER, type = RoomType.GROUP))
+        }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.INVALID_ROOM_NAME, exception.message)
     }
 
     @Test
@@ -399,6 +414,29 @@ class RoomServiceManagementTests {
         verify(exactly = 1) { userRoomRepository.deleteByIdUserIdAndIdRoomId(targetId, roomId) }
         verify(exactly = 1) { bannedUserService.banUser(targetId, roomId) }
         verify(exactly = 1) { eventPublisher.publishEvent(any<Any>()) }
+    }
+
+    @Test
+    fun shouldFailToRemoveUserWithTooLongReason() {
+        val userId = UUID.randomUUID()
+
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
+
+        val exception = assertFailsWith<ApiException> {
+            roomService.removeUserFromRoom(
+                AdministrationDTO(
+                    roomId = UUID.randomUUID().toString(),
+                    userId = UUID.randomUUID().toString(),
+                    action = RoomAction.KICK,
+                    reason = "a".repeat(501)
+                )
+            )
+        }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.INVALID_FIELD, exception.message)
     }
 
     @Test

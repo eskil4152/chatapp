@@ -38,13 +38,13 @@ class RateLimitInterceptor(
 
             path == "/api/user/edit" -> rateLimitService.tryConsume(
                 key = "editUser:$ip",
-                maxTokens = 2,
+                maxTokens = 3,
                 window = Duration.ofMinutes(1)
             )
 
             path == "/api/user/edit/password" -> rateLimitService.tryConsume(
                 key = "editPassword:$ip",
-                maxTokens = 2,
+                maxTokens = 3,
                 window = Duration.ofMinutes(1)
             )
 

@@ -130,6 +130,36 @@ class RoomServiceCreationTests {
     }
 
     @Test
+    fun shouldFailToMakeRoomWithTooLongName() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+
+        val exception = assertFailsWith<ApiException> { roomService.makeNewRoom("a".repeat(101), false) }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.INVALID_ROOM_NAME, exception.message)
+    }
+
+    @Test
+    fun shouldMakeRoomWithTrimmedName() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        val roomSlot = slot<RoomEntity>()
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+        every { roomRepository.save(capture(roomSlot)) } answers {
+            val r = roomSlot.captured
+            RoomEntity(id = UUID.randomUUID(), name = r.name, encrypted = r.encrypted, keyVersion = r.keyVersion, type = RoomType.GROUP)
+        }
+        every { userRoomRepository.save(any()) } answers { firstArg() }
+
+        roomService.makeNewRoom("  my room  ", false)
+
+        assertEquals("my room", roomSlot.captured.name)
+    }
+
+    @Test
     fun shouldFailToMakeRoomWhenNoAuthentication() {
         val exception = assertFailsWith<ApiException> { roomService.makeNewRoom("roomName", false) }
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)

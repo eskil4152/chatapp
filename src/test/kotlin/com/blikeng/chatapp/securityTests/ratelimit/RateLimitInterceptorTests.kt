@@ -88,7 +88,7 @@ class RateLimitInterceptorTests {
         every { request.remoteAddr } returns "127.0.0.1"
         every { request.requestURI } returns "/api/user/edit"
         every {
-            rateLimitService.tryConsume("editUser:127.0.0.1", 2, any())
+            rateLimitService.tryConsume("editUser:127.0.0.1", 3, any())
         } returns true
 
         val allowed = interceptor.preHandle(request, response, Any())
@@ -107,7 +107,7 @@ class RateLimitInterceptorTests {
         every { request.remoteAddr } returns "127.0.0.1"
         every { request.requestURI } returns "/api/user/edit/password"
         every {
-            rateLimitService.tryConsume("editPassword:127.0.0.1", 2, any())
+            rateLimitService.tryConsume("editPassword:127.0.0.1", 3, any())
         } returns true
 
         val allowed = interceptor.preHandle(request, response, Any())

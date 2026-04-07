@@ -7,6 +7,7 @@ import com.blikeng.chatapp.dtos.room.RoomUserDTO
 import com.blikeng.chatapp.dtos.room.UnbanDTO
 import com.blikeng.chatapp.entities.*
 import com.blikeng.chatapp.errors.*
+import com.blikeng.chatapp.errors.InvalidFieldException
 import com.blikeng.chatapp.events.RoomDeletedEvent
 import com.blikeng.chatapp.events.UserRemovedEvent
 
@@ -38,11 +39,13 @@ class RoomService(
         val userId = getId()
         userService.getUserById(userId) ?: throw InvalidUserException()
 
-        if (roomName == null || roomName.trim().isEmpty()) throw InvalidRoomNameException()
+        val trimmedName = roomName?.trim()
+        if (trimmedName.isNullOrEmpty()) throw InvalidRoomNameException()
+        if (trimmedName.length > 100) throw InvalidRoomNameException()
 
         val room = roomRepository.save(
             RoomEntity(
-                name = roomName,
+                name = trimmedName,
                 encrypted = encrypted == true,
                 keyVersion = if (encrypted == true) 1 else null,
                 type = RoomType.GROUP,
@@ -126,10 +129,9 @@ class RoomService(
             throw InvalidUUIDException()
         }
 
-        val name = roomDTO.roomName
-        if (name.isNullOrBlank()) {
-            throw InvalidRoomNameException()
-        }
+        val name = roomDTO.roomName?.trim()
+        if (name.isNullOrBlank()) throw InvalidRoomNameException()
+        if (name.length > 100) throw InvalidRoomNameException()
 
         val userRoom = userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
             ?: throw RoomNotFoundException()
@@ -188,6 +190,9 @@ class RoomService(
             throw InvalidUUIDException()
         }
 
+        val reason = administrationDTO.reason.trim()
+        if (reason.length > 500) throw InvalidFieldException()
+
         if (targetId == userId) {
             throw InvalidBanException()
         }
@@ -203,7 +208,7 @@ class RoomService(
 
         if (action == RoomAction.BAN) bannedUserService.banUser(targetId, roomId)
 
-        eventPublisher.publishEvent(UserRemovedEvent(targetId, roomId, action, administrationDTO.reason))
+        eventPublisher.publishEvent(UserRemovedEvent(targetId, roomId, action, reason))
     }
 
     fun unbanUser(unbanDTO: UnbanDTO) {

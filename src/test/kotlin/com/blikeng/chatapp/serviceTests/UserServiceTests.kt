@@ -133,16 +133,134 @@ class UserServiceTests {
         userService.editProfile(
             ChangeUserDTO(
                 bio = "newBio",
-                email = "newEmail",
+                email = "new@email.com",
                 fullName = "newFullName",
                 avatarUrl = "newAvatar"
             ),
         )
 
         assertEquals("newBio", user.bio)
-        assertEquals("newEmail", user.email)
+        assertEquals("new@email.com", user.email)
         assertEquals("newFullName", user.fullName)
         assertEquals("newAvatar", user.avatarUrl)
+    }
+
+    @Test
+    fun shouldUpdateUserTrimmingFields() {
+        val userId = UUID.randomUUID()
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        val user = UserEntity(id = userId, username = "username", password = "")
+        every { userRepository.findById(userId) } returns Optional.of(user)
+
+        userService.editProfile(
+            ChangeUserDTO(
+                bio = "  my bio  ",
+                email = "  user@example.com  ",
+                fullName = "  Full Name  ",
+                avatarUrl = "  https://example.com/avatar.png  "
+            )
+        )
+
+        assertEquals("my bio", user.bio)
+        assertEquals("user@example.com", user.email)
+        assertEquals("Full Name", user.fullName)
+        assertEquals("https://example.com/avatar.png", user.avatarUrl)
+    }
+
+    @Test
+    fun shouldFailToUpdateUserWithTooLongBio() {
+        val userId = UUID.randomUUID()
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userRepository.findById(userId) } returns Optional.of(UserEntity(id = userId, username = "username", password = ""))
+
+        val exception = assertFailsWith<ApiException> {
+            userService.editProfile(ChangeUserDTO(bio = "a".repeat(501), email = "", fullName = "", avatarUrl = ""))
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.INVALID_FIELD, exception.message)
+    }
+
+    @Test
+    fun shouldFailToUpdateUserWithTooLongEmail() {
+        val userId = UUID.randomUUID()
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userRepository.findById(userId) } returns Optional.of(UserEntity(id = userId, username = "username", password = ""))
+
+        val exception = assertFailsWith<ApiException> {
+            userService.editProfile(ChangeUserDTO(bio = "", email = "a".repeat(250) + "@b.com", fullName = "", avatarUrl = ""))
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.INVALID_FIELD, exception.message)
+    }
+
+    @Test
+    fun shouldFailToUpdateUserWithInvalidEmailFormat() {
+        val userId = UUID.randomUUID()
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userRepository.findById(userId) } returns Optional.of(UserEntity(id = userId, username = "username", password = ""))
+
+        val exception = assertFailsWith<ApiException> {
+            userService.editProfile(ChangeUserDTO(bio = "", email = "notanemail", fullName = "", avatarUrl = ""))
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.INVALID_FIELD, exception.message)
+    }
+
+    @Test
+    fun shouldUpdateUserWithBlankEmail() {
+        val userId = UUID.randomUUID()
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        val user = UserEntity(id = userId, username = "username", password = "", email = "old@email.com")
+        every { userRepository.findById(userId) } returns Optional.of(user)
+
+        userService.editProfile(ChangeUserDTO(bio = "", email = "", fullName = "", avatarUrl = ""))
+
+        assertEquals("", user.email)
+    }
+
+    @Test
+    fun shouldFailToUpdateUserWithTooLongFullName() {
+        val userId = UUID.randomUUID()
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userRepository.findById(userId) } returns Optional.of(UserEntity(id = userId, username = "username", password = ""))
+
+        val exception = assertFailsWith<ApiException> {
+            userService.editProfile(ChangeUserDTO(bio = "", email = "", fullName = "a".repeat(101), avatarUrl = ""))
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.INVALID_FIELD, exception.message)
+    }
+
+    @Test
+    fun shouldFailToUpdateUserWithTooLongAvatarUrl() {
+        val userId = UUID.randomUUID()
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        every { userRepository.findById(userId) } returns Optional.of(UserEntity(id = userId, username = "username", password = ""))
+
+        val exception = assertFailsWith<ApiException> {
+            userService.editProfile(ChangeUserDTO(bio = "", email = "", fullName = "", avatarUrl = "a".repeat(501)))
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.INVALID_FIELD, exception.message)
     }
 
     @Test

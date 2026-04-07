@@ -2,6 +2,8 @@ package com.blikeng.chatapp.services
 
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.errors.InvalidCredentialsException
+import com.blikeng.chatapp.errors.LongPasswordException
+import com.blikeng.chatapp.errors.LongUsernameException
 import com.blikeng.chatapp.errors.ShortPasswordException
 import com.blikeng.chatapp.errors.ShortUsernameException
 import com.blikeng.chatapp.errors.UsernameAlreadyExistsException
@@ -23,11 +25,16 @@ class AuthService(
     private val authRepository: AuthRepository,
 ) {
     fun registerUser(username: String, password: String): String {
-        if (authRepository.existsByUsernameIgnoreCase(username)) throw UsernameAlreadyExistsException()
-        if (password.trim().length < 8) throw ShortPasswordException()
-        if (username.trim().length < 3) throw ShortUsernameException()
+        val trimmedUsername = username.trim()
+        val trimmedPassword = password.trim()
 
-        val user = authRepository.save(UserEntity(username = username, password = passwordService.encodePassword(password)))
+        if (trimmedUsername.length < 3) throw ShortUsernameException()
+        if (trimmedUsername.length > 32) throw LongUsernameException()
+        if (trimmedPassword.length < 8) throw ShortPasswordException()
+        if (trimmedPassword.length > 128) throw LongPasswordException()
+        if (authRepository.existsByUsernameIgnoreCase(trimmedUsername)) throw UsernameAlreadyExistsException()
+
+        val user = authRepository.save(UserEntity(username = trimmedUsername, password = passwordService.encodePassword(trimmedPassword)))
 
         return jwtService.generateToken(user)
     }
