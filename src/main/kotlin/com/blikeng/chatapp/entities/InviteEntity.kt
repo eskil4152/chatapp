@@ -35,7 +35,9 @@ class InviteEntity (
 enum class InviteStatus {
     PENDING,
     ACCEPTED,
-    REJECTED
+    REJECTED,
+    EXPIRED,
+    EXHAUSTED
 }
 
 enum class InviteType {

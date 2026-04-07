@@ -122,6 +122,13 @@ class InviteService(
 
         val invite = inviteRepository.findById(inviteId).orElseThrow { InviteNotFoundException() }
 
+        if (invite.status != InviteStatus.PENDING) throw InviteNotFoundException()
+        if (invite.expiresAt.isBefore(Instant.now())) {
+            invite.status = InviteStatus.EXPIRED
+            inviteRepository.save(invite)
+            throw InviteNotFoundException()
+        }
+
         when (invite.type) {
             InviteType.FRIEND_REQUEST -> handleFriendRequestResponse(inviteResponseDTO.response, invite, id)
             InviteType.ROOM_INVITE -> handleRoomInviteResponse(inviteResponseDTO.response, invite, id)
@@ -199,5 +206,11 @@ class InviteService(
         inviteRepository.deleteByToUserIdAndRoomId(id, invite.roomId!!)
 
         roomService.joinRoom(id, invite.roomId!!)
+
+        val refreshed = inviteRepository.findById(invite.id).orElseThrow { InvalidInviteException() }
+        if (refreshed.maxUsages != null && refreshed.usages != null && refreshed.usages!! >= refreshed.maxUsages!!) {
+            refreshed.status = InviteStatus.EXHAUSTED
+            inviteRepository.save(refreshed)
+        }
     }
 }

@@ -8,5 +8,5 @@ CREATE TABLE invites
     usages INT,
     max_usages INT,
     expires_at TIMESTAMP NOT NULL,
-    status VARCHAR(12) NOT NULL CHECK ( status IN ('PENDING', 'ACCEPTED', 'REJECTED') )
+    status VARCHAR(12) NOT NULL CHECK ( status IN ('PENDING', 'ACCEPTED', 'REJECTED', 'EXPIRED', 'EXHAUSTED') )
 );
