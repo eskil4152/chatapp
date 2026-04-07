@@ -1,11 +1,15 @@
 package com.blikeng.chatapp.websocket
 
+import com.blikeng.chatapp.dtos.websocket.WsPendingInviteCount
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.services.ChatService
 import com.blikeng.chatapp.services.FriendService
+import com.blikeng.chatapp.services.InviteService
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.stereotype.Component
+import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
@@ -16,6 +20,8 @@ class SessionRegistry(
     private val presenceHandler: PresenceHandler,
     private val friendService: FriendService,
     private val chatService: ChatService,
+    private val inviteService: InviteService,
+    private val objectMapper: ObjectMapper,
     meterRegistry: MeterRegistry
 ) {
     val users = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
@@ -42,6 +48,14 @@ class SessionRegistry(
 
     fun sendFriendPresenceSnapshot(userId: UUID, session: WebSocketSession) {
         friendService.getOnlineFriends(userId, session)
+    }
+
+    fun sendPendingInviteSnapshot(userId: UUID, session: WebSocketSession) {
+        val count = inviteService.getPendingInvites(userId).size
+        val payload = objectMapper.writeValueAsString(WsPendingInviteCount(count = count))
+        synchronized(session) {
+            if (session.isOpen) session.sendMessage(TextMessage(payload))
+        }
     }
 
     fun removeSession(userId: UUID, session: WebSocketSession) {

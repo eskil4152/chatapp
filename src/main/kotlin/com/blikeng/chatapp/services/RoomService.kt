@@ -9,6 +9,7 @@ import com.blikeng.chatapp.entities.*
 import com.blikeng.chatapp.errors.*
 import com.blikeng.chatapp.errors.InvalidFieldException
 import com.blikeng.chatapp.events.RoomDeletedEvent
+import com.blikeng.chatapp.events.UserJoinedRoomEvent
 import com.blikeng.chatapp.events.UserRemovedEvent
 
 import com.blikeng.chatapp.repositories.RoomRepository
@@ -86,8 +87,10 @@ class RoomService(
     // Room membership
     // ==========================
     fun joinRoom(id: UUID, roomId: UUID) {
+        val user = userService.getUserById(id) ?: throw InvalidUserException()
         val userRoom = UserRoomEntity(UserRoomId(id, roomId), RoomRole.MEMBER, RoomType.GROUP)
         userRoomRepository.save(userRoom)
+        eventPublisher.publishEvent(UserJoinedRoomEvent(userId = id, username = user.username, roomId = roomId))
     }
 
     @Transactional

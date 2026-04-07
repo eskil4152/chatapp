@@ -9,6 +9,7 @@ import com.blikeng.chatapp.dtos.invites.RoomInviteDTO
 import com.blikeng.chatapp.entities.InviteEntity
 import com.blikeng.chatapp.entities.InviteStatus
 import com.blikeng.chatapp.entities.InviteType
+import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.errors.AlreadyFriendsException
 import com.blikeng.chatapp.errors.AlreadyInvitedException
 import com.blikeng.chatapp.errors.BannedException
@@ -22,10 +23,13 @@ import com.blikeng.chatapp.errors.InviteYourselfException
 import com.blikeng.chatapp.errors.NotPermittedException
 import com.blikeng.chatapp.errors.RoomNotFoundException
 import com.blikeng.chatapp.errors.UserNotFoundException
+import com.blikeng.chatapp.events.InviteAcceptedEvent
+import com.blikeng.chatapp.events.InviteSentEvent
 import com.blikeng.chatapp.repositories.InviteRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.auth.getId
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
@@ -46,13 +50,17 @@ class InviteService(
     private val friendService: FriendService,
     private val inviteRepository: InviteRepository,
     private val roomService: RoomService,
-    private val bannedUserService: BannedUserService
+    private val bannedUserService: BannedUserService,
+    private val eventPublisher: ApplicationEventPublisher,
 ) {
     fun getPendingInvites(): List<PendingInviteDTO> {
-        val id = getId()
-        userService.getUserById(id) ?: throw InvalidUserException()
+        return getPendingInvites(getId())
+    }
 
-        return inviteRepository.findByToUserIdAndStatus(id, InviteStatus.PENDING).map {
+    fun getPendingInvites(userId: UUID): List<PendingInviteDTO> {
+        userService.getUserById(userId) ?: throw InvalidUserException()
+
+        return inviteRepository.findByToUserIdAndStatus(userId, InviteStatus.PENDING).map {
             PendingInviteDTO(
                 id = it.id,
                 type = it.type,
@@ -63,6 +71,7 @@ class InviteService(
         }
     }
 
+    @Transactional
     fun sendFriendRequest(friendRequestDTO: FriendRequestDTO) {
         if (friendRequestDTO.username.trim().isEmpty()) throw InvalidInviteException()
 
@@ -84,9 +93,14 @@ class InviteService(
             status = InviteStatus.PENDING
         )
 
-        inviteRepository.save(friendship)
+        val saved = inviteRepository.save(friendship)
+        eventPublisher.publishEvent(InviteSentEvent(
+            toUserId = friend.id,
+            invite = PendingInviteDTO(id = saved.id, type = saved.type, fromUserId = saved.fromUserId, roomId = saved.roomId, expiresAt = saved.expiresAt)
+        ))
     }
 
+    @Transactional
     fun sendRoomInvite(roomInviteDTO: RoomInviteDTO) {
         val targetId: UUID
         val roomId: UUID
@@ -127,13 +141,17 @@ class InviteService(
             status = InviteStatus.PENDING
         )
 
-        inviteRepository.save(invite)
+        val saved = inviteRepository.save(invite)
+        eventPublisher.publishEvent(InviteSentEvent(
+            toUserId = targetId,
+            invite = PendingInviteDTO(id = saved.id, type = saved.type, fromUserId = saved.fromUserId, roomId = saved.roomId, expiresAt = saved.expiresAt)
+        ))
     }
 
     @Transactional
     fun respondToRequest(inviteResponseDTO: InviteResponseDTO) {
         val id = getId()
-        if (userService.getUserById(id) == null) throw InvalidUserException()
+        val acceptor = userService.getUserById(id) ?: throw InvalidUserException()
 
         val inviteId: UUID
         try {
@@ -152,8 +170,8 @@ class InviteService(
         }
 
         when (invite.type) {
-            InviteType.FRIEND_REQUEST -> handleFriendRequestResponse(inviteResponseDTO.response, invite, id)
-            InviteType.ROOM_INVITE -> handleRoomInviteResponse(inviteResponseDTO.response, invite, id)
+            InviteType.FRIEND_REQUEST -> handleFriendRequestResponse(inviteResponseDTO.response, invite, acceptor)
+            InviteType.ROOM_INVITE -> handleRoomInviteResponse(inviteResponseDTO.response, invite, acceptor)
             InviteType.OPEN_ROOM_INVITE -> handleOpenRoomInviteResponse(invite, id)
         }
     }
@@ -193,20 +211,21 @@ class InviteService(
         return inviteRepository.save(invite).id
     }
 
-    private fun handleFriendRequestResponse(response: InviteResponse, invite: InviteEntity, id: UUID){
-        if (id != invite.toUserId) throw InviteNotFoundException()
+    private fun handleFriendRequestResponse(response: InviteResponse, invite: InviteEntity, acceptor: UserEntity){
+        if (acceptor.id != invite.toUserId) throw InviteNotFoundException()
 
         if (response == InviteResponse.REJECTED) {
             invite.status = InviteStatus.REJECTED
             return
         }
 
-        friendService.addFriend(id, invite.fromUserId)
+        friendService.addFriend(acceptor.id, invite.fromUserId)
         invite.status = InviteStatus.ACCEPTED
+        eventPublisher.publishEvent(InviteAcceptedEvent(fromUserId = invite.fromUserId, toUserId = acceptor.id, toUsername = acceptor.username, toAvatarUrl = acceptor.avatarUrl, type = invite.type, roomId = invite.roomId))
     }
 
-    private fun handleRoomInviteResponse(response: InviteResponse, invite: InviteEntity, id: UUID){
-        if (id != invite.toUserId) throw InviteNotFoundException()
+    private fun handleRoomInviteResponse(response: InviteResponse, invite: InviteEntity, acceptor: UserEntity){
+        if (acceptor.id != invite.toUserId) throw InviteNotFoundException()
 
         if (response == InviteResponse.REJECTED) {
             invite.status = InviteStatus.REJECTED
@@ -214,8 +233,9 @@ class InviteService(
         }
 
         if (invite.roomId == null) throw InvalidInviteException()
-        roomService.joinRoom(id, invite.roomId!!)
+        roomService.joinRoom(acceptor.id, invite.roomId!!)
         invite.status = InviteStatus.ACCEPTED
+        eventPublisher.publishEvent(InviteAcceptedEvent(fromUserId = invite.fromUserId, toUserId = acceptor.id, toUsername = acceptor.username, toAvatarUrl = acceptor.avatarUrl, type = invite.type, roomId = invite.roomId))
     }
 
     private fun handleOpenRoomInviteResponse(invite: InviteEntity, id: UUID){

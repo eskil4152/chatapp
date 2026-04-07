@@ -48,6 +48,7 @@ class ChatWebSocketHandler(
 
         sessionRegistry.registerSession(userId, session)
         sessionRegistry.sendFriendPresenceSnapshot(userId, session)
+        sessionRegistry.sendPendingInviteSnapshot(userId, session)
 
         lastPing[session.id] = System.currentTimeMillis()
     }
