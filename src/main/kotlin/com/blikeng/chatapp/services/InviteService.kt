@@ -162,6 +162,7 @@ class InviteService(
             type = InviteType.OPEN_ROOM_INVITE,
             fromUserId = id,
             roomId = roomId,
+            usages = 0,
             expiresAt = Instant.now().plus(7, ChronoUnit.DAYS),
             maxUsages = openRoomInviteDTO.maxUsages,
             status = InviteStatus.PENDING
@@ -192,6 +193,7 @@ class InviteService(
 
         if (invite.roomId == null) throw InvalidInviteException()
         roomService.joinRoom(id, invite.roomId!!)
+        invite.status = InviteStatus.ACCEPTED
     }
 
     private fun handleOpenRoomInviteResponse(invite: InviteEntity, id: UUID){
