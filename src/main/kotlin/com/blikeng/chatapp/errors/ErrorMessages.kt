@@ -32,4 +32,8 @@ object ErrorMessages {
 
     const val BANNED = "You have been banned from this room"
     const val INVALID_BAN = "You can not ban this user"
+
+    const val INVITE_NOT_FOUND = "Invite not found"
+    const val INVALID_INVITE = "Invalid invite"
+    const val ALREADY_INVITED = "Already invited"
 }

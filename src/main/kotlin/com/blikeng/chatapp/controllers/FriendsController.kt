@@ -20,15 +20,6 @@ class FriendsController(private val friendService: FriendService) {
         return ResponseEntity.ok(friends)
     }
 
-    @PostMapping("/add")
-    fun addFriend(
-        @RequestBody usernameDTO: UsernameDTO
-    ) : ResponseEntity<String> {
-        friendService.addFriend(usernameDTO.username)
-
-        return ResponseEntity.ok("Added friend successfully")
-    }
-
     @DeleteMapping("/remove")
     fun removeFriend(
         @RequestBody usernameDTO: UsernameDTO

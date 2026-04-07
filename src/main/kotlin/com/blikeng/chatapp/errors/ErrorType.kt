@@ -37,3 +37,8 @@ class FriendYourselfException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessag
 // Bans
 class BannedException : ApiException(HttpStatus.FORBIDDEN, ErrorMessages.BANNED)
 class InvalidBanException : ApiException(HttpStatus.FORBIDDEN, ErrorMessages.INVALID_BAN)
+
+// Invites
+class InvalidInviteException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.INVALID_INVITE)
+class InviteNotFoundException : ApiException(HttpStatus.NOT_FOUND, ErrorMessages.INVITE_NOT_FOUND)
+class AlreadyInvitedException : ApiException(HttpStatus.CONFLICT, ErrorMessages.ALREADY_INVITED)

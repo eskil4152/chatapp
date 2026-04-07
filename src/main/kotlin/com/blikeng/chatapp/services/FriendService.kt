@@ -33,7 +33,7 @@ class FriendService(
     private val userRepository: UserRepository,
     private val presenceHandler: PresenceHandler,
     private val objectMapper: ObjectMapper,
-    private val redisTemplate: RedisTemplate<String, String>,
+    private val redisTemplate: RedisTemplate<String, String>
 ) {
     fun getFriends(): List<FriendDTO> {
         val id = getId()
@@ -57,14 +57,16 @@ class FriendService(
         }
     }
 
-    fun addFriend(friendUsername: String) {
-        val id = getId()
+    fun areFriends(userA: UUID, userB: UUID): Boolean {
+        val id = generateFriendshipId(userA, userB)
+        return friendsRepository.existsById(id)
+    }
+
+    fun addFriend(id: UUID, friendId: UUID) {
+        val friendshipId = generateFriendshipId(id, friendId)
+
         val user = userService.getUserById(id) ?: throw InvalidUserException()
-
-        val friend = userRepository.getUserByUsernameIgnoreCase(friendUsername) ?: throw UserNotFoundException()
-
-        val friendshipId = generateFriendshipId(id, friend.id)
-        if (friendsRepository.existsById(friendshipId)) throw AlreadyFriendsException()
+        val friend = userService.getUserById(friendId) ?: throw InvalidUserException()
 
         val (userA, userB) = orderedUsers(user, friend)
         friendsRepository.save(FriendsEntity(

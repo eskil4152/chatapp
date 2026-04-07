@@ -6,6 +6,7 @@ import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import java.sql.Timestamp
+import java.time.Instant
 import java.util.UUID
 
 @Entity
@@ -27,19 +28,18 @@ class InviteEntity (
 
     val maxUsages: Int? = null,
 
-    val expiresAt: Timestamp,
+    val expiresAt: Instant,
 
-    val status: InviteStatus
-) {
-    enum class InviteType {
-        FRIEND_REQUEST,
-        ROOM_INVITE,
-        OPEN_ROOM_INVITE
-    }
+    var status: InviteStatus
+)
+enum class InviteStatus {
+    PENDING,
+    ACCEPTED,
+    REJECTED
+}
 
-    enum class InviteStatus {
-        PENDING,
-        ACCEPTED,
-        REJECTED
-    }
+enum class InviteType {
+    FRIEND_REQUEST,
+    ROOM_INVITE,
+    OPEN_ROOM_INVITE
 }
