@@ -40,6 +40,8 @@ class InvitesController(
     fun createOpenRoomInvite(
       @RequestBody openRoomInviteDTO: OpenRoomInviteDTO
     ) : ResponseEntity<String> {
+        inviteService.createOpenRoomInvite(openRoomInviteDTO)
+
         return ResponseEntity.ok("Open room invite created successfully")
     }
 

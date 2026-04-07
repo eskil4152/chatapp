@@ -24,7 +24,7 @@ class InviteEntity (
 
     val roomId: UUID? = null,
 
-    val usages: Int? = null,
+    var usages: Int? = null,
 
     val maxUsages: Int? = null,
 

@@ -8,6 +8,7 @@ object RoomPermissions {
     val BAN_USER = RoomRole.ADMIN
     val UNBAN_USER = RoomRole.ADMIN
     val VIEW_BANS = RoomRole.ADMIN
+    val OPEN_INVITE = RoomRole.ADMIN
     val KICK_USER = RoomRole.MODERATOR
     val INVITE_USER = RoomRole.MODERATOR
 

@@ -10,6 +10,7 @@ import com.blikeng.chatapp.entities.InviteStatus
 import com.blikeng.chatapp.entities.InviteType
 import com.blikeng.chatapp.errors.AlreadyFriendsException
 import com.blikeng.chatapp.errors.AlreadyInvitedException
+import com.blikeng.chatapp.errors.BannedException
 import com.blikeng.chatapp.errors.FriendYourselfException
 import com.blikeng.chatapp.errors.InvalidInviteException
 import com.blikeng.chatapp.errors.InviteNotFoundException
@@ -65,7 +66,6 @@ class InviteService(
     }
 
     fun sendRoomInvite(roomInviteDTO: RoomInviteDTO){
-        if (roomInviteDTO.roomId.isBlank()) throw InvalidInviteException()
         val targetId: UUID
         val roomId: UUID
 
@@ -125,11 +125,43 @@ class InviteService(
         when (invite.type) {
             InviteType.FRIEND_REQUEST -> handleFriendRequestResponse(inviteResponseDTO.response, invite, id)
             InviteType.ROOM_INVITE -> handleRoomInviteResponse(inviteResponseDTO.response, invite, id)
-            InviteType.OPEN_ROOM_INVITE -> handleOpenRoomInviteResponse(inviteResponseDTO.response, invite, id)
+            InviteType.OPEN_ROOM_INVITE -> handleOpenRoomInviteResponse(invite, id)
         }
     }
 
-    fun createOpenRoomInvite(openRoomInviteDTO: OpenRoomInviteDTO){}
+    fun createOpenRoomInvite(openRoomInviteDTO: OpenRoomInviteDTO){
+        if (openRoomInviteDTO.maxUsages <= 0) throw InvalidInviteException()
+
+        val roomId: UUID
+
+        try {
+            roomId = UUID.fromString(openRoomInviteDTO.roomId)
+        } catch (_: IllegalArgumentException) {
+            throw InvalidUUIDException()
+        }
+
+        val id = getId()
+        userService.getUserById(id) ?: throw InvalidUserException()
+
+        val room = roomService.getRoom(roomId)
+        if (room.isEmpty) throw InvalidInviteException()
+
+        val userRoom = userRoomRepository.findByIdUserIdAndIdRoomId(id, roomId)
+            ?: throw RoomNotFoundException()
+
+        if (!userRoom.role.isAtLeast(RoomPermissions.OPEN_INVITE)) throw NotPermittedException()
+
+        val invite = InviteEntity(
+            type = InviteType.OPEN_ROOM_INVITE,
+            fromUserId = id,
+            roomId = roomId,
+            expiresAt = Instant.now().plus(7, ChronoUnit.DAYS),
+            maxUsages = openRoomInviteDTO.maxUsages,
+            status = InviteStatus.PENDING
+        )
+
+        inviteRepository.save(invite)
+    }
 
     private fun handleFriendRequestResponse(response: InviteResponse, invite: InviteEntity, id: UUID){
         if (id != invite.toUserId) throw InviteNotFoundException()
@@ -155,5 +187,17 @@ class InviteService(
         roomService.joinRoom(id, invite.roomId!!)
     }
 
-    private fun handleOpenRoomInviteResponse(response: InviteResponse, invite: InviteEntity, id: UUID){}
+    private fun handleOpenRoomInviteResponse(invite: InviteEntity, id: UUID){
+        if (invite.roomId == null) throw InvalidInviteException()
+
+        if (userRoomRepository.existsByIdUserIdAndIdRoomId(id, invite.roomId!!)) throw AlreadyInvitedException()
+        if (bannedUserService.isUserBanned(id, invite.roomId!!)) throw BannedException()
+
+        val updated = inviteRepository.incrementUsagesIfAvailable(invite.id)
+        if (updated == 0) throw InvalidInviteException()
+
+        inviteRepository.deleteByToUserIdAndRoomId(id, invite.roomId!!)
+
+        roomService.joinRoom(id, invite.roomId!!)
+    }
 }

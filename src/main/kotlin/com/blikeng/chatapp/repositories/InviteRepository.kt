@@ -2,6 +2,7 @@ package com.blikeng.chatapp.repositories
 
 import com.blikeng.chatapp.entities.InviteEntity
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import java.util.*
 
@@ -25,4 +26,10 @@ interface InviteRepository: JpaRepository<InviteEntity, UUID> {
         AND i.toUserId = :id
     """)
     fun existsPendingRoomInvite(id: UUID, roomId: UUID): Boolean
+
+    fun deleteByToUserIdAndRoomId(id: UUID, roomId: UUID)
+
+    @Modifying
+    @Query("UPDATE InviteEntity i SET i.usages = i.usages + 1 WHERE i.id = :id AND i.usages < i.maxUsages")
+    fun incrementUsagesIfAvailable(id: UUID): Int
 }
