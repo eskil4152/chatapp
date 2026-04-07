@@ -23,6 +23,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
 import java.util.*
+import java.util.Optional
 import kotlin.test.assertFailsWith
 
 @ExtendWith(MockKExtension::class)
@@ -99,8 +100,7 @@ class FriendQueryTests {
 
         every { userService.getUserById(user1.id) } returns user1
         every { userRepository.getUserByUsernameIgnoreCase("username2") } returns user2
-        every { friendsRepository.existsById(any()) } returns true
-        every { presenceHandler.isUserOnline(user2.id) } returns true
+        every { friendsRepository.findById(any()) } returns Optional.of(friendsEntity)
 
         val friend = friendService.getFriendInfo("username2")
 
@@ -138,7 +138,7 @@ class FriendQueryTests {
 
         every { userService.getUserById(user1.id) } returns user1
         every { userRepository.getUserByUsernameIgnoreCase("username2") } returns user2
-        every { friendsRepository.existsById(any()) } returns false
+        every { friendsRepository.findById(any()) } returns Optional.empty()
 
         val exception = assertFailsWith<ApiException> { friendService.getFriendInfo("username2") }
         assertEquals(HttpStatus.NOT_FOUND, exception.status)

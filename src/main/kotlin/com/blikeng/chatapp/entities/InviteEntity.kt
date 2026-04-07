@@ -25,6 +25,7 @@ class InviteEntity (
 
     val expiresAt: Instant,
 
+    @Enumerated(EnumType.STRING)
     var status: InviteStatus
 )
 enum class InviteStatus {

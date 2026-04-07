@@ -20,8 +20,10 @@ import org.springframework.transaction.annotation.Transactional
 import java.util.*
 
 // ==========================
-// Handles room creation, membership, room updates, room deletion,
+// Handles room creation, membership management, room updates, room deletion,
 // and deterministic private message room creation between friends.
+// joinRoom is an internal method called by InviteService on invite acceptance;
+// direct join is not exposed as a public endpoint.
 // ==========================
 @Service
 class RoomService(

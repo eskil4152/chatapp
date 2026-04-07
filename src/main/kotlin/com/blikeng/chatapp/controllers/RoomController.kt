@@ -12,8 +12,9 @@ import org.springframework.web.bind.annotation.*
 
 // ==========================
 // Exposes room management endpoints for listing rooms, creating rooms,
-// joining and leaving rooms, editing and deleting rooms,
-// and starting private message rooms.
+// leaving and deleting rooms, editing rooms, banning/unbanning members,
+// administrative actions, and starting private message rooms.
+// Joining is handled via the invite flow (InvitesController).
 // ==========================
 @RestController
 @RequestMapping("/api/rooms")

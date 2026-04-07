@@ -7,8 +7,9 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 // ==========================
-// Exposes friend management endpoints for retrieving friends,
-// adding and removing friends, and fetching friend profile information.
+// Exposes friend management endpoints for listing friends,
+// removing friends, and fetching friend profile information.
+// Adding friends is handled via the invite flow (InvitesController).
 // ==========================
 @RestController
 @RequestMapping("/api/friends")

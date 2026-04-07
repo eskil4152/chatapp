@@ -16,13 +16,10 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.FilterType
 import org.springframework.http.MediaType
-import org.springframework.test.web.servlet.MockMvc
-import org.springframework.test.web.servlet.delete
-import org.springframework.test.web.servlet.get
-import org.springframework.test.web.servlet.patch
-import org.springframework.test.web.servlet.put
+import org.springframework.test.web.servlet.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
-import java.sql.Date
+import java.time.Instant
+import java.util.UUID
 import kotlin.test.Test
 
 @WebMvcTest(
@@ -58,13 +55,14 @@ class UserControllerTests {
     @Test
     fun shouldGetSelf(){
         val user = UserDTO(
+            userId = UUID.randomUUID(),
             username = "u",
             bio = "b",
             email = "e",
             fullName = "n",
             avatarUrl = "a",
             birthday = null,
-            createdAt = Date(System.currentTimeMillis()),
+            createdAt = Instant.now(),
             rooms = listOf(),
         )
 

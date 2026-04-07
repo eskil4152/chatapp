@@ -1,6 +1,7 @@
 package com.blikeng.chatapp.repositories
 
 import com.blikeng.chatapp.entities.InviteEntity
+import com.blikeng.chatapp.entities.InviteStatus
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
@@ -26,6 +27,8 @@ interface InviteRepository: JpaRepository<InviteEntity, UUID> {
         AND i.toUserId = :id
     """)
     fun existsPendingRoomInvite(id: UUID, roomId: UUID): Boolean
+
+    fun findByToUserIdAndStatus(toUserId: UUID, status: InviteStatus): List<InviteEntity>
 
     fun deleteByToUserIdAndRoomId(id: UUID, roomId: UUID)
 

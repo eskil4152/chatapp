@@ -4,6 +4,7 @@ import com.blikeng.chatapp.dtos.invites.FriendRequestDTO
 import com.blikeng.chatapp.dtos.invites.InviteResponse
 import com.blikeng.chatapp.dtos.invites.InviteResponseDTO
 import com.blikeng.chatapp.dtos.invites.OpenRoomInviteDTO
+import com.blikeng.chatapp.dtos.invites.PendingInviteDTO
 import com.blikeng.chatapp.dtos.invites.RoomInviteDTO
 import com.blikeng.chatapp.entities.InviteEntity
 import com.blikeng.chatapp.entities.InviteStatus
@@ -31,6 +32,12 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 
+// ==========================
+// Manages all invite lifecycle operations: sending friend requests and room invites,
+// creating open room invites with usage limits (returns the invite UUID as a shareable code),
+// listing pending invites for the current user, and responding to pending invites (accept/reject).
+// Accepting a friend request calls FriendService.addFriend; accepting a room invite calls RoomService.joinRoom.
+// ==========================
 @Service
 class InviteService(
     private val userService: UserService,
@@ -41,6 +48,21 @@ class InviteService(
     private val roomService: RoomService,
     private val bannedUserService: BannedUserService
 ) {
+    fun getPendingInvites(): List<PendingInviteDTO> {
+        val id = getId()
+        userService.getUserById(id) ?: throw InvalidUserException()
+
+        return inviteRepository.findByToUserIdAndStatus(id, InviteStatus.PENDING).map {
+            PendingInviteDTO(
+                id = it.id,
+                type = it.type,
+                fromUserId = it.fromUserId,
+                roomId = it.roomId,
+                expiresAt = it.expiresAt,
+            )
+        }
+    }
+
     fun sendFriendRequest(friendRequestDTO: FriendRequestDTO) {
         if (friendRequestDTO.username.trim().isEmpty()) throw InvalidInviteException()
 
@@ -65,7 +87,7 @@ class InviteService(
         inviteRepository.save(friendship)
     }
 
-    fun sendRoomInvite(roomInviteDTO: RoomInviteDTO){
+    fun sendRoomInvite(roomInviteDTO: RoomInviteDTO) {
         val targetId: UUID
         val roomId: UUID
 
@@ -136,7 +158,7 @@ class InviteService(
         }
     }
 
-    fun createOpenRoomInvite(openRoomInviteDTO: OpenRoomInviteDTO){
+    fun createOpenRoomInvite(openRoomInviteDTO: OpenRoomInviteDTO): UUID {
         if (openRoomInviteDTO.maxUsages <= 0) throw InvalidInviteException()
 
         val roomId: UUID
@@ -168,7 +190,7 @@ class InviteService(
             status = InviteStatus.PENDING
         )
 
-        inviteRepository.save(invite)
+        return inviteRepository.save(invite).id
     }
 
     private fun handleFriendRequestResponse(response: InviteResponse, invite: InviteEntity, id: UUID){

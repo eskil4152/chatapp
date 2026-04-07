@@ -173,8 +173,8 @@ class ChatService (
 
         val json = objectMapper.writeValueAsString(rabbitMessage)
 
-        rabbitTemplate.convertAndSend("chat.buffer", rabbitMessage)
         redisTemplate.opsForList().rightPush("chat.peek.${message.roomId}", json)
+        rabbitTemplate.convertAndSend("chat.buffer", rabbitMessage)
     }
 
     private fun getPendingMessages(roomId: UUID): List<RabbitMessageDTO> {

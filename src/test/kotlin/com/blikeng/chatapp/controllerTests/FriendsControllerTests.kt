@@ -2,7 +2,6 @@ package com.blikeng.chatapp.controllerTests
 
 import com.blikeng.chatapp.controllers.FriendsController
 import com.blikeng.chatapp.dtos.friends.FriendDTO
-import com.blikeng.chatapp.errors.AlreadyFriendsException
 import com.blikeng.chatapp.errors.InvalidUserException
 import com.blikeng.chatapp.errors.UserNotFoundException
 import com.blikeng.chatapp.security.auth.JwtAuthFilter
@@ -21,7 +20,6 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
-import org.springframework.test.web.servlet.post
 import java.sql.Date
 import java.time.Instant
 import java.util.UUID
@@ -66,7 +64,7 @@ class FriendsControllerTests {
         "full name",
         "",
         Date.from(Instant.now()),
-        Date.from(Instant.now()),
+        Instant.now(),
     )
 
     @Test
@@ -80,20 +78,6 @@ class FriendsControllerTests {
                 status { isOk() }
                 content { string(org.hamcrest.Matchers.containsString("username")) }
             }
-    }
-
-    @Test
-    fun shouldSendFriendsInvite(){
-        every { friendService.sendFriendRequest("friend") } returns Unit
-
-        mockMvc.post("/api/friends/add") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """
-                {
-                    "username": "friend"
-                }
-            """.trimIndent()
-        }.andExpect {  status { isOk() } }
     }
 
     @Test
@@ -149,17 +133,4 @@ class FriendsControllerTests {
             .andExpect { status { isNotFound() } }
     }
 
-    @Test
-    fun shouldGetConflictFromBeingAlreadyFriends(){
-        every { friendService.sendFriendRequest("myself") } throws AlreadyFriendsException()
-
-        mockMvc.post("/api/friends/add"){
-            contentType = MediaType.APPLICATION_JSON
-            content = """
-                {
-                    "username": "myself"
-                }
-            """.trimIndent()
-        }.andExpect { status { isConflict() } }
-    }
 }

@@ -23,8 +23,10 @@ import org.springframework.web.socket.WebSocketSession
 import java.util.*
 
 // ==========================
-// Handles friend relationships, friend lookups, and friend profile retrieval.
-// Validates friendship existence and enforces deterministic friendship ordering.
+// Manages friend relationships: adding/removing friends, listing friends,
+// fetching friend profile info, and notifying friends of presence changes.
+// Adding friends is triggered by InviteService on invite acceptance.
+// Enforces deterministic composite-key ordering for friendship records.
 // ==========================
 @Service
 class FriendService(

@@ -35,7 +35,8 @@ class UserService(
         val user = getUserById(id) ?: throw InvalidUserException()
 
         return UserDTO(
-            user.username,
+            userId = id,
+            username = user.username,
             bio = user.bio,
             email = user.email,
             fullName = user.fullName,

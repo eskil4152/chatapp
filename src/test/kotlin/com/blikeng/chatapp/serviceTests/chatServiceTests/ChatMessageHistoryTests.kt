@@ -13,6 +13,7 @@ import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.crypto.ChatEncrypt
 import com.blikeng.chatapp.services.ChatService
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
@@ -30,7 +31,7 @@ import org.springframework.data.domain.PageImpl
 import org.springframework.data.redis.core.ListOperations
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.http.HttpStatus
-import java.sql.Timestamp
+import java.time.Instant
 import java.util.*
 import java.util.Collections.emptyList
 import java.util.concurrent.CopyOnWriteArraySet
@@ -60,7 +61,7 @@ class ChatMessageHistoryTests {
     @MockK(relaxed = true) lateinit var meterRegistry: MeterRegistry
 
     @InjectMockKs lateinit var chatService: ChatService
-    private val objectMapper = jacksonObjectMapper()
+    private val objectMapper = jacksonObjectMapper().registerModule(JavaTimeModule())
 
     @BeforeEach
     fun setup() {
@@ -79,8 +80,8 @@ class ChatMessageHistoryTests {
         val room = RoomEntity(name = "r", type = RoomType.GROUP)
         val user = UserEntity(username = "u", password = "")
 
-        val chat1 = ChatEntity(roomId = room.id, user = user, message = "Hello", timestamp = Timestamp(System.currentTimeMillis() - 1000))
-        val chat2 = ChatEntity(roomId = room.id, user = user, message = "Hello again", timestamp = Timestamp(System.currentTimeMillis()))
+        val chat1 = ChatEntity(roomId = room.id, user = user, message = "Hello", timestamp = Instant.now().minusMillis(1000))
+        val chat2 = ChatEntity(roomId = room.id, user = user, message = "Hello again", timestamp = Instant.now())
 
         every { chatRepository.findByRoomIdOrderByTimestampDesc(eq(room.id), any()) } returns PageImpl(listOf(chat2, chat1))
         every { listOps.range("chat.peek.${room.id}", 0L, -1L) } returns emptyList()
@@ -96,7 +97,7 @@ class ChatMessageHistoryTests {
     fun shouldGetOnlyPersistedMessagesAfterPageZero() {
         val room = RoomEntity(name = "r", type = RoomType.GROUP)
         val user = UserEntity(username = "u", password = "")
-        val chat = ChatEntity(roomId = room.id, user = user, message = "Older message", timestamp = Timestamp(System.currentTimeMillis()))
+        val chat = ChatEntity(roomId = room.id, user = user, message = "Older message", timestamp = Instant.now())
 
         every { chatRepository.findByRoomIdOrderByTimestampDesc(eq(room.id), any()) } returns PageImpl(listOf(chat))
 
@@ -128,7 +129,7 @@ class ChatMessageHistoryTests {
         val room = RoomEntity(name = "r", type = RoomType.GROUP)
         val user = UserEntity(id = UUID.randomUUID(), username = "u", password = "")
 
-        val persisted = ChatEntity(roomId = room.id, user = user, message = "persisted", timestamp = Timestamp(System.currentTimeMillis() - 1000))
+        val persisted = ChatEntity(roomId = room.id, user = user, message = "persisted", timestamp = Instant.now().minusMillis(1000))
         every { chatRepository.findByRoomIdOrderByTimestampDesc(eq(room.id), any()) } returns PageImpl(listOf(persisted))
 
         val pending = RabbitMessageDTO(roomId = room.id, userId = user.id, username = user.username, message = "pending")
@@ -175,7 +176,7 @@ class ChatMessageHistoryTests {
         val chat = ChatEntity(
             roomId = room.id, user = user, message = null,
             ciphertext = "cipher".toByteArray(), nonce = "nonce".toByteArray(),
-            keyVersion = 1, timestamp = Timestamp(System.currentTimeMillis())
+            keyVersion = 1, timestamp = Instant.now()
         )
 
         every { chatRepository.findByRoomIdOrderByTimestampDesc(eq(room.id), any()) } returns PageImpl(listOf(chat))

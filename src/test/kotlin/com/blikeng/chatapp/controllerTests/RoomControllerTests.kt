@@ -88,24 +88,6 @@ class RoomControllerTests {
     }
 
     @Test
-    fun shouldJoinRoom(){
-        val roomId = UUID.randomUUID()
-
-        every { roomService.joinRoom(any()) } returns Unit
-
-        mockMvc.post("/api/rooms/join") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """
-                {
-                    "roomId":"$roomId"
-                }
-            """.trimIndent()
-        }
-            .andExpect { status { isOk() } }
-            .andExpect { content { string("Joined room successfully") } }
-    }
-
-    @Test
     fun shouldUpdateRoomName(){
         val roomId = UUID.randomUUID()
 
@@ -214,22 +196,6 @@ class RoomControllerTests {
             status { isBadRequest() }
             content { content { string("Invalid room name") }}
         }
-    }
-
-    @Test
-    fun shouldGetNotFound(){
-        every { roomService.joinRoom(any()) } throws RoomNotFoundException()
-
-        mockMvc.post("/api/rooms/join") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """
-                {
-                    "roomId":"${UUID.randomUUID()}"
-                }
-            """.trimIndent()
-        }
-            .andExpect { status { isNotFound() }}
-            .andExpect { content { string("Room not found") }}
     }
 
     @Test
