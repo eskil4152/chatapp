@@ -16,4 +16,13 @@ interface InviteRepository: JpaRepository<InviteEntity, UUID> {
           )
     """)
     fun existsPendingFriendRequest(id: UUID, friendId: UUID): Boolean
+
+    @Query("""
+        SELECT COUNT(i) > 0 FROM InviteEntity i
+        WHERE i.type = 'ROOM_INVITE'
+        AND i.status = 'PENDING'
+        AND i.roomId = :roomId
+        AND i.toUserId = :id
+    """)
+    fun existsPendingRoomInvite(id: UUID, roomId: UUID): Boolean
 }

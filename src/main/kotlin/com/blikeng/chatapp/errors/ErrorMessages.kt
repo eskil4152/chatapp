@@ -36,4 +36,6 @@ object ErrorMessages {
     const val INVITE_NOT_FOUND = "Invite not found"
     const val INVALID_INVITE = "Invalid invite"
     const val ALREADY_INVITED = "Already invited"
+    const val INVITE_YOURSELF = "You can not invite yourself"
+    const val INVITE_BANNED = "You can not invite a banned user"
 }

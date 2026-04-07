@@ -83,8 +83,8 @@ class FriendsControllerTests {
     }
 
     @Test
-    fun shouldAddFriends(){
-        every { friendService.addFriend("friend") } returns Unit
+    fun shouldSendFriendsInvite(){
+        every { friendService.sendFriendRequest("friend") } returns Unit
 
         mockMvc.post("/api/friends/add") {
             contentType = MediaType.APPLICATION_JSON
@@ -151,7 +151,7 @@ class FriendsControllerTests {
 
     @Test
     fun shouldGetConflictFromBeingAlreadyFriends(){
-        every { friendService.addFriend("myself") } throws AlreadyFriendsException()
+        every { friendService.sendFriendRequest("myself") } throws AlreadyFriendsException()
 
         mockMvc.post("/api/friends/add"){
             contentType = MediaType.APPLICATION_JSON

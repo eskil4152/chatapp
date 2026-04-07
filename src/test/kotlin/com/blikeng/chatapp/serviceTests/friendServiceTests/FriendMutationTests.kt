@@ -9,7 +9,6 @@ import com.blikeng.chatapp.repositories.FriendsRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.services.FriendService
 import com.blikeng.chatapp.services.UserService
-import com.blikeng.chatapp.websocket.SessionRegistry
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
@@ -65,7 +64,7 @@ class FriendMutationTests {
         every { friendsRepository.existsById(any()) } returns false
         every { friendsRepository.save(capture(slot)) } answers { firstArg() }
 
-        friendService.addFriend("username2")
+        friendService.sendFriendRequest("username2")
 
         assertEquals(setOf(user1.id, user2.id), setOf(slot.captured.userA.id, slot.captured.userB.id))
     }
@@ -81,7 +80,7 @@ class FriendMutationTests {
         every { friendsRepository.existsById(any()) } returns false
         every { friendsRepository.save(capture(slot)) } answers { firstArg() }
 
-        friendService.addFriend("username1")
+        friendService.sendFriendRequest("username1")
 
         assertEquals(setOf(user1.id, user2.id), setOf(slot.captured.userA.id, slot.captured.userB.id))
     }
@@ -103,7 +102,7 @@ class FriendMutationTests {
         every { friendsRepository.existsById(any()) } returns false
         every { friendsRepository.save(capture(slot)) } answers { firstArg() }
 
-        friendService.addFriend("high")
+        friendService.sendFriendRequest("high")
 
         assertEquals(lowId, slot.captured.userA.id)
         assertEquals(highId, slot.captured.userB.id)
@@ -126,7 +125,7 @@ class FriendMutationTests {
         every { friendsRepository.existsById(any()) } returns false
         every { friendsRepository.save(capture(slot)) } answers { firstArg() }
 
-        friendService.addFriend("low")
+        friendService.sendFriendRequest("low")
 
         assertEquals(lowId, slot.captured.userA.id)
         assertEquals(highId, slot.captured.userB.id)
@@ -139,7 +138,7 @@ class FriendMutationTests {
 
         every { userService.getUserById(user1.id) } returns null
 
-        val exception = assertFailsWith<ApiException> { friendService.addFriend("username") }
+        val exception = assertFailsWith<ApiException> { friendService.sendFriendRequest("username") }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
@@ -151,7 +150,7 @@ class FriendMutationTests {
         every { userService.getUserById(user1.id) } returns user1
         every { userRepository.getUserByUsernameIgnoreCase("non existent") } returns null
 
-        val exception = assertFailsWith<ApiException> { friendService.addFriend("non existent") }
+        val exception = assertFailsWith<ApiException> { friendService.sendFriendRequest("non existent") }
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
@@ -163,7 +162,7 @@ class FriendMutationTests {
         every { userService.getUserById(user1.id) } returns user1
         every { userRepository.getUserByUsernameIgnoreCase("username1") } returns user1
 
-        val exception = assertFailsWith<ApiException> { friendService.addFriend("username1") }
+        val exception = assertFailsWith<ApiException> { friendService.sendFriendRequest("username1") }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
@@ -176,7 +175,7 @@ class FriendMutationTests {
         every { userRepository.getUserByUsernameIgnoreCase("username2") } returns user2
         every { friendsRepository.existsById(any()) } returns true
 
-        val exception = assertFailsWith<ApiException> { friendService.addFriend("username2") }
+        val exception = assertFailsWith<ApiException> { friendService.sendFriendRequest("username2") }
         assertEquals(HttpStatus.CONFLICT, exception.status)
     }
 

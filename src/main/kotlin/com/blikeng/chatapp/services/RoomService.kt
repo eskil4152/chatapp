@@ -76,24 +76,15 @@ class RoomService(
         return roomDTOs
     }
 
+    fun getRoom(roomId: UUID): Optional<RoomEntity> {
+        return roomRepository.findById(roomId)
+    }
+
     // ==========================
     // Room membership
     // ==========================
-    fun joinRoom(roomId: String?){
-        val userId = getId()
-        userService.getUserById(userId) ?: throw InvalidUserException()
-
-        val roomUUID = try {
-            UUID.fromString(roomId)
-        } catch (_: IllegalArgumentException) {
-            throw InvalidUUIDException()
-        }
-
-        roomRepository.findById(roomUUID).orElse(null) ?: throw RoomNotFoundException()
-
-        if (bannedUserService.isUserBanned(userId, roomUUID)) throw BannedException()
-
-        val userRoom = UserRoomEntity(UserRoomId(userId, roomUUID), RoomRole.MEMBER, RoomType.GROUP)
+    fun joinRoom(id: UUID, roomId: UUID) {
+        val userRoom = UserRoomEntity(UserRoomId(id, roomId), RoomRole.MEMBER, RoomType.GROUP)
         userRoomRepository.save(userRoom)
     }
 
@@ -136,9 +127,7 @@ class RoomService(
         val userRoom = userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
             ?: throw RoomNotFoundException()
 
-        if (userRoom.role != RoomRole.OWNER) {
-            throw NotPermittedException()
-        }
+        if (!userRoom.role.isAtLeast(RoomPermissions.EDIT_ROOM)) throw NotPermittedException()
 
         val room = roomRepository.findById(roomId).orElse(null)
             ?: throw RoomNotFoundException()
@@ -161,9 +150,7 @@ class RoomService(
         val userRoom = userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomUUID)
             ?: throw RoomNotFoundException()
 
-        if (userRoom.role != RoomRole.OWNER) {
-            throw NotPermittedException()
-        }
+        if (!userRoom.role.isAtLeast(RoomPermissions.DELETE_ROOM)) throw NotPermittedException()
 
         val memberIds = userRoomRepository.findUsersByRoomId(roomUUID).map { it.id }
 
@@ -200,9 +187,8 @@ class RoomService(
         val userRoom = userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
             ?: throw RoomNotFoundException()
 
-        if (userRoom.role != RoomRole.OWNER) {
-            throw NotPermittedException()
-        }
+        val requiredPermission = if (action == RoomAction.BAN) RoomPermissions.BAN_USER else RoomPermissions.KICK_USER
+        if (!userRoom.role.isAtLeast(requiredPermission)) throw NotPermittedException()
 
         userRoomRepository.deleteByIdUserIdAndIdRoomId(targetId, roomId)
 
@@ -232,9 +218,7 @@ class RoomService(
         val userRoom = userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
             ?: throw RoomNotFoundException()
 
-        if (userRoom.role != RoomRole.OWNER) {
-            throw NotPermittedException()
-        }
+        if (!userRoom.role.isAtLeast(RoomPermissions.UNBAN_USER)) throw NotPermittedException()
 
         bannedUserService.unbanUser(targetId, roomId)
     }
@@ -252,9 +236,7 @@ class RoomService(
         val userRoom = userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
             ?: throw RoomNotFoundException()
 
-        if (userRoom.role != RoomRole.OWNER) {
-            throw NotPermittedException()
-        }
+        if (!userRoom.role.isAtLeast(RoomPermissions.VIEW_BANS)) throw NotPermittedException()
 
         val bannedUserIds = bannedUserService.getBannedUserIds(roomId)
         val bannedUsers = userService.getAllById(bannedUserIds)

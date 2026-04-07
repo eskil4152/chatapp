@@ -24,5 +24,10 @@ class UserRoomId(
 ) : Serializable
 
 enum class RoomRole {
-    OWNER, MEMBER
+    MEMBER,
+    MODERATOR,
+    ADMIN,
+    OWNER;
+
+    fun isAtLeast(required: RoomRole) = this.ordinal >= required.ordinal
 }

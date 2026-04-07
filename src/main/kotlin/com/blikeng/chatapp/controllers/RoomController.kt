@@ -37,15 +37,6 @@ class RoomController(
         return ResponseEntity.status(201).body("Room created successfully")
     }
 
-    @PostMapping("/join")
-    fun joinRoom(
-        @RequestBody roomDTO: RoomDTO
-    ) : ResponseEntity<String> {
-        roomService.joinRoom(roomDTO.roomId)
-
-        return ResponseEntity.ok("Joined room successfully")
-    }
-
     @PutMapping("/edit")
     fun editRoom(
         @RequestBody roomDTO: RoomDTO

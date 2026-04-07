@@ -42,3 +42,5 @@ class InvalidBanException : ApiException(HttpStatus.FORBIDDEN, ErrorMessages.INV
 class InvalidInviteException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.INVALID_INVITE)
 class InviteNotFoundException : ApiException(HttpStatus.NOT_FOUND, ErrorMessages.INVITE_NOT_FOUND)
 class AlreadyInvitedException : ApiException(HttpStatus.CONFLICT, ErrorMessages.ALREADY_INVITED)
+class InviteYourselfException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.INVITE_YOURSELF)
+class InviteBannedUserException : ApiException(HttpStatus.FORBIDDEN, ErrorMessages.INVITE_BANNED)
