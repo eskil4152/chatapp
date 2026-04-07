@@ -1,2 +1,0 @@
-ALTER TABLE friends
-    ADD COLUMN friends_since TIMESTAMPTZ NOT NULL DEFAULT NOW();

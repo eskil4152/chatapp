@@ -1,7 +1,7 @@
 CREATE TABLE chats (
     id UUID PRIMARY KEY,
     room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES users(id),
+    user_id UUID NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000' REFERENCES users(id) ON DELETE SET DEFAULT,
     message TEXT,
     ciphertext BYTEA,
     nonce BYTEA,

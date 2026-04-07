@@ -1,12 +1,13 @@
 CREATE TABLE users
 (
     id UUID primary key,
-    username VARCHAR(16) NOT NULL,
+    username VARCHAR(16) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     bio VARCHAR(500),
     email VARCHAR(254),
     full_name VARCHAR(100),
     avatar_url VARCHAR(2048),
     birthday DATE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'UTC')
+    created_at TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'UTC'),
+    role VARCHAR(16) NOT NULL DEFAULT 'USER'
 );
