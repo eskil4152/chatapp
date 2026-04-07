@@ -28,7 +28,7 @@ import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
-import java.sql.Timestamp
+import java.time.Instant
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
@@ -122,7 +122,7 @@ class ChatService (
     // Message publishing and fetching
     // ==========================
     fun broadcast(roomId: UUID, message: ReceivedMessage, username: String) {
-        val timestamp = Timestamp(System.currentTimeMillis())
+        val timestamp = Instant.now()
         if (!userRoomRepository.existsByIdUserIdAndIdRoomId(message.userId, roomId)) throw RoomNotFoundException()
 
         if (message.content.isBlank() || message.content.length > 2000) throw InvalidMessageException()

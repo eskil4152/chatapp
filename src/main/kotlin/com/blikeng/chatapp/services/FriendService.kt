@@ -52,7 +52,7 @@ class FriendService(
                 fullName = friend.fullName,
                 avatarUrl = friend.avatarUrl,
                 birthday = friend.birthday,
-                createdAt = friend.createdAt,
+                friendsSince = friendship.friendsSince,
             )
         }
     }
@@ -95,7 +95,7 @@ class FriendService(
         val friend = userRepository.getUserByUsernameIgnoreCase(friendUsername) ?: throw UserNotFoundException()
 
         val friendshipId = generateFriendshipId(id, friend.id)
-        if (!friendsRepository.existsById(friendshipId)) throw UserNotFoundException()
+        val friendship = friendsRepository.findById(friendshipId).orElseThrow { UserNotFoundException() }
 
         return FriendDTO(
             userId = friend.id,
@@ -105,7 +105,7 @@ class FriendService(
             fullName = friend.fullName,
             avatarUrl = friend.avatarUrl,
             birthday = friend.birthday,
-            createdAt = friend.createdAt,
+            friendsSince = friendship.friendsSince,
         )
     }
 

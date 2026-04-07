@@ -6,7 +6,7 @@ CREATE TABLE chats (
     ciphertext BYTEA,
     nonce BYTEA,
     key_version INT,
-    timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'UTC')
 
     CONSTRAINT chats_one_of_plain_or_encrypted CHECK (
         (message IS NOT NULL AND ciphertext IS NULL AND nonce IS NULL AND key_version IS NULL)

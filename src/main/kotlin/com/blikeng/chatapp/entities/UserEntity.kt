@@ -7,7 +7,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
-import java.sql.Timestamp
+import java.time.Instant
 import java.util.*
 
 @Entity
@@ -38,7 +38,7 @@ class UserEntity (
     val birthday: Date? = null,
 
     @Column(name = "created_at", updatable = false)
-    val createdAt: Timestamp = Timestamp(System.currentTimeMillis()),
+    val createdAt: Instant = Instant.now(),
 
     @Column(name = "role")
     @Enumerated(EnumType.STRING)

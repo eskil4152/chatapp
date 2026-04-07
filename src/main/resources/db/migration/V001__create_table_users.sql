@@ -8,5 +8,5 @@ CREATE TABLE users
     full_name VARCHAR(100),
     avatar_url VARCHAR(2048),
     birthday DATE,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'UTC')
 );

@@ -7,7 +7,7 @@ CREATE TABLE invites
     room_id UUID REFERENCES rooms(id) ON DELETE CASCADE,
     usages INT,
     max_usages INT,
-    expires_at TIMESTAMP NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'UTC'),
     status VARCHAR(12) NOT NULL CHECK (status IN ('PENDING', 'ACCEPTED', 'REJECTED', 'EXPIRED', 'EXHAUSTED')),
 
     CONSTRAINT chk_usages_non_negative CHECK (usages IS NULL OR usages >= 0),
