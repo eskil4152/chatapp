@@ -13,6 +13,7 @@ import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.crypto.ChatEncrypt
 import com.blikeng.chatapp.services.ChatService
+import com.blikeng.chatapp.services.UserService
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.micrometer.core.instrument.MeterRegistry
@@ -50,6 +51,7 @@ class ChatMessageHistoryTests {
     // - Gauge reflects room count
     // ==========================
 
+    @MockK lateinit var userService: UserService
     @MockK lateinit var chatRepository: ChatRepository
     @MockK lateinit var roomRepository: RoomRepository
     @MockK lateinit var userRoomRepository: UserRoomRepository
@@ -208,6 +210,7 @@ class ChatMessageHistoryTests {
             objectMapper = objectMapper,
             presenceHandler = presenceHandler,
             meterRegistry = meterRegistry,
+            userService = userService
         )
 
         val roomsGauge = meterRegistry.get("chat.rooms").gauge()

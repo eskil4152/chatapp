@@ -68,6 +68,7 @@ class InvitesControllerTests {
             expiresAt = Instant.now(),
             fromUsername = "user1",
             fromAvatarUrl = null,
+            roomName = null
         )
         every { inviteService.getPendingInvites() } returns listOf(invite)
 
@@ -103,7 +104,7 @@ class InvitesControllerTests {
 
         mockMvc.post("/api/invites/room") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"type":"ROOM_INVITE","targetUserId":"${UUID.randomUUID()}","roomId":"${UUID.randomUUID()}","expiresAt":${System.currentTimeMillis() + 604800000}}"""
+            content = """{"type":"ROOM_INVITE","targetUsername":"username","roomId":"${UUID.randomUUID()}","expiresAt":${System.currentTimeMillis() + 604800000}}"""
         }
             .andExpect { status { isOk() } }
             .andExpect { content { string("Room invite sent successfully") } }
@@ -176,7 +177,7 @@ class InvitesControllerTests {
 
         mockMvc.post("/api/invites/room") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"type":"ROOM_INVITE","targetUserId":"${UUID.randomUUID()}","roomId":"${UUID.randomUUID()}","expiresAt":${System.currentTimeMillis() + 604800000}}"""
+            content = """{"type":"ROOM_INVITE","targetUsername":"username","roomId":"${UUID.randomUUID()}","expiresAt":${System.currentTimeMillis() + 604800000}}"""
         }
             .andExpect { status { isForbidden() } }
     }
@@ -201,5 +202,14 @@ class InvitesControllerTests {
             content = """{"type":"OPEN_ROOM_INVITE","roomId":"${UUID.randomUUID()}","maxUsages":0,"expiresAt":${System.currentTimeMillis() + 604800000}}"""
         }
             .andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun shouldGetOutgoingInvites() {
+        every { inviteService.getOutgoingInvites() } returns emptyList()
+
+        mockMvc.get("/api/invites/outgoing")
+            .andExpect { status { isOk() } }
+            .andExpect { content { string("[]") } }
     }
 }

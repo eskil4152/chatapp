@@ -8,6 +8,7 @@ import com.blikeng.chatapp.entities.InviteStatus
 import com.blikeng.chatapp.entities.InviteType
 import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.entities.RoomRole
+import com.blikeng.chatapp.entities.RoomType
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.entities.UserRoomEntity
 import com.blikeng.chatapp.errors.ApiException
@@ -28,6 +29,7 @@ import io.mockk.junit5.MockKExtension
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.Runs
+import io.mockk.slot
 import io.mockk.verify
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -165,12 +167,17 @@ class InviteSendTests {
     // ==========================
     @Test
     fun shouldSendRoomInvite() {
+        val room = RoomEntity(
+            name = "Test Room",
+            type = RoomType.GROUP,
+        )
+
         setAuth(user1.id)
         val userRoom = mockk<UserRoomEntity>()
         every { userRoom.role } returns RoomRole.OWNER
         every { userService.getUserById(user1.id) } returns user1
         every { userRoomRepository.findByIdUserIdAndIdRoomId(user1.id, roomId) } returns userRoom
-        every { roomService.getRoom(roomId) } returns Optional.of(mockk<RoomEntity>())
+        every { roomService.getRoom(roomId) } returns Optional.of(room)
         every { userRepository.getUserByUsernameIgnoreCase(user2.username) } returns user2
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(user2.id, roomId) } returns false
         every { bannedUserService.isUserBanned(user2.id, roomId) } returns false
@@ -427,6 +434,29 @@ class InviteSendTests {
     }
 
     // ==========================
+    // createOpenRoomInvite expiry branch
+    // ==========================
+    @Test
+    fun shouldCreateOpenRoomInviteWithCustomExpiry() {
+        setAuth(user1.id)
+        val userRoom = mockk<UserRoomEntity>()
+        every { userRoom.role } returns RoomRole.OWNER
+        every { userService.getUserById(user1.id) } returns user1
+        every { roomService.getRoom(roomId) } returns Optional.of(mockk<RoomEntity>())
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(user1.id, roomId) } returns userRoom
+        val customExpiry = System.currentTimeMillis() + 86400000L
+        val savedId = UUID.randomUUID()
+        every { inviteRepository.save(any()) } answers {
+            val e = firstArg<InviteEntity>()
+            InviteEntity(id = savedId, type = e.type, fromUserId = e.fromUserId, roomId = e.roomId, usages = e.usages, maxUsages = e.maxUsages, expiresAt = e.expiresAt, status = e.status)
+        }
+
+        val result = inviteService.createOpenRoomInvite(OpenRoomInviteDTO(type = "OPEN_ROOM_INVITE", roomId = roomId.toString(), maxUsages = 5, expiresAt = customExpiry))
+
+        assertEquals(savedId, result)
+    }
+
+    // ==========================
     // getPendingInvites
     // ==========================
     @Test
@@ -450,6 +480,47 @@ class InviteSendTests {
     }
 
     @Test
+    fun shouldReturnPendingInvitesWithRoomName() {
+        val room = RoomEntity(name = "Cool Room", type = RoomType.GROUP)
+        val invite = InviteEntity(
+            type = InviteType.ROOM_INVITE,
+            fromUserId = user2.id,
+            toUserId = user1.id,
+            roomId = roomId,
+            expiresAt = Instant.now().plusSeconds(3600),
+            status = InviteStatus.PENDING,
+        )
+        every { userService.getUserById(user1.id) } returns user1
+        every { userService.getUserById(user2.id) } returns user2
+        every { inviteRepository.findByToUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns listOf(invite)
+        every { roomService.getRoom(roomId) } returns Optional.of(room)
+
+        val result = inviteService.getPendingInvites(user1.id)
+
+        assertEquals(1, result.size)
+        assertEquals("Cool Room", result[0].roomName)
+    }
+
+    @Test
+    fun shouldReturnPendingInvitesWithUnknownSenderWhenSenderDeleted() {
+        val invite = InviteEntity(
+            type = InviteType.FRIEND_REQUEST,
+            fromUserId = user2.id,
+            toUserId = user1.id,
+            expiresAt = Instant.now().plusSeconds(3600),
+            status = InviteStatus.PENDING,
+        )
+        every { userService.getUserById(user1.id) } returns user1
+        every { userService.getUserById(user2.id) } returns null
+        every { inviteRepository.findByToUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns listOf(invite)
+
+        val result = inviteService.getPendingInvites(user1.id)
+
+        assertEquals(1, result.size)
+        assertEquals("Unknown", result[0].fromUsername)
+    }
+
+    @Test
     fun shouldReturnEmptyListWhenNoPendingInvites() {
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findByToUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns emptyList()
@@ -467,5 +538,258 @@ class InviteSendTests {
             inviteService.getPendingInvites(user1.id)
         }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
+    }
+
+    @Test
+    fun shouldReturnPendingInvitesWithNullRoomNameWhenRoomNotFound() {
+        val invite = InviteEntity(
+            type = InviteType.ROOM_INVITE,
+            fromUserId = user2.id,
+            toUserId = user1.id,
+            roomId = roomId,
+            expiresAt = Instant.now().plusSeconds(3600),
+            status = InviteStatus.PENDING,
+        )
+        every { userService.getUserById(user1.id) } returns user1
+        every { userService.getUserById(user2.id) } returns user2
+        every { inviteRepository.findByToUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns listOf(invite)
+        every { roomService.getRoom(roomId) } returns Optional.empty()
+
+        val result = inviteService.getPendingInvites(user1.id)
+
+        assertEquals(1, result.size)
+        assertEquals(null, result[0].roomName)
+    }
+
+    // ==========================
+    // sendFriendRequest event content
+    // ==========================
+    @Test
+    fun shouldSendFriendRequestAndPublishEventWithCorrectContent() {
+        val sender = UserEntity(id = user1.id, username = "user1", password = "pw", avatarUrl = "avatar-url")
+        setAuth(sender.id)
+        every { userService.getUserById(sender.id) } returns sender
+        every { userRepository.getUserByUsernameIgnoreCase("user2") } returns user2
+        every { inviteRepository.existsPendingFriendRequest(sender.id, user2.id) } returns false
+        every { friendService.areFriends(sender.id, user2.id) } returns false
+        every { inviteRepository.save(any()) } answers { firstArg() }
+
+        val eventSlot = slot<InviteSentEvent>()
+        every { eventPublisher.publishEvent(capture(eventSlot)) } just Runs
+
+        inviteService.sendFriendRequest(FriendRequestDTO(username = "user2"))
+
+        val event = eventSlot.captured
+        assertEquals(user2.id, event.toUserId)
+        assertEquals(sender.username, event.invite.fromUsername)
+        assertEquals("avatar-url", event.invite.fromAvatarUrl)
+        assertEquals(null, event.invite.roomName)
+        assertEquals(null, event.invite.roomId)
+    }
+
+    @Test
+    fun shouldSendFriendRequestAndPublishEventWithNullAvatarUrl() {
+        // sender has no avatar — fromAvatarUrl must be null in the event
+        setAuth(user1.id)
+        every { userService.getUserById(user1.id) } returns user1  // avatarUrl defaults to null
+        every { userRepository.getUserByUsernameIgnoreCase("user2") } returns user2
+        every { inviteRepository.existsPendingFriendRequest(user1.id, user2.id) } returns false
+        every { friendService.areFriends(user1.id, user2.id) } returns false
+        every { inviteRepository.save(any()) } answers { firstArg() }
+
+        val eventSlot = slot<InviteSentEvent>()
+        every { eventPublisher.publishEvent(capture(eventSlot)) } just Runs
+
+        inviteService.sendFriendRequest(FriendRequestDTO(username = "user2"))
+
+        assertEquals(null, eventSlot.captured.invite.fromAvatarUrl)
+    }
+
+    // ==========================
+    // sendRoomInvite event content
+    // ==========================
+    @Test
+    fun shouldSendRoomInviteAndPublishEventWithRoomName() {
+        val room = RoomEntity(name = "My Room", type = RoomType.GROUP)
+        val sender = UserEntity(id = user1.id, username = "user1", password = "pw", avatarUrl = "avatar-url")
+        setAuth(sender.id)
+        val userRoom = mockk<UserRoomEntity>()
+        every { userRoom.role } returns RoomRole.OWNER
+        every { userService.getUserById(sender.id) } returns sender
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(sender.id, roomId) } returns userRoom
+        every { roomService.getRoom(roomId) } returnsMany listOf(Optional.of(room), Optional.of(room))
+        every { userRepository.getUserByUsernameIgnoreCase(user2.username) } returns user2
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(user2.id, roomId) } returns false
+        every { bannedUserService.isUserBanned(user2.id, roomId) } returns false
+        every { inviteRepository.existsPendingRoomInvite(user2.id, roomId) } returns false
+        every { inviteRepository.save(any()) } answers { firstArg() }
+
+        val eventSlot = slot<InviteSentEvent>()
+        every { eventPublisher.publishEvent(capture(eventSlot)) } just Runs
+
+        inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUsername = user2.username, roomId = roomId.toString()))
+
+        val event = eventSlot.captured
+        assertEquals(user2.id, event.toUserId)
+        assertEquals(sender.username, event.invite.fromUsername)
+        assertEquals("avatar-url", event.invite.fromAvatarUrl)
+        assertEquals("My Room", event.invite.roomName)
+        assertEquals(roomId, event.invite.roomId)
+    }
+
+    @Test
+    fun shouldSendRoomInviteAndPublishEventWithNullRoomNameWhenRoomDisappears() {
+        val room = RoomEntity(name = "My Room", type = RoomType.GROUP)
+        setAuth(user1.id)
+        val userRoom = mockk<UserRoomEntity>()
+        every { userRoom.role } returns RoomRole.OWNER
+        every { userService.getUserById(user1.id) } returns user1
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(user1.id, roomId) } returns userRoom
+        every { roomService.getRoom(roomId) } returnsMany listOf(Optional.of(room), Optional.empty())
+        every { userRepository.getUserByUsernameIgnoreCase(user2.username) } returns user2
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(user2.id, roomId) } returns false
+        every { bannedUserService.isUserBanned(user2.id, roomId) } returns false
+        every { inviteRepository.existsPendingRoomInvite(user2.id, roomId) } returns false
+        every { inviteRepository.save(any()) } answers { firstArg() }
+
+        val eventSlot = slot<InviteSentEvent>()
+        every { eventPublisher.publishEvent(capture(eventSlot)) } just Runs
+
+        inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUsername = user2.username, roomId = roomId.toString()))
+
+        assertEquals(null, eventSlot.captured.invite.roomName)
+    }
+
+    @Test
+    fun shouldSendRoomInviteAndPublishEventWithNullRoomNameAndNonNullAvatarUrl() {
+        val room = RoomEntity(name = "My Room", type = RoomType.GROUP)
+        val sender = UserEntity(id = user1.id, username = "user1", password = "pw", avatarUrl = "avatar-url")
+        setAuth(sender.id)
+        val userRoom = mockk<UserRoomEntity>()
+        every { userRoom.role } returns RoomRole.OWNER
+        every { userService.getUserById(sender.id) } returns sender
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(sender.id, roomId) } returns userRoom
+        every { roomService.getRoom(roomId) } returnsMany listOf(Optional.of(room), Optional.empty())
+        every { userRepository.getUserByUsernameIgnoreCase(user2.username) } returns user2
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(user2.id, roomId) } returns false
+        every { bannedUserService.isUserBanned(user2.id, roomId) } returns false
+        every { inviteRepository.existsPendingRoomInvite(user2.id, roomId) } returns false
+        every { inviteRepository.save(any()) } answers { firstArg() }
+
+        val eventSlot = slot<InviteSentEvent>()
+        every { eventPublisher.publishEvent(capture(eventSlot)) } just Runs
+
+        inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUsername = user2.username, roomId = roomId.toString()))
+
+        assertEquals("avatar-url", eventSlot.captured.invite.fromAvatarUrl)
+        assertEquals(null, eventSlot.captured.invite.roomName)
+    }
+
+    @Test
+    fun shouldSendRoomInviteAndPublishEventWithNullAvatarUrl() {
+        val room = RoomEntity(name = "My Room", type = RoomType.GROUP)
+        setAuth(user1.id)
+        val userRoom = mockk<UserRoomEntity>()
+        every { userRoom.role } returns RoomRole.OWNER
+        every { userService.getUserById(user1.id) } returns user1  // avatarUrl defaults to null
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(user1.id, roomId) } returns userRoom
+        every { roomService.getRoom(roomId) } returnsMany listOf(Optional.of(room), Optional.of(room))
+        every { userRepository.getUserByUsernameIgnoreCase(user2.username) } returns user2
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(user2.id, roomId) } returns false
+        every { bannedUserService.isUserBanned(user2.id, roomId) } returns false
+        every { inviteRepository.existsPendingRoomInvite(user2.id, roomId) } returns false
+        every { inviteRepository.save(any()) } answers { firstArg() }
+
+        val eventSlot = slot<InviteSentEvent>()
+        every { eventPublisher.publishEvent(capture(eventSlot)) } just Runs
+
+        inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUsername = user2.username, roomId = roomId.toString()))
+
+        assertEquals(null, eventSlot.captured.invite.fromAvatarUrl)
+        assertEquals("My Room", eventSlot.captured.invite.roomName)
+    }
+
+    @Test
+    fun shouldSendRoomInviteAndPublishEventWithExactSavedRoomId() {
+        val room = RoomEntity(name = "Saved Room", type = RoomType.GROUP)
+        val sender = UserEntity(
+            id = user1.id,
+            username = "user1",
+            password = "pw",
+            avatarUrl = "avatar-url"
+        )
+
+        setAuth(sender.id)
+        val userRoom = mockk<UserRoomEntity>()
+        every { userRoom.role } returns RoomRole.OWNER
+        every { userService.getUserById(sender.id) } returns sender
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(sender.id, roomId) } returns userRoom
+        every { roomService.getRoom(roomId) } returnsMany listOf(Optional.of(room), Optional.of(room))
+        every { userRepository.getUserByUsernameIgnoreCase(user2.username) } returns user2
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(user2.id, roomId) } returns false
+        every { bannedUserService.isUserBanned(user2.id, roomId) } returns false
+        every { inviteRepository.existsPendingRoomInvite(user2.id, roomId) } returns false
+        every { inviteRepository.save(any()) } answers {
+            val e = firstArg<InviteEntity>()
+            InviteEntity(
+                id = e.id,
+                type = e.type,
+                fromUserId = e.fromUserId,
+                toUserId = e.toUserId,
+                roomId = roomId,
+                expiresAt = e.expiresAt,
+                status = e.status
+            )
+        }
+
+        val eventSlot = slot<InviteSentEvent>()
+        every { eventPublisher.publishEvent(capture(eventSlot)) } just Runs
+
+        inviteService.sendRoomInvite(
+            RoomInviteDTO(
+                type = "ROOM_INVITE",
+                targetUsername = user2.username,
+                roomId = roomId.toString()
+            )
+        )
+
+        assertEquals(roomId, eventSlot.captured.invite.roomId)
+        assertEquals("Saved Room", eventSlot.captured.invite.roomName)
+    }
+
+    @Test
+    fun shouldSendFriendRequestAndPublishEventWithExactNullRoomFields() {
+        val sender = UserEntity(
+            id = user1.id,
+            username = "user1",
+            password = "pw",
+            avatarUrl = "avatar-url"
+        )
+
+        setAuth(sender.id)
+        every { userService.getUserById(sender.id) } returns sender
+        every { userRepository.getUserByUsernameIgnoreCase("user2") } returns user2
+        every { inviteRepository.existsPendingFriendRequest(sender.id, user2.id) } returns false
+        every { friendService.areFriends(sender.id, user2.id) } returns false
+        every { inviteRepository.save(any()) } answers {
+            val e = firstArg<InviteEntity>()
+            InviteEntity(
+                id = e.id,
+                type = e.type,
+                fromUserId = e.fromUserId,
+                toUserId = e.toUserId,
+                roomId = null,
+                expiresAt = e.expiresAt,
+                status = e.status
+            )
+        }
+
+        val eventSlot = slot<InviteSentEvent>()
+        every { eventPublisher.publishEvent(capture(eventSlot)) } just Runs
+
+        inviteService.sendFriendRequest(FriendRequestDTO(username = "user2"))
+
+        assertEquals(null, eventSlot.captured.invite.roomId)
+        assertEquals(null, eventSlot.captured.invite.roomName)
     }
 }

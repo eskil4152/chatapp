@@ -403,7 +403,7 @@ class E2ETests : ContainerBase() {
     fun shouldInviteAndJoinRoom(){
         mockMvc.post("/api/invites/room") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"type":"ROOM_INVITE","targetUserId":"$user2Id","roomId":"$roomId","expiresAt":${System.currentTimeMillis() + 604800000}}"""
+            content = """{"type":"ROOM_INVITE","targetUsername":"username2","roomId":"$roomId","expiresAt":${System.currentTimeMillis() + 604800000}}"""
             user1Cookie?.let { cookie(it) }
         }
             .andExpect { status { isOk() } }
@@ -594,7 +594,7 @@ class E2ETests : ContainerBase() {
     fun shouldInviteAndJoinEncryptedRoom(){
         mockMvc.post("/api/invites/room") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"type":"ROOM_INVITE","targetUserId":"$user1Id","roomId":"$encryptedRoomId","expiresAt":${System.currentTimeMillis() + 604800000}}"""
+            content = """{"type":"ROOM_INVITE","targetUsername":"username","roomId":"$encryptedRoomId"}"""
             user2Cookie?.let { cookie(it) }
         }
             .andExpect { status { isOk() } }

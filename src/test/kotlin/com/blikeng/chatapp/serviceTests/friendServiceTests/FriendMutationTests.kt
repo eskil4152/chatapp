@@ -216,4 +216,15 @@ class FriendMutationTests {
         val exception = assertFailsWith<ApiException> { friendService.removeFriend(UserIdDTO(user2.id.toString())) }
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
+
+    @Test
+    fun shouldFailToRemoveFriendWithInvalidUUID() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
+
+        every { userService.getUserById(user1.id) } returns user1
+
+        val exception = assertFailsWith<ApiException> { friendService.removeFriend(UserIdDTO("not-a-uuid")) }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+    }
 }

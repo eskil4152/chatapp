@@ -144,6 +144,17 @@ class FriendQueryTests {
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
+    @Test
+    fun shouldFailToGetFriendInfoWithInvalidUUID() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
+
+        every { userService.getUserById(user1.id) } returns user1
+
+        val exception = assertFailsWith<ApiException> { friendService.getFriendInfo("not-a-uuid") }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+    }
+
     // ==========================
     // Get friend entity
     // ==========================

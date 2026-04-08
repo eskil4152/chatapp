@@ -320,6 +320,17 @@ class RoomServiceManagementTests {
     }
 
     @Test
+    fun shouldFailToGetPrivateMessagesWithInvalidFriendId() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
+
+        val exception = assertFailsWith<ApiException> { roomService.getOrStartPrivateMessage(UserIdDTO("not-a-uuid")) }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+    }
+
+    @Test
     fun shouldFailToGetPrivateMessagesWhenInvalidUser() {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())

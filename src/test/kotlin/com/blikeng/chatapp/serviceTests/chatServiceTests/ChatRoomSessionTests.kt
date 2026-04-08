@@ -3,6 +3,7 @@ package com.blikeng.chatapp.serviceTests.chatServiceTests
 import com.blikeng.chatapp.entities.RoomEntity
 import com.blikeng.chatapp.entities.RoomRole
 import com.blikeng.chatapp.entities.RoomType
+import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.entities.UserRoomEntity
 import com.blikeng.chatapp.entities.UserRoomId
 import com.blikeng.chatapp.errors.ApiException
@@ -13,6 +14,7 @@ import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.crypto.ChatEncrypt
 import com.blikeng.chatapp.services.ChatService
+import com.blikeng.chatapp.services.UserService
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.micrometer.core.instrument.MeterRegistry
 import io.mockk.*
@@ -53,6 +55,7 @@ class ChatRoomSessionTests {
     @MockK lateinit var rabbitTemplate: RabbitTemplate
     @MockK lateinit var listOps: ListOperations<String, String>
     @MockK lateinit var presenceHandler: PresenceHandler
+    @MockK lateinit var userService: UserService
     @MockK(relaxed = true) lateinit var meterRegistry: MeterRegistry
 
     @InjectMockKs lateinit var chatService: ChatService
@@ -84,6 +87,8 @@ class ChatRoomSessionTests {
         every { session.attributes } returns hashMapOf("userId" to userId)
         every { session.isOpen } returns true
         every { session.sendMessage(any()) } just Runs
+        every { userRoomRepository.findUserRoomsByRoomId(any()) } returns listOf()
+        every { userService.getAllById(any()) } returns emptyList()
 
         chatService.joinRoom(roomId, session)
         chatService.joinRoom(roomId2, session)
@@ -114,6 +119,11 @@ class ChatRoomSessionTests {
         every { session2.attributes } returns hashMapOf("userId" to UUID.randomUUID())
         every { session2.isOpen } returns true
         every { session2.sendMessage(any()) } just Runs
+        every { userRoomRepository.findUserRoomsByRoomId(any()) } returns listOf(
+            UserRoomEntity(UserRoomId(UUID.randomUUID(), roomId), RoomRole.MEMBER, RoomType.GROUP),
+            UserRoomEntity(UserRoomId(UUID.randomUUID(), roomId), RoomRole.MEMBER, RoomType.GROUP)
+        )
+        every { userService.getAllById(any()) } returns emptyList()
 
         chatService.joinRoom(roomId, session)
         chatService.joinRoom(roomId, session2)
@@ -157,6 +167,8 @@ class ChatRoomSessionTests {
         every { session.attributes } returns hashMapOf("userId" to UUID.randomUUID())
         every { session.isOpen } returns true
         every { session.sendMessage(any()) } just Runs
+        every { userRoomRepository.findUserRoomsByRoomId(any()) } returns listOf()
+        every { userService.getAllById(any()) } returns emptyList()
 
         chatService.joinRoom(roomId, session)
 
@@ -201,6 +213,8 @@ class ChatRoomSessionTests {
             RoomEntity(id = roomId, name = "r", type = RoomType.GROUP)
         )
         every { joiningSession.sendMessage(any()) } just Runs
+        every { userRoomRepository.findUserRoomsByRoomId(any()) } returns listOf()
+        every { userService.getAllById(any()) } returns emptyList()
 
         chatService.joinRoom(roomId, existingSession)
         clearMocks(existingSession, answers = false, recordedCalls = true)
@@ -268,6 +282,8 @@ class ChatRoomSessionTests {
         every { session.attributes } returns hashMapOf("userId" to UUID.randomUUID())
         every { session.isOpen } returns true
         every { session.sendMessage(any()) } just Runs
+        every { userRoomRepository.findUserRoomsByRoomId(any()) } returns listOf()
+        every { userService.getAllById(any()) } returns emptyList()
 
         chatService.joinRoom(roomId, session)
         assertEquals(session, chatService.rooms[roomId]?.first())
@@ -334,6 +350,8 @@ class ChatRoomSessionTests {
         every { session2.isOpen } returns true
         every { session1.sendMessage(any()) } just Runs
         every { session2.sendMessage(any()) } just Runs
+        every { userRoomRepository.findUserRoomsByRoomId(any()) } returns listOf()
+        every { userService.getAllById(any()) } returns emptyList()
 
         chatService.joinRoom(roomId, session1)
         chatService.joinRoom(roomId, session2)
@@ -368,6 +386,47 @@ class ChatRoomSessionTests {
         assertNotNull(chatService.rooms[roomId])
         assertEquals(1, chatService.rooms[roomId]?.size)
         assertTrue(chatService.rooms[roomId]?.contains(invalidSession) == true)
+    }
+
+    // ==========================
+    // getUsersInRoom
+    // ==========================
+    @Test
+    fun shouldIncludeRoleWhenGettingUsersInRoom() {
+        val roomId = UUID.randomUUID()
+        val userId = UUID.randomUUID()
+        val userRoom = UserRoomEntity(UserRoomId(userId, roomId), RoomRole.MODERATOR, RoomType.GROUP)
+        val user = UserEntity(id = userId, username = "mod", password = "")
+
+        every { userRoomRepository.findUserRoomsByRoomId(roomId) } returns listOf(userRoom)
+        every { userService.getAllById(listOf(userId)) } returns listOf(user)
+        every { presenceHandler.isUserOnline(userId) } returns true
+
+        val result = chatService.getUsersInRoom(roomId)
+
+        assertEquals(1, result.size)
+        assertEquals(RoomRole.MODERATOR, result[0].role)
+        assertEquals(userId, result[0].id)
+        assertTrue(result[0].online)
+    }
+
+    @Test
+    fun shouldReturnNullRoleWhenUserNotInRoomMap() {
+        val roomId = UUID.randomUUID()
+        val mappedUserId = UUID.randomUUID()
+        val unmappedUserId = UUID.randomUUID()
+
+        val userRoom = UserRoomEntity(UserRoomId(mappedUserId, roomId), RoomRole.MEMBER, RoomType.GROUP)
+        val user = UserEntity(id = unmappedUserId, username = "ghost", password = "")
+
+        every { userRoomRepository.findUserRoomsByRoomId(roomId) } returns listOf(userRoom)
+        every { userService.getAllById(listOf(mappedUserId)) } returns listOf(user)
+        every { presenceHandler.isUserOnline(unmappedUserId) } returns false
+
+        val result = chatService.getUsersInRoom(roomId)
+
+        assertEquals(1, result.size)
+        assertNull(result[0].role)
     }
 
     // ==========================

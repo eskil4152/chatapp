@@ -3,6 +3,7 @@ package com.blikeng.chatapp.controllerTests
 import com.blikeng.chatapp.controllers.RoomController
 import com.blikeng.chatapp.dtos.UserIdDTO
 import com.blikeng.chatapp.dtos.room.RoomDTO
+import com.blikeng.chatapp.dtos.room.RoomUserDTO
 import com.blikeng.chatapp.entities.RoomRole
 import com.blikeng.chatapp.entities.RoomType
 import com.blikeng.chatapp.errors.InvalidRoomNameException
@@ -239,10 +240,35 @@ class RoomControllerTests {
 
         every { roomService.getAllBansForRoom(any()) } returns emptyList()
 
-        mockMvc.get("/api/rooms/bans/$roomId") {
+        mockMvc.get("/api/rooms/$roomId/bans") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"roomId":"$roomId"}"""
         }
             .andExpect { status { isOk() } }
+    }
+
+    @Test
+    fun shouldGetRoomMembers() {
+        val roomId = UUID.randomUUID()
+        val member = RoomUserDTO(id = UUID.randomUUID(), username = "alice", avatarUrl = null, online = true, role = RoomRole.MEMBER)
+
+        every { roomService.getAllUsersInRoom(roomId.toString()) } returns listOf(member)
+
+        mockMvc.get("/api/rooms/$roomId/members")
+            .andExpect { status { isOk() } }
+            .andExpect { jsonPath("$[0].username") { value("alice") } }
+            .andExpect { jsonPath("$[0].role") { value("MEMBER") } }
+    }
+
+    @Test
+    fun shouldChangeRole() {
+        every { roomService.changeRole(any()) } returns Unit
+
+        mockMvc.post("/api/rooms/changeRole") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"userId":"${UUID.randomUUID()}","roomId":"${UUID.randomUUID()}","action":"PROMOTE"}"""
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { content { string("Role updated successfully") } }
     }
 }

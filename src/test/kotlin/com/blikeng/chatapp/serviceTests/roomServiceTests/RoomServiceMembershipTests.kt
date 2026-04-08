@@ -65,6 +65,17 @@ class RoomServiceMembershipTests {
         }
     }
 
+    @Test
+    fun shouldFailToJoinRoomWhenUserNotFound() {
+        val roomId = UUID.randomUUID()
+        val userId = UUID.randomUUID()
+
+        every { userService.getUserById(userId) } returns null
+
+        val exception = assertFailsWith<ApiException> { roomService.joinRoom(userId, roomId) }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+    }
+
     // ==========================
     // Leave room
     // ==========================
