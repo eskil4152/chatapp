@@ -50,6 +50,8 @@ class NotificationServiceTests {
             fromUserId = UUID.randomUUID(),
             roomId = null,
             expiresAt = Instant.now(),
+            fromUsername = "user1",
+            fromAvatarUrl = null,
         )
         val event = InviteSentEvent(toUserId = toUserId, invite = invite)
 

@@ -435,6 +435,7 @@ class InviteSendTests {
             status = InviteStatus.PENDING,
         )
         every { userService.getUserById(user1.id) } returns user1
+        every { userService.getUserById(user2.id) } returns user2
         every { inviteRepository.findByToUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns listOf(invite)
 
         val result = inviteService.getPendingInvites(user1.id)

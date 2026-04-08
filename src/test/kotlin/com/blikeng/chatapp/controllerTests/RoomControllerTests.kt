@@ -1,6 +1,7 @@
 package com.blikeng.chatapp.controllerTests
 
 import com.blikeng.chatapp.controllers.RoomController
+import com.blikeng.chatapp.dtos.UserIdDTO
 import com.blikeng.chatapp.dtos.room.RoomDTO
 import com.blikeng.chatapp.entities.RoomRole
 import com.blikeng.chatapp.entities.RoomType
@@ -125,7 +126,8 @@ class RoomControllerTests {
     @Test
     fun shouldCreatePrivateRoom(){
         val friendId = UUID.randomUUID()
-        every { roomService.getOrStartPrivateMessage(friendId) } returns UUID.randomUUID()
+        val userIdDTO = UserIdDTO(userId = friendId.toString())
+        every { roomService.getOrStartPrivateMessage(userIdDTO) } returns UUID.randomUUID()
 
         mockMvc.post("/api/rooms/dm"){
             contentType = MediaType.APPLICATION_JSON

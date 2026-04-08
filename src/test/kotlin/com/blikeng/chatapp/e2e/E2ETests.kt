@@ -805,7 +805,7 @@ class E2ETests : ContainerBase() {
     fun shouldMakePrivateRoom(){
         mockMvc.post("/api/rooms/dm") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"username":"username"}"""
+            content = """{"userId":"$user1Id"}"""
             user2Cookie?.let { cookie(it) }
         }.andExpect { status { isCreated() } }
     }
