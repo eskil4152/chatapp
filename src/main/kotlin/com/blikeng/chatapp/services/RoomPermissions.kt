@@ -11,6 +11,7 @@ object RoomPermissions {
     val OPEN_INVITE = RoomRole.ADMIN
     val KICK_USER = RoomRole.MODERATOR
     val INVITE_USER = RoomRole.MODERATOR
+    val VIEW_MEMBERS = RoomRole.MODERATOR
 
     val PROMOTE_TO_ADMIN = RoomRole.OWNER
     val DEMOTE_TO_MODERATOR = RoomRole.OWNER

@@ -92,12 +92,19 @@ class RoomController(
         return ResponseEntity.ok("Unbanned user successfully")
     }
 
-    @GetMapping("/bans/{roomId}")
+    @GetMapping("{roomId}/bans")
     fun getBans(
         @PathVariable roomId: String
     ) : ResponseEntity<List<RoomUserDTO>> {
         val bannedUsers = roomService.getAllBansForRoom(roomId)
 
         return ResponseEntity.ok(bannedUsers)
+    }
+
+    @GetMapping("/{roomId}/members")
+    fun getRoomMember(
+        @PathVariable roomId: String
+    ) : ResponseEntity<List<RoomUserDTO>> {
+        return ResponseEntity.ok(roomService.getAllUsersInRoom(roomId))
     }
 }

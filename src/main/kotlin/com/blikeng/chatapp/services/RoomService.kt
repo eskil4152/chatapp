@@ -84,6 +84,31 @@ class RoomService(
         return roomRepository.findById(roomId)
     }
 
+    fun getAllUsersInRoom(roomIdString: String): List<RoomUserDTO> {
+        val roomId = try {
+            UUID.fromString(roomIdString)
+        } catch (_: IllegalArgumentException) {
+            throw InvalidUUIDException()
+        }
+
+        val userId = getId()
+        userService.getUserById(userId) ?: throw InvalidUserException()
+
+        val userRoom = userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
+            ?: throw RoomNotFoundException()
+
+        if (!userRoom.role.isAtLeast(RoomPermissions.VIEW_MEMBERS)) throw NotPermittedException()
+
+        return userRoomRepository.findUsersByRoomId(roomId).map {
+            RoomUserDTO(
+                id = it.id,
+                username = it.username,
+                avatarUrl = it.avatarUrl,
+                online = false
+            )
+        }
+    }
+
     // ==========================
     // Room membership
     // ==========================
