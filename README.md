@@ -1,8 +1,7 @@
 # ChatApp
 
-ChatApp is a distributed real-time messaging service built with Kotlin and Spring Boot.
-It supports chat rooms, private DMs, optional AES-256-GCM message encryption, and horizontally scalable WebSocket messaging using Redis Pub/Sub and RabbitMQ.
-
+It supports chat rooms, private DMs, role-based access control, invite-based room membership, friend requests, optional AES-256-GCM message encryption, 
+and horizontally scalable WebSocket messaging using Redis Pub/Sub and RabbitMQ.
 ## [Access](https://chatapp.blikeng.com)
 
 ---
@@ -30,6 +29,7 @@ It supports chat rooms, private DMs, optional AES-256-GCM message encryption, an
   - [Friends & Direct Messages](#friends--direct-messages)
   - [Database & Persistence](#database--persistence)
   - [Room & User Management](#room--user-management)
+  - [Invitations & Notifications](#invitations--notifications)
   - [Presence Tracking](#presence-tracking)
   - [Buffered Message Persistence](#buffered-message-persistence)
 - [API Overview](#api-overview)
@@ -185,11 +185,12 @@ Encryption is **optional** and configured per room.
 
 ### Friends & Direct Messages
 
-- Users can add friends by username.
-- Friends can open a private DM conversation, backed by the same WebSocket and message persistence infrastructure as rooms.
-- Friend and DM data are fetched via optimized repository queries.
-- Friend status is intentionally never exposed to outside parties. Looking up a non-friend returns the same response as a non-existent user, preventing user enumeration.
-- `FRIEND_PRESENCE` notifications are published to each friend's `user:{friendId}` Redis channel, ensuring delivery across all instances. On connect, a presence snapshot is sent to the joining session with the current online status of all friends.
+- Users can send and receive **friend requests**, which must be accepted before a friendship is established.
+- Friendships are stored using deterministic identifiers to ensure consistency and prevent duplicates.
+- Friends can open private DM conversations backed by the same WebSocket and persistence pipeline as rooms.
+- Friend status is intentionally never exposed to non-friends. Looking up a non-friend returns the same response as a non-existent user, preventing user enumeration.
+- `FRIEND_PRESENCE` notifications are published to each friend’s `user:{friendId}` Redis channel, ensuring delivery across all instances.
+- On connect, a presence snapshot is sent to the session with the current online status of all friends.
 
 ---
 
@@ -211,12 +212,19 @@ Encryption is **optional** and configured per room.
 ### Room & User Management
 
 **Rooms**
-- The user who creates a room is assigned the `OWNER` role; users who join are assigned `MEMBER`.
-- Membership is stored in the `user_rooms` join table and fetched via an indexed join query.
-- Room owners can kick or ban members. Banned users cannot rejoin the room.
-- Kick and ban actions include an optional reason and notify the target user via a real-time WebSocket event (`ROOM_ACTION`).
+- Room membership is managed through an **invite-based system**. Users cannot join rooms directly without an invitation.
+- Invites can be:
+  - direct (sent to a specific user)
+  - open (shared links with limited usage)
+- Rooms support **role-based access control**:
+  - `OWNER` — full control (delete room, manage roles, invites)
+  - `ADMIN` — manage users and invites
+  - `MEMBER` — participate in messaging
+- Users can be promoted and demoted within a room based on role permissions.
+- Room owners and admins can kick or ban members. Banned users cannot rejoin.
+- Kick and ban actions notify the target user via real-time WebSocket events (`ROOM_ACTION`).
 - When a room is deleted, all members receive a `ROOM_DELETED` WebSocket notification.
-- Notifications are delivered via Redis pub/sub and fire only after the database transaction commits, using `@TransactionalEventListener`.
+- Notifications are delivered via Redis pub/sub after transaction commit using `@TransactionalEventListener`.
 
 **Users**
 - Duplicate usernames are rejected with `409 Conflict`.
@@ -226,6 +234,17 @@ Encryption is **optional** and configured per room.
 
 ---
 
+### Invitations & Notifications
+
+- The system uses a unified **invitation model** for both room access and friend relationships.
+- Invitations have expiration timestamps and can be accepted or rejected.
+- Open room invites support configurable usage limits.
+- All invitation-related actions trigger real-time notifications:
+  - `INVITE_RECEIVED`
+  - `INVITE_ACCEPTED`
+- Notifications are delivered through Redis Pub/Sub and routed to active WebSocket sessions across instances.
+
+---
 ### Presence Tracking
 
 User presence is tracked using Redis.
@@ -269,32 +288,38 @@ This design ensures:
 ---
 
 ## API Overview
-| Method | Endpoint                | Description                                                                  |
-|--------|-------------------------|------------------------------------------------------------------------------|
-| POST   | /api/register           | Register                                                                     |
-| POST   | /api/login              | Login                                                                        |
-| POST   | /api/logout             | Log out                                                                      |
-| GET    | /api/auth               | Check auth status                                                            |
-| GET    | /api/rooms              | List all rooms                                                               |
-| POST   | /api/rooms/make         | Create room                                                                  |
-| POST   | /api/rooms/join         | Join room                                                                    |
-| PUT    | /api/rooms/edit         | Edit room                                                                    |
-| DELETE | /api/rooms/leave        | Leave room                                                                   |
-| DELETE | /api/rooms/delete       | Delete room                                                                  |
-| POST   | /api/rooms/action       | Kick or ban a user                                                           |
-| DELETE | /api/rooms/unban        | Unban a user                                                                 |
-| GET    | /api/rooms/bans         | Get banned users for a room                                                  |
-| POST   | /api/rooms/dm           | Make or get private room                                                     |
-| GET    | /api/user               | Get user info                                                                |
-| PUT    | /api/user/edit          | Edit user profile                                                            |
-| PATCH  | /api/user/edit/password | Edit password                                                                |
-| DELETE | /api/user/delete        | Delete account                                                               |
-| GET    | /api/chats/{roomId}     | Get message history (paginated: `page`, `size` — allowed sizes: 25, 50, 100) |
-| GET    | /api/friends            | Get all friends                                                              |
-| POST   | /api/friends/add        | Add friend                                                                   |
-| DELETE | /api/friends/remove     | Remove friend                                                                |
-| GET    | /api/friends/{username} | Get friend info                                                              |
-| WS     | /ws                     | WebSocket endpoint                                                           |
+| Method | Endpoint                        | Description                                                                  |
+|--------|---------------------------------|------------------------------------------------------------------------------|
+| POST   | /api/register                   | Register                                                                     |
+| POST   | /api/login                      | Login                                                                        |
+| POST   | /api/logout                     | Log out                                                                      |
+| GET    | /api/auth                       | Check auth status                                                            |
+| GET    | /api/rooms                      | List all rooms                                                               |
+| POST   | /api/rooms/make                 | Create room                                                                  |
+| PUT    | /api/rooms/edit                 | Edit room                                                                    |
+| DELETE | /api/rooms/leave                | Leave room                                                                   |
+| DELETE | /api/rooms/delete               | Delete room                                                                  |
+| POST   | /api/rooms/action               | Kick or ban a user                                                           |
+| DELETE | /api/rooms/unban                | Unban a user                                                                 |
+| GET    | /api/rooms/{roomId}/bans        | Get banned users for a room                                                  |
+| GET    | /api/rooms/{roomId}/members     | Get members and their roles for a room                                       |
+| POST   | /api/rooms/changeRole           | Promote or demote a room member                                              |
+| POST   | /api/rooms/dm                   | Make or get private room                                                     |
+| GET    | /api/user                       | Get user info                                                                |
+| PUT    | /api/user/edit                  | Edit user profile                                                            |
+| PATCH  | /api/user/edit/password         | Edit password                                                                |
+| DELETE | /api/user/delete                | Delete account                                                               |
+| GET    | /api/chats/{roomId}             | Get message history (paginated: `page`, `size` — allowed sizes: 25, 50, 100) |
+| GET    | /api/friends                    | Get all friends                                                              |
+| DELETE | /api/friends/remove             | Remove friend                                                                |
+| GET    | /api/friends/{userId}           | Get friend info                                                              |
+| GET    | /api/invites/pending            | Get pending invites received by the current user                             |
+| GET    | /api/invites/outgoing           | Get outgoing pending invites sent by the current user                        |
+| POST   | /api/invites/friend             | Send a friend request                                                        |
+| POST   | /api/invites/room               | Send a room invite to a specific user                                        |
+| POST   | /api/invites/open               | Create an open room invite (returns invite ID)                               |
+| POST   | /api/invites/respond            | Accept or reject an invite                                                   |
+| WS     | /ws                             | WebSocket endpoint                                                           |
 
 ---
 
