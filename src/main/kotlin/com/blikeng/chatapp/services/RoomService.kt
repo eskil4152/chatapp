@@ -2,6 +2,8 @@ package com.blikeng.chatapp.services
 
 import com.blikeng.chatapp.dtos.UserIdDTO
 import com.blikeng.chatapp.dtos.room.AdministrationDTO
+import com.blikeng.chatapp.dtos.room.ChangeRoleDTO
+import com.blikeng.chatapp.dtos.room.RoleAction
 import com.blikeng.chatapp.dtos.room.RoomAction
 import com.blikeng.chatapp.dtos.room.RoomDTO
 import com.blikeng.chatapp.dtos.room.RoomUserDTO
@@ -99,12 +101,16 @@ class RoomService(
 
         if (!userRoom.role.isAtLeast(RoomPermissions.VIEW_MEMBERS)) throw NotPermittedException()
 
-        return userRoomRepository.findUsersByRoomId(roomId).map {
+        val userRooms = userRoomRepository.findUserRoomsByRoomId(roomId).associateBy { it.id.userId }
+        val users = userService.getAllById(userRooms.keys.toList())
+
+        return users.map {
             RoomUserDTO(
                 id = it.id,
                 username = it.username,
                 avatarUrl = it.avatarUrl,
-                online = false
+                online = false,
+                role = userRooms[it.id]?.role,
             )
         }
     }
@@ -189,6 +195,63 @@ class RoomService(
         roomRepository.delete(room)
 
         eventPublisher.publishEvent(RoomDeletedEvent(roomUUID, room.name, memberIds))
+    }
+
+    @Transactional
+    fun changeRole(changeRoleDTO: ChangeRoleDTO) {
+        val userId = getId()
+        userService.getUserById(userId) ?: throw InvalidUserException()
+
+        val roomId: UUID
+        val targetId: UUID
+
+        try {
+            roomId = UUID.fromString(changeRoleDTO.roomId)
+            targetId = UUID.fromString(changeRoleDTO.userId)
+        } catch (_: IllegalArgumentException) {
+            throw InvalidUUIDException()
+        }
+
+        if (targetId == userId) throw NotPermittedException()
+
+        val userUserRoom = userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
+            ?: throw RoomNotFoundException()
+        val targetUserRoom = userRoomRepository.findByIdUserIdAndIdRoomId(targetId, roomId)
+            ?: throw RoomNotFoundException()
+
+        if (targetUserRoom.role == RoomRole.OWNER) throw NotPermittedException()
+
+        val newRole = when (changeRoleDTO.action) {
+            RoleAction.PROMOTE -> when (targetUserRoom.role) {
+                RoomRole.MEMBER -> {
+                    if (!userUserRoom.role.isAtLeast(RoomPermissions.PROMOTE_TO_MODERATOR)) throw NotPermittedException()
+                    RoomRole.MODERATOR
+                }
+
+                RoomRole.MODERATOR -> {
+                    if (!userUserRoom.role.isAtLeast(RoomPermissions.PROMOTE_TO_ADMIN)) throw NotPermittedException()
+                    RoomRole.ADMIN
+                }
+
+                else -> throw NotPermittedException()
+            }
+
+            RoleAction.DEMOTE -> when (targetUserRoom.role) {
+                RoomRole.ADMIN -> {
+                    if (!userUserRoom.role.isAtLeast(RoomPermissions.DEMOTE_TO_MODERATOR)) throw NotPermittedException()
+                    RoomRole.MODERATOR
+                }
+
+                RoomRole.MODERATOR -> {
+                    if (!userUserRoom.role.isAtLeast(RoomPermissions.DEMOTE_TO_MEMBER)) throw NotPermittedException()
+                    RoomRole.MEMBER
+                }
+                else -> throw NotPermittedException()
+            }
+        }
+
+        targetUserRoom.role = newRole
+        userRoomRepository.save(targetUserRoom)
     }
 
     @Transactional

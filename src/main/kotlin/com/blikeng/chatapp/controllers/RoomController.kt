@@ -4,6 +4,7 @@ import com.blikeng.chatapp.dtos.UserIdDTO
 import com.blikeng.chatapp.errors.InvalidUUIDException
 import java.util.UUID
 import com.blikeng.chatapp.dtos.room.AdministrationDTO
+import com.blikeng.chatapp.dtos.room.ChangeRoleDTO
 import com.blikeng.chatapp.dtos.room.RoomDTO
 import com.blikeng.chatapp.dtos.room.RoomUserDTO
 import com.blikeng.chatapp.dtos.room.UnbanDTO
@@ -72,6 +73,15 @@ class RoomController(
         @RequestBody userIdDTO: UserIdDTO
     ) : ResponseEntity<String> {
         return ResponseEntity.status(201).body(roomService.getOrStartPrivateMessage(userIdDTO).toString())
+    }
+
+    @PostMapping("/changeRole")
+    fun changeRole(
+        @RequestBody changeRoleDTO: ChangeRoleDTO
+    ) : ResponseEntity<String> {
+        roomService.changeRole(changeRoleDTO)
+
+        return ResponseEntity.ok("Role updated successfully")
     }
 
     @PostMapping("/action")

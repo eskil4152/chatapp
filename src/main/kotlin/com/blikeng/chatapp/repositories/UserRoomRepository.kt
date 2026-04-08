@@ -19,6 +19,9 @@ interface UserRoomRepository: JpaRepository<UserRoomEntity, UserRoomId> {
     @Query("SELECT u FROM UserEntity u JOIN UserRoomEntity ur ON u.id = ur.id.userId WHERE ur.id.roomId = :roomId")
     fun findUsersByRoomId(roomId: UUID): List<UserEntity>
 
+    @Query("SELECT ur FROM UserRoomEntity ur WHERE ur.id.roomId = :roomId")
+    fun findUserRoomsByRoomId(roomId: UUID): List<UserRoomEntity>
+
     // Finds the other participant in a private room by excluding the current user.
     @Query("""
     SELECT u

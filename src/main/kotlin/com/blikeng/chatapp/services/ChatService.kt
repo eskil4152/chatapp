@@ -48,6 +48,7 @@ class ChatService (
     private val rabbitTemplate: RabbitTemplate,
     private val objectMapper: ObjectMapper,
     private val presenceHandler: PresenceHandler,
+    private val userService: UserService,
     meterRegistry: MeterRegistry,
 ) {
     val rooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
@@ -237,12 +238,16 @@ class ChatService (
     // Helper methods
     // ==========================
     fun getUsersInRoom(roomId: UUID): List<RoomUserDTO> {
-        return userRoomRepository.findUsersByRoomId(roomId).map {
+        val userRooms = userRoomRepository.findUserRoomsByRoomId(roomId).associateBy { it.id.userId }
+        val users = userService.getAllById(userRooms.keys.toList())
+
+        return users.map {
             RoomUserDTO(
                 id = it.id,
                 username = it.username,
                 avatarUrl = it.avatarUrl,
-                online = presenceHandler.isUserOnline(it.id)
+                online = presenceHandler.isUserOnline(it.id),
+                role = userRooms[it.id]?.role,
             )
         }
     }
