@@ -1,15 +1,8 @@
 package com.blikeng.chatapp.controllers
 
 import com.blikeng.chatapp.dtos.UserIdDTO
-import com.blikeng.chatapp.errors.InvalidUUIDException
-import java.util.UUID
-import com.blikeng.chatapp.dtos.room.AdministrationDTO
-import com.blikeng.chatapp.dtos.room.ChangeRoleDTO
-import com.blikeng.chatapp.dtos.room.RoomDTO
-import com.blikeng.chatapp.dtos.room.RoomUserDTO
-import com.blikeng.chatapp.dtos.room.UnbanDTO
+import com.blikeng.chatapp.dtos.room.*
 import com.blikeng.chatapp.services.RoomService
-import io.lettuce.core.dynamic.annotation.Param
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
