@@ -37,6 +37,7 @@ It supports chat rooms, private DMs, optional AES-256-GCM message encryption, an
 - [CI/CD Pipeline](#cicd-pipeline)
 - [Testing](#testing)
 - [Load Testing & Multi-Instance Testing](#load-testing-and-multi-instance-testing)
+- [Privacy](#privacy)
 - [License](#license)
 
 ---
@@ -64,10 +65,12 @@ It supports chat rooms, private DMs, optional AES-256-GCM message encryption, an
 
 ## Architecture
 
-![Architecture](docs/architecture.svg)
+![Architecture](docs/ChatApp-high.svg)
 
 The system separates real-time delivery (Redis Pub/Sub + WebSockets) from durable persistence (RabbitMQ + PostgreSQL), 
 allowing the chat service to scale horizontally without coupling WebSocket throughput to database writes.
+
+A more detailed architecture diagram is available [here](docs/ChatApp-low.svg).
 
 ---
 
@@ -357,6 +360,17 @@ user flow, from registering to adding friends and chatting.
 
 These tests were performed locally on a single development machine. The results are therefore most useful as validation of concurrency 
 behavior, distributed setup correctness, and baseline performance rather than production-capacity benchmarks.
+
+---
+
+## Privacy
+
+This application is a personal hobby project.
+
+- Data stored: username, hashed passwords, messages, friendships, and optional user profile fields.
+- Data is not shared with third parties, but is stored on third-party infrastructure (e.g., cloud hosting, databases) for operation.
+- Users may delete their account at any time.
+- This service is provided as-is, with no guarantees of long-term storage, availability, or production-grade data protection.
 
 ---
 
