@@ -4,5 +4,5 @@ data class OpenRoomInviteDTO (
     val type: String,
     val roomId: String,
     val maxUsages: Int,
-    val expiresAt: Long
+    val expiresAt: Long? = null,
 )

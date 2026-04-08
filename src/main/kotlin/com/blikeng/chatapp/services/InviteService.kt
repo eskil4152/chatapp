@@ -67,6 +67,7 @@ class InviteService(
 
         return inviteRepository.findByToUserIdAndStatus(userId, InviteStatus.PENDING).map {
             val sender = userService.getUserById(it.fromUserId)
+            val roomName = it.roomId?.let { id -> roomService.getRoom(id).orElse(null)?.name }
             PendingInviteDTO(
                 id = it.id,
                 type = it.type,
@@ -74,6 +75,7 @@ class InviteService(
                 fromUsername = sender?.username ?: "Unknown",
                 fromAvatarUrl = sender?.avatarUrl,
                 roomId = it.roomId,
+                roomName = roomName,
                 expiresAt = it.expiresAt,
             )
         }
@@ -159,7 +161,7 @@ class InviteService(
         val saved = inviteRepository.save(friendship)
         eventPublisher.publishEvent(InviteSentEvent(
             toUserId = friend.id,
-            invite = PendingInviteDTO(id = saved.id, type = saved.type, fromUserId = saved.fromUserId, fromUsername = sender.username, fromAvatarUrl = sender.avatarUrl, roomId = saved.roomId, expiresAt = saved.expiresAt)
+            invite = PendingInviteDTO(id = saved.id, type = saved.type, fromUserId = saved.fromUserId, fromUsername = sender.username, fromAvatarUrl = sender.avatarUrl, roomId = saved.roomId, roomName = saved.roomId?.let { id -> roomService.getRoom(id).orElse(null)?.name }, expiresAt = saved.expiresAt)
         ))
     }
 
@@ -205,7 +207,7 @@ class InviteService(
         val saved = inviteRepository.save(invite)
         eventPublisher.publishEvent(InviteSentEvent(
             toUserId = target.id,
-            invite = PendingInviteDTO(id = saved.id, type = saved.type, fromUserId = saved.fromUserId, fromUsername = sender.username, fromAvatarUrl = sender.avatarUrl, roomId = saved.roomId, expiresAt = saved.expiresAt)
+            invite = PendingInviteDTO(id = saved.id, type = saved.type, fromUserId = saved.fromUserId, fromUsername = sender.username, fromAvatarUrl = sender.avatarUrl, roomId = saved.roomId, roomName = saved.roomId?.let { id -> roomService.getRoom(id).orElse(null)?.name }, expiresAt = saved.expiresAt)
         ))
     }
 
@@ -264,7 +266,9 @@ class InviteService(
             fromUserId = id,
             roomId = roomId,
             usages = 0,
-            expiresAt = Instant.now().plus(7, ChronoUnit.DAYS),
+            expiresAt = openRoomInviteDTO.expiresAt
+                ?.let { Instant.ofEpochMilli(it) }
+                ?: Instant.now().plus(7, ChronoUnit.DAYS),
             maxUsages = openRoomInviteDTO.maxUsages,
             status = InviteStatus.PENDING
         )

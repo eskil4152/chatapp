@@ -11,5 +11,6 @@ data class PendingInviteDTO(
     val fromUsername: String,
     val fromAvatarUrl: String?,
     val roomId: UUID?,
+    val roomName: String?,
     val expiresAt: Instant,
 )
