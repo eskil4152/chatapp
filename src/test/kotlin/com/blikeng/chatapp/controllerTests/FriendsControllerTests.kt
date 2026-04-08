@@ -1,8 +1,8 @@
 package com.blikeng.chatapp.controllerTests
 
 import com.blikeng.chatapp.controllers.FriendsController
+import com.blikeng.chatapp.dtos.UserIdDTO
 import com.blikeng.chatapp.dtos.friends.FriendDTO
-import com.blikeng.chatapp.errors.AlreadyFriendsException
 import com.blikeng.chatapp.errors.InvalidUserException
 import com.blikeng.chatapp.errors.UserNotFoundException
 import com.blikeng.chatapp.security.auth.JwtAuthFilter
@@ -21,7 +21,6 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
-import org.springframework.test.web.servlet.post
 import java.sql.Date
 import java.time.Instant
 import java.util.UUID
@@ -66,7 +65,7 @@ class FriendsControllerTests {
         "full name",
         "",
         Date.from(Instant.now()),
-        Date.from(Instant.now()),
+        Instant.now(),
     )
 
     @Test
@@ -83,38 +82,20 @@ class FriendsControllerTests {
     }
 
     @Test
-    fun shouldAddFriends(){
-        every { friendService.addFriend("friend") } returns Unit
-
-        mockMvc.post("/api/friends/add") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """
-                {
-                    "username": "friend"
-                }
-            """.trimIndent()
-        }.andExpect {  status { isOk() } }
-    }
-
-    @Test
     fun shouldRemoveFriends(){
-        every { friendService.removeFriend("friend") } returns Unit
+        every { friendService.removeFriend(UserIdDTO(friend.userId.toString())) } returns Unit
 
         mockMvc.delete("/api/friends/remove") {
             contentType = MediaType.APPLICATION_JSON
-            content = """
-                {
-                    "username": "friend"
-                }
-            """.trimIndent()
-        }.andExpect {  status { isOk() } }
+            content = """{"userId": "${friend.userId}"}"""
+        }.andExpect { status { isOk() } }
     }
 
     @Test
     fun shouldGetFriendsInfo(){
-        every { friendService.getFriendInfo("username") } returns friend
+        every { friendService.getFriendInfo(friend.userId.toString()) } returns friend
 
-        mockMvc.get("/api/friends/username") {
+        mockMvc.get("/api/friends/${friend.userId}") {
             contentType = MediaType.APPLICATION_JSON
         }
             .andExpect {
@@ -143,23 +124,11 @@ class FriendsControllerTests {
 
     @Test
     fun shouldGetNotFoundUser(){
-        every { friendService.getFriendInfo("fakeuser") } throws UserNotFoundException()
+        val fakeId = UUID.randomUUID()
+        every { friendService.getFriendInfo(fakeId.toString()) } throws UserNotFoundException()
 
-        mockMvc.get("/api/friends/fakeuser")
+        mockMvc.get("/api/friends/$fakeId")
             .andExpect { status { isNotFound() } }
     }
 
-    @Test
-    fun shouldGetConflictFromBeingAlreadyFriends(){
-        every { friendService.addFriend("myself") } throws AlreadyFriendsException()
-
-        mockMvc.post("/api/friends/add"){
-            contentType = MediaType.APPLICATION_JSON
-            content = """
-                {
-                    "username": "myself"
-                }
-            """.trimIndent()
-        }.andExpect { status { isConflict() } }
-    }
 }

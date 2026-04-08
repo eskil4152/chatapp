@@ -9,7 +9,6 @@ import com.blikeng.chatapp.repositories.FriendsRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.services.FriendService
 import com.blikeng.chatapp.services.UserService
-import com.blikeng.chatapp.websocket.SessionRegistry
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
@@ -25,7 +24,9 @@ import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
+import com.blikeng.chatapp.dtos.UserIdDTO
 import java.util.*
+import java.util.Optional
 import kotlin.test.assertFailsWith
 
 @ExtendWith(MockKExtension::class)
@@ -35,8 +36,7 @@ class FriendMutationTests {
     // Verifies:
     // - Adding a friend saves the correct FriendsEntity
     // - Removing a friend deletes the correct FriendsId
-    // - Failure cases for invalid user, missing user, self-add,
-    //   duplicate friendship, and non-friend removal
+    // - Failure cases for invalid user, missing user, and non-friend removal
     // ==========================
 
     @InjectMockKs private lateinit var friendService: FriendService
@@ -56,32 +56,24 @@ class FriendMutationTests {
     // ==========================
     @Test
     fun shouldAddFriendsAsUser1() {
-        SecurityContextHolder.getContext().authentication =
-            UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
-
         val slot = slot<FriendsEntity>()
         every { userService.getUserById(user1.id) } returns user1
-        every { userRepository.getUserByUsernameIgnoreCase("username2") } returns user2
-        every { friendsRepository.existsById(any()) } returns false
+        every { userService.getUserById(user2.id) } returns user2
         every { friendsRepository.save(capture(slot)) } answers { firstArg() }
 
-        friendService.addFriend("username2")
+        friendService.addFriend(user1.id, user2.id)
 
         assertEquals(setOf(user1.id, user2.id), setOf(slot.captured.userA.id, slot.captured.userB.id))
     }
 
     @Test
     fun shouldAddFriendsAsUser2() {
-        SecurityContextHolder.getContext().authentication =
-            UsernamePasswordAuthenticationToken(user2.id, null, emptyList())
-
         val slot = slot<FriendsEntity>()
         every { userService.getUserById(user2.id) } returns user2
-        every { userRepository.getUserByUsernameIgnoreCase("username1") } returns user1
-        every { friendsRepository.existsById(any()) } returns false
+        every { userService.getUserById(user1.id) } returns user1
         every { friendsRepository.save(capture(slot)) } answers { firstArg() }
 
-        friendService.addFriend("username1")
+        friendService.addFriend(user2.id, user1.id)
 
         assertEquals(setOf(user1.id, user2.id), setOf(slot.captured.userA.id, slot.captured.userB.id))
     }
@@ -94,16 +86,12 @@ class FriendMutationTests {
         val lowUser = UserEntity(id = lowId, username = "low", password = "password")
         val highUser = UserEntity(id = highId, username = "high", password = "password")
 
-        SecurityContextHolder.getContext().authentication =
-            UsernamePasswordAuthenticationToken(lowId, null, emptyList())
-
         val slot = slot<FriendsEntity>()
         every { userService.getUserById(lowId) } returns lowUser
-        every { userRepository.getUserByUsernameIgnoreCase("high") } returns highUser
-        every { friendsRepository.existsById(any()) } returns false
+        every { userService.getUserById(highId) } returns highUser
         every { friendsRepository.save(capture(slot)) } answers { firstArg() }
 
-        friendService.addFriend("high")
+        friendService.addFriend(lowId, highId)
 
         assertEquals(lowId, slot.captured.userA.id)
         assertEquals(highId, slot.captured.userB.id)
@@ -117,16 +105,12 @@ class FriendMutationTests {
         val lowUser = UserEntity(id = lowId, username = "low", password = "password")
         val highUser = UserEntity(id = highId, username = "high", password = "password")
 
-        SecurityContextHolder.getContext().authentication =
-            UsernamePasswordAuthenticationToken(highId, null, emptyList())
-
         val slot = slot<FriendsEntity>()
         every { userService.getUserById(highId) } returns highUser
-        every { userRepository.getUserByUsernameIgnoreCase("low") } returns lowUser
-        every { friendsRepository.existsById(any()) } returns false
+        every { userService.getUserById(lowId) } returns lowUser
         every { friendsRepository.save(capture(slot)) } answers { firstArg() }
 
-        friendService.addFriend("low")
+        friendService.addFriend(highId, lowId)
 
         assertEquals(lowId, slot.captured.userA.id)
         assertEquals(highId, slot.captured.userB.id)
@@ -134,50 +118,25 @@ class FriendMutationTests {
 
     @Test
     fun shouldFailToAddFriendsWithInvalidUser() {
-        SecurityContextHolder.getContext().authentication =
-            UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
-
         every { userService.getUserById(user1.id) } returns null
 
-        val exception = assertFailsWith<ApiException> { friendService.addFriend("username") }
+        val exception = assertFailsWith<ApiException> { friendService.addFriend(user1.id, user2.id) }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test
-    fun shouldFailToAddNonExistentUser() {
-        SecurityContextHolder.getContext().authentication =
-            UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
-
+    fun shouldFailToAddNonExistentFriend() {
         every { userService.getUserById(user1.id) } returns user1
-        every { userRepository.getUserByUsernameIgnoreCase("non existent") } returns null
+        every { userService.getUserById(user2.id) } returns null
 
-        val exception = assertFailsWith<ApiException> { friendService.addFriend("non existent") }
-        assertEquals(HttpStatus.NOT_FOUND, exception.status)
+        val exception = assertFailsWith<ApiException> { friendService.addFriend(user1.id, user2.id) }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test
     fun shouldFailToAddYourselfAsFriend() {
-        SecurityContextHolder.getContext().authentication =
-            UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
-
-        every { userService.getUserById(user1.id) } returns user1
-        every { userRepository.getUserByUsernameIgnoreCase("username1") } returns user1
-
-        val exception = assertFailsWith<ApiException> { friendService.addFriend("username1") }
+        val exception = assertFailsWith<ApiException> { friendService.addFriend(user1.id, user1.id) }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-    }
-
-    @Test
-    fun shouldFailToAddFriendWhenAlreadyFriends() {
-        SecurityContextHolder.getContext().authentication =
-            UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
-
-        every { userService.getUserById(user1.id) } returns user1
-        every { userRepository.getUserByUsernameIgnoreCase("username2") } returns user2
-        every { friendsRepository.existsById(any()) } returns true
-
-        val exception = assertFailsWith<ApiException> { friendService.addFriend("username2") }
-        assertEquals(HttpStatus.CONFLICT, exception.status)
     }
 
     // ==========================
@@ -190,11 +149,11 @@ class FriendMutationTests {
 
         val slot = slot<FriendsId>()
         every { userService.getUserById(user1.id) } returns user1
-        every { userRepository.getUserByUsernameIgnoreCase("username2") } returns user2
+        every { userRepository.findById(user2.id) } returns Optional.of(user2)
         every { friendsRepository.existsById(any()) } returns true
         every { friendsRepository.deleteById(capture(slot)) } just Runs
 
-        friendService.removeFriend("username2")
+        friendService.removeFriend(UserIdDTO(user2.id.toString()))
 
         assertEquals(setOf(user1.id, user2.id), setOf(slot.captured.userA, slot.captured.userB))
     }
@@ -212,11 +171,11 @@ class FriendMutationTests {
 
         val slot = slot<FriendsId>()
         every { userService.getUserById(highId) } returns highUser
-        every { userRepository.getUserByUsernameIgnoreCase("low") } returns lowUser
+        every { userRepository.findById(lowId) } returns Optional.of(lowUser)
         every { friendsRepository.existsById(any()) } returns true
         every { friendsRepository.deleteById(capture(slot)) } just Runs
 
-        friendService.removeFriend("low")
+        friendService.removeFriend(UserIdDTO(lowId.toString()))
 
         assertEquals(lowId, slot.captured.userA)
         assertEquals(highId, slot.captured.userB)
@@ -229,7 +188,7 @@ class FriendMutationTests {
 
         every { userService.getUserById(user1.id) } returns null
 
-        val exception = assertFailsWith<ApiException> { friendService.removeFriend("username") }
+        val exception = assertFailsWith<ApiException> { friendService.removeFriend(UserIdDTO(user2.id.toString())) }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
@@ -239,9 +198,9 @@ class FriendMutationTests {
             UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
 
         every { userService.getUserById(user1.id) } returns user1
-        every { userRepository.getUserByUsernameIgnoreCase("fake name") } returns null
+        every { userRepository.findById(user2.id) } returns Optional.empty()
 
-        val exception = assertFailsWith<ApiException> { friendService.removeFriend("fake name") }
+        val exception = assertFailsWith<ApiException> { friendService.removeFriend(UserIdDTO(user2.id.toString())) }
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
@@ -251,10 +210,21 @@ class FriendMutationTests {
             UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
 
         every { userService.getUserById(user1.id) } returns user1
-        every { userRepository.getUserByUsernameIgnoreCase("username2") } returns user2
+        every { userRepository.findById(user2.id) } returns Optional.of(user2)
         every { friendsRepository.existsById(any()) } returns false
 
-        val exception = assertFailsWith<ApiException> { friendService.removeFriend("username2") }
+        val exception = assertFailsWith<ApiException> { friendService.removeFriend(UserIdDTO(user2.id.toString())) }
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
+    }
+
+    @Test
+    fun shouldFailToRemoveFriendWithInvalidUUID() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
+
+        every { userService.getUserById(user1.id) } returns user1
+
+        val exception = assertFailsWith<ApiException> { friendService.removeFriend(UserIdDTO("not-a-uuid")) }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 }

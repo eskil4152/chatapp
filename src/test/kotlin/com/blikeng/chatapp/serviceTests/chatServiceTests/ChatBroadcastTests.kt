@@ -16,6 +16,8 @@ import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.crypto.ChatEncrypt
 import com.blikeng.chatapp.security.crypto.Encrypted
 import com.blikeng.chatapp.services.ChatService
+import com.blikeng.chatapp.services.UserService
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.micrometer.core.instrument.MeterRegistry
 import io.mockk.*
@@ -55,10 +57,11 @@ class ChatBroadcastTests {
     @MockK lateinit var rabbitTemplate: RabbitTemplate
     @MockK lateinit var listOps: ListOperations<String, String>
     @MockK lateinit var presenceHandler: PresenceHandler
+    @MockK lateinit var userService: UserService
     @MockK(relaxed = true) lateinit var meterRegistry: MeterRegistry
 
     @InjectMockKs lateinit var chatService: ChatService
-    private val objectMapper = jacksonObjectMapper()
+    private val objectMapper = jacksonObjectMapper().registerModule(JavaTimeModule())
 
     @BeforeEach
     fun setup() {

@@ -1,7 +1,9 @@
 package com.blikeng.chatapp.controllerTests
 
 import com.blikeng.chatapp.controllers.RoomController
+import com.blikeng.chatapp.dtos.UserIdDTO
 import com.blikeng.chatapp.dtos.room.RoomDTO
+import com.blikeng.chatapp.dtos.room.RoomUserDTO
 import com.blikeng.chatapp.entities.RoomRole
 import com.blikeng.chatapp.entities.RoomType
 import com.blikeng.chatapp.errors.InvalidRoomNameException
@@ -88,24 +90,6 @@ class RoomControllerTests {
     }
 
     @Test
-    fun shouldJoinRoom(){
-        val roomId = UUID.randomUUID()
-
-        every { roomService.joinRoom(any()) } returns Unit
-
-        mockMvc.post("/api/rooms/join") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """
-                {
-                    "roomId":"$roomId"
-                }
-            """.trimIndent()
-        }
-            .andExpect { status { isOk() } }
-            .andExpect { content { string("Joined room successfully") } }
-    }
-
-    @Test
     fun shouldUpdateRoomName(){
         val roomId = UUID.randomUUID()
 
@@ -142,15 +126,13 @@ class RoomControllerTests {
 
     @Test
     fun shouldCreatePrivateRoom(){
-        every { roomService.getOrStartPrivateMessage("dm") } returns UUID.randomUUID()
+        val friendId = UUID.randomUUID()
+        val userIdDTO = UserIdDTO(userId = friendId.toString())
+        every { roomService.getOrStartPrivateMessage(userIdDTO) } returns UUID.randomUUID()
 
         mockMvc.post("/api/rooms/dm"){
             contentType = MediaType.APPLICATION_JSON
-            content = """
-                {
-                    "username":"dm"
-                }
-            """.trimIndent()
+            content = """{"userId":"$friendId"}"""
         }
             .andExpect { status { isCreated() } }
     }
@@ -217,22 +199,6 @@ class RoomControllerTests {
     }
 
     @Test
-    fun shouldGetNotFound(){
-        every { roomService.joinRoom(any()) } throws RoomNotFoundException()
-
-        mockMvc.post("/api/rooms/join") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """
-                {
-                    "roomId":"${UUID.randomUUID()}"
-                }
-            """.trimIndent()
-        }
-            .andExpect { status { isNotFound() }}
-            .andExpect { content { string("Room not found") }}
-    }
-
-    @Test
     fun shouldGetForbiddenWhenNotPermittedToKickOrBanUser(){
         val roomId = UUID.randomUUID()
         val targetId = UUID.randomUUID()
@@ -274,10 +240,35 @@ class RoomControllerTests {
 
         every { roomService.getAllBansForRoom(any()) } returns emptyList()
 
-        mockMvc.get("/api/rooms/bans/$roomId") {
+        mockMvc.get("/api/rooms/$roomId/bans") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"roomId":"$roomId"}"""
         }
             .andExpect { status { isOk() } }
+    }
+
+    @Test
+    fun shouldGetRoomMembers() {
+        val roomId = UUID.randomUUID()
+        val member = RoomUserDTO(id = UUID.randomUUID(), username = "alice", avatarUrl = null, online = true, role = RoomRole.MEMBER)
+
+        every { roomService.getAllUsersInRoom(roomId.toString()) } returns listOf(member)
+
+        mockMvc.get("/api/rooms/$roomId/members")
+            .andExpect { status { isOk() } }
+            .andExpect { jsonPath("$[0].username") { value("alice") } }
+            .andExpect { jsonPath("$[0].role") { value("MEMBER") } }
+    }
+
+    @Test
+    fun shouldChangeRole() {
+        every { roomService.changeRole(any()) } returns Unit
+
+        mockMvc.post("/api/rooms/changeRole") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"userId":"${UUID.randomUUID()}","roomId":"${UUID.randomUUID()}","action":"PROMOTE"}"""
+        }
+            .andExpect { status { isOk() } }
+            .andExpect { content { string("Role updated successfully") } }
     }
 }

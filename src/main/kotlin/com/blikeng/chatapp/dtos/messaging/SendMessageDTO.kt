@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.dtos.messaging
 
-import java.sql.Timestamp
+import java.time.Instant
 import java.util.*
 
 @Suppress("ArrayInDataClass")
@@ -12,6 +12,6 @@ data class SendMessageDTO(
     val message: String?,
     val nonce: ByteArray?,
     val ciphertext: ByteArray?,
-    val timestamp: Timestamp,
+    val timestamp: Instant,
     val keyVersion: Int? = null
 )

@@ -23,6 +23,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
 import java.util.*
+import java.util.Optional
 import kotlin.test.assertFailsWith
 
 @ExtendWith(MockKExtension::class)
@@ -98,11 +99,10 @@ class FriendQueryTests {
             UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
 
         every { userService.getUserById(user1.id) } returns user1
-        every { userRepository.getUserByUsernameIgnoreCase("username2") } returns user2
-        every { friendsRepository.existsById(any()) } returns true
-        every { presenceHandler.isUserOnline(user2.id) } returns true
+        every { userRepository.findById(user2.id) } returns Optional.of(user2)
+        every { friendsRepository.findById(any()) } returns Optional.of(friendsEntity)
 
-        val friend = friendService.getFriendInfo("username2")
+        val friend = friendService.getFriendInfo(user2.id.toString())
 
         assertEquals(user2.username, friend.username)
         assertEquals(user2.bio, friend.bio)
@@ -115,7 +115,7 @@ class FriendQueryTests {
 
         every { userService.getUserById(user1.id) } returns null
 
-        val exception = assertFailsWith<ApiException> { friendService.getFriendInfo("username") }
+        val exception = assertFailsWith<ApiException> { friendService.getFriendInfo(user2.id.toString()) }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
@@ -125,9 +125,9 @@ class FriendQueryTests {
             UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
 
         every { userService.getUserById(user1.id) } returns user1
-        every { userRepository.getUserByUsernameIgnoreCase("fake name") } returns null
+        every { userRepository.findById(user2.id) } returns Optional.empty()
 
-        val exception = assertFailsWith<ApiException> { friendService.getFriendInfo("fake name") }
+        val exception = assertFailsWith<ApiException> { friendService.getFriendInfo(user2.id.toString()) }
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
@@ -137,11 +137,22 @@ class FriendQueryTests {
             UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
 
         every { userService.getUserById(user1.id) } returns user1
-        every { userRepository.getUserByUsernameIgnoreCase("username2") } returns user2
-        every { friendsRepository.existsById(any()) } returns false
+        every { userRepository.findById(user2.id) } returns Optional.of(user2)
+        every { friendsRepository.findById(any()) } returns Optional.empty()
 
-        val exception = assertFailsWith<ApiException> { friendService.getFriendInfo("username2") }
+        val exception = assertFailsWith<ApiException> { friendService.getFriendInfo(user2.id.toString()) }
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
+    }
+
+    @Test
+    fun shouldFailToGetFriendInfoWithInvalidUUID() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
+
+        every { userService.getUserById(user1.id) } returns user1
+
+        val exception = assertFailsWith<ApiException> { friendService.getFriendInfo("not-a-uuid") }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     // ==========================
@@ -149,13 +160,10 @@ class FriendQueryTests {
     // ==========================
     @Test
     fun shouldGetFriendEntity() {
-        SecurityContextHolder.getContext().authentication =
-            UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
-
-        every { userRepository.getUserByUsernameIgnoreCase("username2") } returns user2
+        every { userRepository.findById(user2.id) } returns Optional.of(user2)
         every { friendsRepository.existsById(any()) } returns true
 
-        val friend = friendService.getFriendEntity("username2", user1.id)
+        val friend = friendService.getFriendEntityById(user2.id, user1.id)
 
         assertEquals(user2.username, friend.username)
         assertEquals(user2.bio, friend.bio)
@@ -163,24 +171,18 @@ class FriendQueryTests {
 
     @Test
     fun shouldFailToGetFriendEntityWhenUserDoesNotExist() {
-        SecurityContextHolder.getContext().authentication =
-            UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
+        every { userRepository.findById(user2.id) } returns Optional.empty()
 
-        every { userRepository.getUserByUsernameIgnoreCase("fake name") } returns null
-
-        val exception = assertFailsWith<ApiException> { friendService.getFriendEntity("fake name", user1.id) }
+        val exception = assertFailsWith<ApiException> { friendService.getFriendEntityById(user2.id, user1.id) }
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
     @Test
     fun shouldFailToGetFriendEntityWhenNotFriends() {
-        SecurityContextHolder.getContext().authentication =
-            UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
-
-        every { userRepository.getUserByUsernameIgnoreCase("real name") } returns user2
+        every { userRepository.findById(user2.id) } returns Optional.of(user2)
         every { friendsRepository.existsById(any()) } returns false
 
-        val exception = assertFailsWith<ApiException> { friendService.getFriendEntity("real name", user1.id) }
+        val exception = assertFailsWith<ApiException> { friendService.getFriendEntityById(user2.id, user1.id) }
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 }

@@ -47,10 +47,9 @@ class AuthServiceTests {
     @Test
     fun shouldNotRegisterUserWithExistingUsername() {
         every { authRepository.existsByUsernameIgnoreCase(any()) } returns true
-        every { passwordService.encodePassword(any()) } returns "ENCO"
 
         val exception = assertFailsWith<ApiException> {
-            authService.registerUser("u", "p")
+            authService.registerUser("existinguser", "password123")
         }
 
         assertEquals(HttpStatus.CONFLICT, exception.status)
@@ -79,6 +78,37 @@ class AuthServiceTests {
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         assertEquals(ErrorMessages.SHORT_PASSWORD, exception.message)
+    }
+
+    @Test
+    fun shouldNotRegisterUserWithTooLongUsername() {
+        val exception = assertFailsWith<ApiException> {
+            authService.registerUser("a".repeat(33), "password123")
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.LONG_USERNAME, exception.message)
+    }
+
+    @Test
+    fun shouldNotRegisterUserWithTooLongPassword() {
+        val exception = assertFailsWith<ApiException> {
+            authService.registerUser("username", "p".repeat(129))
+        }
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+        assertEquals(ErrorMessages.LONG_PASSWORD, exception.message)
+    }
+
+    @Test
+    fun shouldRegisterUserWithTrimmedUsername() {
+        every { authRepository.existsByUsernameIgnoreCase("username") } returns false
+        every { passwordService.encodePassword(any()) } returns "ENC"
+        every { authRepository.save(match { it.username == "username" }) } answers { firstArg() }
+        every { jwtService.generateToken(any()) } returns "TOKEN"
+
+        val token = authService.registerUser("  username  ", "password123")
+        assertEquals("TOKEN", token)
     }
 
     @Test

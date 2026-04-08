@@ -1,6 +1,7 @@
 package com.blikeng.chatapp.entities
 
 import jakarta.persistence.*
+import java.time.Instant
 import java.util.*
 
 @Entity
@@ -14,6 +15,8 @@ class RoomEntity(
 
     val encrypted: Boolean = false,
     val keyVersion: Int? = null,
+
+    val createdAt: Instant = Instant.now(),
 
     @Enumerated(EnumType.STRING)
     val type: RoomType

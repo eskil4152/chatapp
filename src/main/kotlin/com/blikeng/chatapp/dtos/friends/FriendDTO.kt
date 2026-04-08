@@ -1,5 +1,6 @@
 package com.blikeng.chatapp.dtos.friends
 
+import java.time.Instant
 import java.util.*
 
 data class FriendDTO (
@@ -10,5 +11,5 @@ data class FriendDTO (
     val fullName: String?,
     val avatarUrl: String?,
     val birthday: Date?,
-    val createdAt: Date?,
+    val friendsSince: Instant?,
 )

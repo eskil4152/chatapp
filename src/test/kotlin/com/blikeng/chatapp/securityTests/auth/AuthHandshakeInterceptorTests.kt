@@ -1,7 +1,9 @@
 package com.blikeng.chatapp.securityTests.auth
 
+import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.security.auth.AuthHandshakeInterceptor
 import com.blikeng.chatapp.security.auth.JwtService
+import com.blikeng.chatapp.services.UserService
 import io.mockk.Called
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
@@ -36,11 +38,14 @@ class AuthHandshakeInterceptorTests {
     @MockK
     lateinit var jwtService: JwtService
 
+    @MockK
+    lateinit var userService: UserService
+
     lateinit var interceptor: AuthHandshakeInterceptor
 
     @BeforeEach
     fun setUp() {
-        interceptor = AuthHandshakeInterceptor(jwtService)
+        interceptor = AuthHandshakeInterceptor(jwtService, userService)
     }
 
     @Test
@@ -54,6 +59,7 @@ class AuthHandshakeInterceptorTests {
             userId = userId,
             role = "USER"
         )
+        every { userService.getUserById(userId) } returns UserEntity(username = "user", password = "")
 
         val servletRequest = mockk<HttpServletRequest> {
             every { cookies } returns cookiesList
@@ -166,5 +172,30 @@ class AuthHandshakeInterceptorTests {
     @Test
     fun afterHandshakeShouldPass(){
         interceptor.afterHandshake(mockk(), mockk(), mockk(), null)
+    }
+
+    @Test
+    fun shouldFailWhenUserDoesNotExistInDatabase() {
+        val cookiesList: Array<Cookie> = arrayOf(Cookie("AUTH", "token"))
+        val userId = UUID.randomUUID()
+
+        every { jwtService.validateToken("token") } returns JwtService.JwtPrincipal(
+            username = "user",
+            userId = userId,
+            role = "USER"
+        )
+        every { userService.getUserById(userId) } returns null
+
+        val servletRequest = mockk<HttpServletRequest> {
+            every { cookies } returns cookiesList
+        }
+
+        val request = ServletServerHttpRequest(servletRequest)
+        val attributes = mutableMapOf<String, Any>()
+
+        val result = interceptor.beforeHandshake(request, mockk(relaxed = true), mockk(relaxed = true), attributes)
+
+        assertFalse(result)
+        assertTrue(attributes.isEmpty())
     }
 }

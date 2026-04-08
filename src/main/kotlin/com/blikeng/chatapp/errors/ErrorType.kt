@@ -22,9 +22,12 @@ class InvalidRoomNameException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessa
 // Input validation errors
 class ShortPasswordException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.SHORT_PASSWORD)
 class ShortUsernameException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.SHORT_USERNAME)
+class LongUsernameException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.LONG_USERNAME)
+class LongPasswordException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.LONG_PASSWORD)
 class InvalidUUIDException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.INVALID_UUID)
 class InvalidMessageException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.INVALID_MESSAGE)
 class InvalidParametersException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.INVALID_PARAMETERS)
+class InvalidFieldException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.INVALID_FIELD)
 
 // Friends
 class UserNotFoundException : ApiException(HttpStatus.NOT_FOUND, ErrorMessages.USER_NOT_FOUND)
@@ -34,3 +37,11 @@ class FriendYourselfException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessag
 // Bans
 class BannedException : ApiException(HttpStatus.FORBIDDEN, ErrorMessages.BANNED)
 class InvalidBanException : ApiException(HttpStatus.FORBIDDEN, ErrorMessages.INVALID_BAN)
+
+// Invites
+class InvalidInviteException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.INVALID_INVITE)
+class InviteNotFoundException : ApiException(HttpStatus.NOT_FOUND, ErrorMessages.INVITE_NOT_FOUND)
+class AlreadyInvitedException : ApiException(HttpStatus.CONFLICT, ErrorMessages.ALREADY_INVITED)
+class InviteYourselfException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.INVITE_YOURSELF)
+class InviteBannedUserException : ApiException(HttpStatus.FORBIDDEN, ErrorMessages.INVITE_BANNED)
+class AlreadyMemberException : ApiException(HttpStatus.CONFLICT, ErrorMessages.ALREADY_MEMBER)

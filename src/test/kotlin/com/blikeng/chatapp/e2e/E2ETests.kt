@@ -23,7 +23,6 @@ import org.springframework.web.socket.WebSocketSession
 import org.springframework.web.socket.client.standard.StandardWebSocketClient
 import org.springframework.web.socket.handler.TextWebSocketHandler
 import java.net.URI
-import java.util.*
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -53,12 +52,14 @@ class E2ETests : ContainerBase() {
 
     var user1Cookie: Cookie? = null
     var user2Cookie: Cookie? = null
+    var user1Id: String? = null
+    var user2Id: String? = null
     var roomId: String? = null
     var encryptedRoomId: String? = null
 
     @BeforeAll
     fun setup(@Autowired jdbcTemplate: JdbcTemplate) {
-        jdbcTemplate.execute("TRUNCATE TABLE user_rooms, chats, rooms, users, friends CASCADE")
+        jdbcTemplate.execute("TRUNCATE TABLE user_rooms, chats, rooms, users, friends, invites CASCADE")
     }
 
     @Test
@@ -162,7 +163,7 @@ class E2ETests : ContainerBase() {
     @Test
     @Order(8)
     fun shouldAccessUserAndGetCorrectInfo(){
-        mockMvc.get("/api/user"){
+        val result = mockMvc.get("/api/user"){
             user1Cookie?.let { cookie(it) }
         }
             .andExpect {
@@ -171,6 +172,9 @@ class E2ETests : ContainerBase() {
                 }
             }
             .andExpect { status { isOk() } }
+            .andReturn()
+
+        user1Id = objectMapper.readTree(result.response.contentAsString)["userId"].asText()
     }
 
     @Test
@@ -183,21 +187,6 @@ class E2ETests : ContainerBase() {
             .andReturn()
 
         assertEquals("[]", result.response.contentAsString)
-    }
-
-    @Test
-    @Order(10)
-    fun shouldFailToJoinNonExistingRoom(){
-        mockMvc.post("/api/rooms/join") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """
-                {
-                    "roomId":"${UUID.randomUUID()}"
-                }
-            """.trimIndent()
-            user1Cookie?.let { cookie(it) }
-        }
-            .andExpect { status { isNotFound()} }
     }
 
     @Test
@@ -395,25 +384,41 @@ class E2ETests : ContainerBase() {
     @Test
     @Order(22)
     fun shouldGetEmptyListForSecondUserRooms(){
-        val result = mockMvc.get("/api/rooms"){
+        val roomsResult = mockMvc.get("/api/rooms"){
             user2Cookie?.let { cookie(it) }
         }
             .andExpect { status { isOk() } }
             .andReturn()
 
-        assertEquals("[]", result.response.contentAsString)
+        assertEquals("[]", roomsResult.response.contentAsString)
+
+        val userResult = mockMvc.get("/api/user") {
+            user2Cookie?.let { cookie(it) }
+        }.andReturn()
+        user2Id = objectMapper.readTree(userResult.response.contentAsString)["userId"].asText()
     }
 
     @Test
     @Order(23)
-    fun shouldJoinRoom(){
-        mockMvc.post("/api/rooms/join") {
+    fun shouldInviteAndJoinRoom(){
+        mockMvc.post("/api/invites/room") {
             contentType = MediaType.APPLICATION_JSON
-            content = """
-                {
-                    "roomId":"$roomId"
-                }
-            """.trimIndent()
+            content = """{"type":"ROOM_INVITE","targetUsername":"username2","roomId":"$roomId","expiresAt":${System.currentTimeMillis() + 604800000}}"""
+            user1Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+
+        val pendingResult = mockMvc.get("/api/invites/pending") {
+            user2Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+            .andReturn()
+
+        val inviteId = objectMapper.readTree(pendingResult.response.contentAsString)[0]["id"].asText()
+
+        mockMvc.post("/api/invites/respond") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"inviteId":"$inviteId","response":"ACCEPTED"}"""
             user2Cookie?.let { cookie(it) }
         }
             .andExpect { status { isOk() } }
@@ -450,12 +455,14 @@ class E2ETests : ContainerBase() {
     @Order(26)
     fun shouldEnterRoomAndSendMessage() {
         val received = CopyOnWriteArrayList<String>()
-        val latch = CountDownLatch(2)
+        val latch = CountDownLatch(1)
 
         val handler = object : TextWebSocketHandler() {
             override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
                 received += message.payload
-                latch.countDown()
+                if (message.payload.contains("ROOM_JOINED")) {
+                    latch.countDown()
+                }
             }
         }
 
@@ -584,14 +591,25 @@ class E2ETests : ContainerBase() {
 
     @Test
     @Order(30)
-    fun shouldJoinEncryptedRoom(){
-        mockMvc.post("/api/rooms/join") {
+    fun shouldInviteAndJoinEncryptedRoom(){
+        mockMvc.post("/api/invites/room") {
             contentType = MediaType.APPLICATION_JSON
-            content = """
-                {
-                    "roomId":"$encryptedRoomId"
-                }
-            """.trimIndent()
+            content = """{"type":"ROOM_INVITE","targetUsername":"username","roomId":"$encryptedRoomId"}"""
+            user2Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+
+        val pendingResult = mockMvc.get("/api/invites/pending") {
+            user1Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+            .andReturn()
+
+        val inviteId = objectMapper.readTree(pendingResult.response.contentAsString)[0]["id"].asText()
+
+        mockMvc.post("/api/invites/respond") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"inviteId":"$inviteId","response":"ACCEPTED"}"""
             user1Cookie?.let { cookie(it) }
         }
             .andExpect { status { isOk() } }
@@ -601,12 +619,14 @@ class E2ETests : ContainerBase() {
     @Order(31)
     fun shouldEnterEncryptedRoomAndSendMessage() {
         val received = CopyOnWriteArrayList<String>()
-        val latch = CountDownLatch(2)
+        val latch = CountDownLatch(1)
 
         val handler = object : TextWebSocketHandler() {
             override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
                 received += message.payload
-                latch.countDown()
+                if (message.payload.contains("ROOM_JOINED")) {
+                    latch.countDown()
+                }
             }
         }
 
@@ -739,6 +759,59 @@ class E2ETests : ContainerBase() {
 
     @Test
     @Order(35)
+    fun shouldFailToSendFriendRequestToNonExistingUser(){
+        mockMvc.post("/api/invites/friend") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"username":"notarealuser"}"""
+            user2Cookie?.let { cookie(it) }
+        }.andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    @Order(36)
+    fun shouldSendAndAcceptFriendRequest(){
+        mockMvc.post("/api/invites/friend") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"username":"username"}"""
+            user2Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+
+        val pendingResult = mockMvc.get("/api/invites/pending") {
+            user1Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+            .andReturn()
+
+        val inviteId = objectMapper.readTree(pendingResult.response.contentAsString)[0]["id"].asText()
+
+        mockMvc.post("/api/invites/respond") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"inviteId":"$inviteId","response":"ACCEPTED"}"""
+            user1Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+
+        mockMvc.get("/api/friends") {
+            user2Cookie?.let { cookie(it) }
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$[0].username") { value("username") }
+        }
+    }
+
+    @Test
+    @Order(37)
+    fun shouldMakePrivateRoom(){
+        mockMvc.post("/api/rooms/dm") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"userId":"$user1Id"}"""
+            user2Cookie?.let { cookie(it) }
+        }.andExpect { status { isCreated() } }
+    }
+
+    @Test
+    @Order(38)
     fun shouldLeaveRoom(){
         mockMvc.delete("/api/rooms/leave") {
             contentType = MediaType.APPLICATION_JSON
@@ -770,7 +843,7 @@ class E2ETests : ContainerBase() {
     }
 
     @Test
-    @Order(36)
+    @Order(39)
     fun shouldDeleteRoom(){
         mockMvc.delete("/api/rooms/delete") {
             contentType = MediaType.APPLICATION_JSON
@@ -802,7 +875,7 @@ class E2ETests : ContainerBase() {
     }
 
     @Test
-    @Order(37)
+    @Order(40)
     fun shouldLogOut(){
         val result = mockMvc.post("/api/logout") {
             contentType = MediaType.APPLICATION_JSON
@@ -820,54 +893,4 @@ class E2ETests : ContainerBase() {
         user1Cookie = authCookie
     }
 
-    @Test
-    @Order(38)
-    fun shouldFailToAddNonExistingUserAsFriend(){
-        mockMvc.post("/api/friends/add") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """
-                {
-                    "username":"not a registered username"
-                }
-            """.trimIndent()
-            user2Cookie?.let { cookie(it) }
-        }.andExpect { status { isNotFound() } }
-    }
-
-    @Test
-    @Order(39)
-    fun shouldAddFriend(){
-        mockMvc.post("/api/friends/add") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """
-                {
-                    "username":"username"
-                }
-            """.trimIndent()
-            user2Cookie?.let { cookie(it) }
-        }.andExpect { status { isOk() } }
-
-        mockMvc.get("/api/friends") {
-            user2Cookie?.let { cookie(it) }
-        }.andExpect {
-            status { isOk() }
-            jsonPath("$[0].username") { value("username") }
-        }
-    }
-
-    @Test
-    @Order(40)
-    fun shouldMakePrivateRoom(){
-        mockMvc.post("/api/rooms/dm") {
-            contentType = MediaType.APPLICATION_JSON
-            user2Cookie?.let { cookie(it) }
-            content = """
-                {
-                    "username":"username"
-                }
-            """.trimIndent()
-        }.andExpect {
-            status { isCreated() }
-        }
-    }
 }

@@ -1,5 +1,6 @@
 package com.blikeng.chatapp.services
 
+import com.blikeng.chatapp.dtos.UserIdDTO
 import com.blikeng.chatapp.dtos.friends.FriendDTO
 import com.blikeng.chatapp.dtos.websocket.OnlineFriend
 import com.blikeng.chatapp.dtos.websocket.WsFriendPresence
@@ -7,8 +8,8 @@ import com.blikeng.chatapp.dtos.websocket.WsFriendSnapshot
 import com.blikeng.chatapp.entities.FriendsEntity
 import com.blikeng.chatapp.entities.FriendsId
 import com.blikeng.chatapp.entities.UserEntity
-import com.blikeng.chatapp.errors.AlreadyFriendsException
 import com.blikeng.chatapp.errors.FriendYourselfException
+import com.blikeng.chatapp.errors.InvalidUUIDException
 import com.blikeng.chatapp.errors.InvalidUserException
 import com.blikeng.chatapp.errors.UserNotFoundException
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
@@ -18,13 +19,13 @@ import com.blikeng.chatapp.security.auth.getId
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
-import org.springframework.web.socket.TextMessage
-import org.springframework.web.socket.WebSocketSession
 import java.util.*
 
 // ==========================
-// Handles friend relationships, friend lookups, and friend profile retrieval.
-// Validates friendship existence and enforces deterministic friendship ordering.
+// Manages friend relationships: adding/removing friends, listing friends,
+// fetching friend profile info, and notifying friends of presence changes.
+// Adding friends is triggered by InviteService on invite acceptance.
+// Enforces deterministic composite-key ordering for friendship records.
 // ==========================
 @Service
 class FriendService(
@@ -33,7 +34,7 @@ class FriendService(
     private val userRepository: UserRepository,
     private val presenceHandler: PresenceHandler,
     private val objectMapper: ObjectMapper,
-    private val redisTemplate: RedisTemplate<String, String>,
+    private val redisTemplate: RedisTemplate<String, String>
 ) {
     fun getFriends(): List<FriendDTO> {
         val id = getId()
@@ -52,19 +53,21 @@ class FriendService(
                 fullName = friend.fullName,
                 avatarUrl = friend.avatarUrl,
                 birthday = friend.birthday,
-                createdAt = friend.createdAt,
+                friendsSince = friendship.friendsSince,
             )
         }
     }
 
-    fun addFriend(friendUsername: String) {
-        val id = getId()
+    fun areFriends(userA: UUID, userB: UUID): Boolean {
+        val id = generateFriendshipId(userA, userB)
+        return friendsRepository.existsById(id)
+    }
+
+    fun addFriend(id: UUID, friendId: UUID) {
+        val friendshipId = generateFriendshipId(id, friendId)
+
         val user = userService.getUserById(id) ?: throw InvalidUserException()
-
-        val friend = userRepository.getUserByUsernameIgnoreCase(friendUsername) ?: throw UserNotFoundException()
-
-        val friendshipId = generateFriendshipId(id, friend.id)
-        if (friendsRepository.existsById(friendshipId)) throw AlreadyFriendsException()
+        val friend = userService.getUserById(friendId) ?: throw InvalidUserException()
 
         val (userA, userB) = orderedUsers(user, friend)
         friendsRepository.save(FriendsEntity(
@@ -74,26 +77,38 @@ class FriendService(
         ))
     }
 
-    fun removeFriend(friendUsername: String) {
+    fun removeFriend(userIdDTO: UserIdDTO) {
         val id = getId()
         userService.getUserById(id) ?: throw InvalidUserException()
 
-        val friend = userRepository.getUserByUsernameIgnoreCase(friendUsername) ?: throw UserNotFoundException()
+        val friendId = try {
+            UUID.fromString(userIdDTO.userId)
+        } catch (_: IllegalArgumentException) {
+            throw InvalidUUIDException()
+        }
 
-        val friendshipId = generateFriendshipId(id, friend.id)
+        userRepository.findById(friendId).orElseThrow { UserNotFoundException() }
+
+        val friendshipId = generateFriendshipId(id, friendId)
         if (!friendsRepository.existsById(friendshipId)) throw UserNotFoundException()
 
         friendsRepository.deleteById(friendshipId)
     }
 
-    fun getFriendInfo(friendUsername: String): FriendDTO {
+    fun getFriendInfo(friendIdString: String): FriendDTO {
         val id = getId()
         userService.getUserById(id) ?: throw InvalidUserException()
 
-        val friend = userRepository.getUserByUsernameIgnoreCase(friendUsername) ?: throw UserNotFoundException()
+        val friendId = try {
+            UUID.fromString(friendIdString)
+        } catch (_: IllegalArgumentException) {
+            throw InvalidUUIDException()
+        }
+
+        val friend = userRepository.findById(friendId).orElseThrow { UserNotFoundException() }
 
         val friendshipId = generateFriendshipId(id, friend.id)
-        if (!friendsRepository.existsById(friendshipId)) throw UserNotFoundException()
+        val friendship = friendsRepository.findById(friendshipId).orElseThrow { UserNotFoundException() }
 
         return FriendDTO(
             userId = friend.id,
@@ -103,12 +118,12 @@ class FriendService(
             fullName = friend.fullName,
             avatarUrl = friend.avatarUrl,
             birthday = friend.birthday,
-            createdAt = friend.createdAt,
+            friendsSince = friendship.friendsSince,
         )
     }
 
-    fun getFriendEntity(username: String, userId: UUID): UserEntity {
-        val friend = userRepository.getUserByUsernameIgnoreCase(username) ?: throw UserNotFoundException()
+    fun getFriendEntityById(friendId: UUID, userId: UUID): UserEntity {
+        val friend = userRepository.findById(friendId).orElseThrow { UserNotFoundException() }
 
         val friendshipId = generateFriendshipId(userId, friend.id)
         if (!friendsRepository.existsById(friendshipId)) throw UserNotFoundException()
@@ -135,35 +150,17 @@ class FriendService(
         }
     }
 
-    fun getOnlineFriends(userId: UUID, session: WebSocketSession){
-        val friends = mutableListOf<OnlineFriend>()
-
-        for (friendship in friendsRepository.findFriendsForUser(userId)) {
-            val friend = if (friendship.userA.id == userId) {
-                friendship.userB
-            } else {
-                friendship.userA
-            }
-
-            friends.add(OnlineFriend(
+    fun getOnlineFriends(userId: UUID): WsFriendSnapshot {
+        val friends = friendsRepository.findFriendsForUser(userId).map { friendship ->
+            val friend = if (friendship.userA.id == userId) friendship.userB else friendship.userA
+            OnlineFriend(
                 userId = friend.id,
                 username = friend.username,
                 avatarUrl = friend.avatarUrl,
                 online = presenceHandler.isUserOnline(friend.id)
-            ))
+            )
         }
-
-        synchronized(session) {
-            if (session.isOpen) {
-                session.sendMessage(
-                    TextMessage(
-                        objectMapper.writeValueAsString(
-                            WsFriendSnapshot(friends = friends)
-                        )
-                    )
-                )
-            }
-        }
+        return WsFriendSnapshot(friends = friends)
     }
 
     // ==========================

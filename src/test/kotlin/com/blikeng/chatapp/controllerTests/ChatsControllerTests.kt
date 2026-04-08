@@ -17,7 +17,7 @@ import org.springframework.context.annotation.FilterType
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
-import java.sql.Timestamp
+import java.time.Instant
 import java.util.*
 import kotlin.test.Test
 
@@ -61,7 +61,7 @@ class ChatsControllerTests {
             message = "message",
             nonce = null,
             ciphertext = null,
-            timestamp = Timestamp(System.currentTimeMillis()),
+            timestamp = Instant.now(),
             keyVersion = null,
         )
 

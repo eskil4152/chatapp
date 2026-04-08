@@ -1,7 +1,7 @@
 package com.blikeng.chatapp.entities
 
 import jakarta.persistence.*
-import java.sql.Timestamp
+import java.time.Instant
 import java.util.*
 
 @Entity
@@ -18,7 +18,7 @@ class ChatEntity(
     val user: UserEntity,
 
     @Column(nullable = false)
-    val timestamp: Timestamp = Timestamp(System.currentTimeMillis()),
+    val timestamp: Instant = Instant.now(),
 
     @Column(columnDefinition = "TEXT")
     var message: String? = null,

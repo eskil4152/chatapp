@@ -28,7 +28,7 @@ import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
-import java.sql.Timestamp
+import java.time.Instant
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
@@ -48,6 +48,7 @@ class ChatService (
     private val rabbitTemplate: RabbitTemplate,
     private val objectMapper: ObjectMapper,
     private val presenceHandler: PresenceHandler,
+    private val userService: UserService,
     meterRegistry: MeterRegistry,
 ) {
     val rooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
@@ -122,7 +123,7 @@ class ChatService (
     // Message publishing and fetching
     // ==========================
     fun broadcast(roomId: UUID, message: ReceivedMessage, username: String) {
-        val timestamp = Timestamp(System.currentTimeMillis())
+        val timestamp = Instant.now()
         if (!userRoomRepository.existsByIdUserIdAndIdRoomId(message.userId, roomId)) throw RoomNotFoundException()
 
         if (message.content.isBlank() || message.content.length > 2000) throw InvalidMessageException()
@@ -173,8 +174,8 @@ class ChatService (
 
         val json = objectMapper.writeValueAsString(rabbitMessage)
 
-        rabbitTemplate.convertAndSend("chat.buffer", rabbitMessage)
         redisTemplate.opsForList().rightPush("chat.peek.${message.roomId}", json)
+        rabbitTemplate.convertAndSend("chat.buffer", rabbitMessage)
     }
 
     private fun getPendingMessages(roomId: UUID): List<RabbitMessageDTO> {
@@ -237,12 +238,16 @@ class ChatService (
     // Helper methods
     // ==========================
     fun getUsersInRoom(roomId: UUID): List<RoomUserDTO> {
-        return userRoomRepository.findUsersByRoomId(roomId).map {
+        val userRooms = userRoomRepository.findUserRoomsByRoomId(roomId).associateBy { it.id.userId }
+        val users = userService.getAllById(userRooms.keys.toList())
+
+        return users.map {
             RoomUserDTO(
                 id = it.id,
                 username = it.username,
                 avatarUrl = it.avatarUrl,
-                online = presenceHandler.isUserOnline(it.id)
+                online = presenceHandler.isUserOnline(it.id),
+                role = userRooms[it.id]?.role,
             )
         }
     }

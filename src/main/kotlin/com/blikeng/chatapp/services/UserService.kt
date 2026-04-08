@@ -4,6 +4,7 @@ import com.blikeng.chatapp.dtos.user.ChangeUserDTO
 import com.blikeng.chatapp.dtos.user.EditPasswordDTO
 import com.blikeng.chatapp.dtos.user.UserDTO
 import com.blikeng.chatapp.entities.UserEntity
+import com.blikeng.chatapp.errors.InvalidFieldException
 import com.blikeng.chatapp.errors.InvalidUserException
 import com.blikeng.chatapp.errors.ShortPasswordException
 import com.blikeng.chatapp.errors.WrongPasswordException
@@ -34,7 +35,8 @@ class UserService(
         val user = getUserById(id) ?: throw InvalidUserException()
 
         return UserDTO(
-            user.username,
+            userId = id,
+            username = user.username,
             bio = user.bio,
             email = user.email,
             fullName = user.fullName,
@@ -50,10 +52,21 @@ class UserService(
         val id = getId()
         val user = getUserById(id) ?: throw InvalidUserException()
 
-        changeUserDTO.bio.let { user.bio = it }
-        changeUserDTO.email.let { user.email = it }
-        changeUserDTO.fullName.let { user.fullName = it }
-        changeUserDTO.avatarUrl.let { user.avatarUrl = it }
+        val bio = changeUserDTO.bio.trim()
+        val email = changeUserDTO.email.trim()
+        val fullName = changeUserDTO.fullName.trim()
+        val avatarUrl = changeUserDTO.avatarUrl.trim()
+
+        if (bio.length > 500) throw InvalidFieldException()
+        if (email.isNotBlank() && !Regex("^.+@.+$").matches(email)) throw InvalidFieldException()
+        if (email.length > 254) throw InvalidFieldException()
+        if (fullName.length > 100) throw InvalidFieldException()
+        if (avatarUrl.length > 500) throw InvalidFieldException()
+
+        user.bio = bio
+        user.email = email
+        user.fullName = fullName
+        user.avatarUrl = avatarUrl
     }
 
     @Transactional

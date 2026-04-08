@@ -12,6 +12,6 @@ class RateLimitConfig(
 
     override fun addInterceptors(registry: InterceptorRegistry) {
         registry.addInterceptor(rateLimitInterceptor)
-            .addPathPatterns("/api/login", "/api/register")
+            .addPathPatterns("/api/**")
     }
 }
