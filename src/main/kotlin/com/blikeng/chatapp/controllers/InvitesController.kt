@@ -48,6 +48,7 @@ class InvitesController(
         @RequestBody roomInviteDTO: RoomInviteDTO
     ) : ResponseEntity<String> {
         inviteService.sendRoomInvite(roomInviteDTO)
+
         return ResponseEntity.ok("Room invite sent successfully")
     }
 

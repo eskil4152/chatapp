@@ -38,4 +38,5 @@ object ErrorMessages {
     const val ALREADY_INVITED = "Already invited"
     const val INVITE_YOURSELF = "You can not invite yourself"
     const val INVITE_BANNED = "You can not invite a banned user"
+    const val ALREADY_MEMBER = "Already a member"
 }

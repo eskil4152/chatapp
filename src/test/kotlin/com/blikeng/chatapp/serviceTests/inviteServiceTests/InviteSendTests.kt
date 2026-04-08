@@ -172,14 +172,14 @@ class InviteSendTests {
         every { userService.getUserById(user1.id) } returns user1
         every { userRoomRepository.findByIdUserIdAndIdRoomId(user1.id, roomId) } returns userRoom
         every { roomService.getRoom(roomId) } returns Optional.of(mockk<RoomEntity>())
-        every { userRepository.findById(user2.id) } returns Optional.of(user2)
+        every { userRepository.getUserByUsernameIgnoreCase(user2.username) } returns user2
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(user2.id, roomId) } returns false
         every { bannedUserService.isUserBanned(user2.id, roomId) } returns false
         every { inviteRepository.existsPendingRoomInvite(user2.id, roomId) } returns false
         every { inviteRepository.save(any()) } answers { firstArg() }
         every { eventPublisher.publishEvent(any<InviteSentEvent>()) } just Runs
 
-        inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUserId = user2.id.toString(), roomId = roomId.toString(), expiresAt = expiresAt))
+        inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUsername = user2.username, roomId = roomId.toString(), expiresAt = expiresAt))
 
         verify(exactly = 1) { inviteRepository.save(any()) }
         verify(exactly = 1) { eventPublisher.publishEvent(any<InviteSentEvent>()) }
@@ -191,7 +191,7 @@ class InviteSendTests {
         every { userService.getUserById(user1.id) } returns null
 
         val ex = assertFailsWith<ApiException> {
-            inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUserId = user2.id.toString(), roomId = roomId.toString(), expiresAt = expiresAt))
+            inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUsername = user2.username, roomId = roomId.toString(), expiresAt = expiresAt))
         }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
@@ -199,20 +199,25 @@ class InviteSendTests {
     @Test
     fun shouldFailToSendRoomInviteToYourself() {
         setAuth(user1.id)
+        val userRoom = mockk<UserRoomEntity>()
+        every { userRoom.role } returns RoomRole.OWNER
         every { userService.getUserById(user1.id) } returns user1
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(user1.id, roomId) } returns userRoom
+        every { roomService.getRoom(roomId) } returns Optional.of(mockk<RoomEntity>())
+        every { userRepository.getUserByUsernameIgnoreCase(user1.username) } returns user1
 
         val ex = assertFailsWith<ApiException> {
-            inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUserId = user1.id.toString(), roomId = roomId.toString(), expiresAt = expiresAt))
+            inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUsername = user1.username, roomId = roomId.toString(), expiresAt = expiresAt))
         }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
 
     @Test
-    fun shouldFailToSendRoomInviteWithInvalidUUID() {
+    fun shouldFailToSendRoomInviteWithInvalidRoomId() {
         setAuth(user1.id)
 
         val ex = assertFailsWith<ApiException> {
-            inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUserId = "not-a-uuid", roomId = roomId.toString(), expiresAt = expiresAt))
+            inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUsername = user2.username, roomId = "not-a-uuid", expiresAt = expiresAt))
         }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
@@ -224,7 +229,7 @@ class InviteSendTests {
         every { userRoomRepository.findByIdUserIdAndIdRoomId(user1.id, roomId) } returns null
 
         val ex = assertFailsWith<ApiException> {
-            inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUserId = user2.id.toString(), roomId = roomId.toString(), expiresAt = expiresAt))
+            inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUsername = user2.username, roomId = roomId.toString(), expiresAt = expiresAt))
         }
         assertEquals(HttpStatus.NOT_FOUND, ex.status)
     }
@@ -239,7 +244,7 @@ class InviteSendTests {
         every { roomService.getRoom(roomId) } returns Optional.of(mockk<RoomEntity>())
 
         val ex = assertFailsWith<ApiException> {
-            inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUserId = user2.id.toString(), roomId = roomId.toString(), expiresAt = expiresAt))
+            inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUsername = user2.username, roomId = roomId.toString(), expiresAt = expiresAt))
         }
         assertEquals(HttpStatus.FORBIDDEN, ex.status)
     }
@@ -252,12 +257,12 @@ class InviteSendTests {
         every { userService.getUserById(user1.id) } returns user1
         every { userRoomRepository.findByIdUserIdAndIdRoomId(user1.id, roomId) } returns userRoom
         every { roomService.getRoom(roomId) } returns Optional.of(mockk<RoomEntity>())
-        every { userRepository.findById(user2.id) } returns Optional.of(user2)
+        every { userRepository.getUserByUsernameIgnoreCase(user2.username) } returns user2
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(user2.id, roomId) } returns false
         every { bannedUserService.isUserBanned(user2.id, roomId) } returns true
 
         val ex = assertFailsWith<ApiException> {
-            inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUserId = user2.id.toString(), roomId = roomId.toString(), expiresAt = expiresAt))
+            inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUsername = user2.username, roomId = roomId.toString(), expiresAt = expiresAt))
         }
         assertEquals(HttpStatus.FORBIDDEN, ex.status)
     }
@@ -272,7 +277,7 @@ class InviteSendTests {
         every { roomService.getRoom(roomId) } returns Optional.empty()
 
         val ex = assertFailsWith<ApiException> {
-            inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUserId = user2.id.toString(), roomId = roomId.toString(), expiresAt = expiresAt))
+            inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUsername = user2.username, roomId = roomId.toString(), expiresAt = expiresAt))
         }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
@@ -285,10 +290,10 @@ class InviteSendTests {
         every { userService.getUserById(user1.id) } returns user1
         every { userRoomRepository.findByIdUserIdAndIdRoomId(user1.id, roomId) } returns userRoom
         every { roomService.getRoom(roomId) } returns Optional.of(mockk<RoomEntity>())
-        every { userRepository.findById(user2.id) } returns Optional.empty()
+        every { userRepository.getUserByUsernameIgnoreCase(user2.username) } returns null
 
         val ex = assertFailsWith<ApiException> {
-            inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUserId = user2.id.toString(), roomId = roomId.toString(), expiresAt = expiresAt))
+            inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUsername = user2.username, roomId = roomId.toString(), expiresAt = expiresAt))
         }
         assertEquals(HttpStatus.NOT_FOUND, ex.status)
     }
@@ -301,11 +306,11 @@ class InviteSendTests {
         every { userService.getUserById(user1.id) } returns user1
         every { userRoomRepository.findByIdUserIdAndIdRoomId(user1.id, roomId) } returns userRoom
         every { roomService.getRoom(roomId) } returns Optional.of(mockk<RoomEntity>())
-        every { userRepository.findById(user2.id) } returns Optional.of(user2)
+        every { userRepository.getUserByUsernameIgnoreCase(user2.username) } returns user2
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(user2.id, roomId) } returns true
 
         val ex = assertFailsWith<ApiException> {
-            inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUserId = user2.id.toString(), roomId = roomId.toString(), expiresAt = expiresAt))
+            inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUsername = user2.username, roomId = roomId.toString(), expiresAt = expiresAt))
         }
         assertEquals(HttpStatus.CONFLICT, ex.status)
     }
@@ -318,13 +323,13 @@ class InviteSendTests {
         every { userService.getUserById(user1.id) } returns user1
         every { userRoomRepository.findByIdUserIdAndIdRoomId(user1.id, roomId) } returns userRoom
         every { roomService.getRoom(roomId) } returns Optional.of(mockk<RoomEntity>())
-        every { userRepository.findById(user2.id) } returns Optional.of(user2)
+        every { userRepository.getUserByUsernameIgnoreCase(user2.username) } returns user2
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(user2.id, roomId) } returns false
         every { bannedUserService.isUserBanned(user2.id, roomId) } returns false
         every { inviteRepository.existsPendingRoomInvite(user2.id, roomId) } returns true
 
         val ex = assertFailsWith<ApiException> {
-            inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUserId = user2.id.toString(), roomId = roomId.toString(), expiresAt = expiresAt))
+            inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUsername = user2.username, roomId = roomId.toString(), expiresAt = expiresAt))
         }
         assertEquals(HttpStatus.CONFLICT, ex.status)
     }

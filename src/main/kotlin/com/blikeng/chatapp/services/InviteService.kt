@@ -16,6 +16,7 @@ import com.blikeng.chatapp.entities.InviteType
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.errors.AlreadyFriendsException
 import com.blikeng.chatapp.errors.AlreadyInvitedException
+import com.blikeng.chatapp.errors.AlreadyMemberException
 import com.blikeng.chatapp.errors.BannedException
 import com.blikeng.chatapp.errors.FriendYourselfException
 import com.blikeng.chatapp.errors.InvalidInviteException
@@ -164,11 +165,10 @@ class InviteService(
 
     @Transactional
     fun sendRoomInvite(roomInviteDTO: RoomInviteDTO) {
-        val targetId: UUID
+        val targetUsername = roomInviteDTO.targetUsername.trim()
         val roomId: UUID
 
         try {
-            targetId = UUID.fromString(roomInviteDTO.targetUserId)
             roomId = UUID.fromString(roomInviteDTO.roomId)
         } catch (_: IllegalArgumentException) {
             throw InvalidUUIDException()
@@ -176,8 +176,6 @@ class InviteService(
 
         val id = getId()
         val sender = userService.getUserById(id) ?: throw InvalidUserException()
-
-        if (id == targetId) throw InviteYourselfException()
 
         val userRoom = userRoomRepository.findByIdUserIdAndIdRoomId(id, roomId)
             ?: throw RoomNotFoundException()
@@ -187,17 +185,18 @@ class InviteService(
 
         if (!userRoom.role.isAtLeast(RoomPermissions.INVITE_USER)) throw NotPermittedException()
 
-        userRepository.findById(targetId).orElseThrow { UserNotFoundException() }
+        val target = userRepository.getUserByUsernameIgnoreCase(targetUsername) ?: throw UserNotFoundException()
 
-        if (userRoomRepository.existsByIdUserIdAndIdRoomId(targetId, roomId)) throw AlreadyInvitedException()
-        if (bannedUserService.isUserBanned(targetId, roomId)) throw InviteBannedUserException()
+        if (id == target.id) throw InviteYourselfException()
 
-        if (inviteRepository.existsPendingRoomInvite(targetId, roomId)) throw AlreadyInvitedException()
+        if (userRoomRepository.existsByIdUserIdAndIdRoomId(target.id, roomId)) throw AlreadyMemberException()
+        if (bannedUserService.isUserBanned(target.id, roomId)) throw InviteBannedUserException()
+        if (inviteRepository.existsPendingRoomInvite(target.id, roomId)) throw AlreadyInvitedException()
 
         val invite = InviteEntity(
             type = InviteType.ROOM_INVITE,
             fromUserId = id,
-            toUserId = targetId,
+            toUserId = target.id,
             roomId = roomId,
             expiresAt = Instant.now().plus(7, ChronoUnit.DAYS),
             status = InviteStatus.PENDING
@@ -205,7 +204,7 @@ class InviteService(
 
         val saved = inviteRepository.save(invite)
         eventPublisher.publishEvent(InviteSentEvent(
-            toUserId = targetId,
+            toUserId = target.id,
             invite = PendingInviteDTO(id = saved.id, type = saved.type, fromUserId = saved.fromUserId, fromUsername = sender.username, fromAvatarUrl = sender.avatarUrl, roomId = saved.roomId, expiresAt = saved.expiresAt)
         ))
     }

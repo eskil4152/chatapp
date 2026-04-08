@@ -44,3 +44,4 @@ class InviteNotFoundException : ApiException(HttpStatus.NOT_FOUND, ErrorMessages
 class AlreadyInvitedException : ApiException(HttpStatus.CONFLICT, ErrorMessages.ALREADY_INVITED)
 class InviteYourselfException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.INVITE_YOURSELF)
 class InviteBannedUserException : ApiException(HttpStatus.FORBIDDEN, ErrorMessages.INVITE_BANNED)
+class AlreadyMemberException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.ALREADY_MEMBER)
