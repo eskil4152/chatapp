@@ -11,6 +11,7 @@ import com.blikeng.chatapp.services.UserService
 import io.mockk.*
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
+import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit5.MockKExtension
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.extension.ExtendWith
@@ -40,7 +41,7 @@ class RoomServiceMembershipTests {
     @MockK private lateinit var userRoomRepository: UserRoomRepository
     @MockK private lateinit var friendsService: FriendService
     @MockK private lateinit var bannedUserService: BannedUserService
-    @MockK private lateinit var eventPublisher: ApplicationEventPublisher
+    @RelaxedMockK private lateinit var eventPublisher: ApplicationEventPublisher
 
     @AfterEach
     fun clearSecurity() { SecurityContextHolder.clearContext() }
@@ -52,7 +53,9 @@ class RoomServiceMembershipTests {
     fun shouldJoinRoom() {
         val roomId = UUID.randomUUID()
         val userId = UUID.randomUUID()
+        val user = UserEntity(id = userId, username = "u", password = "")
 
+        every { userService.getUserById(userId) } returns user
         every { userRoomRepository.save(any()) } answers { firstArg() }
 
         roomService.joinRoom(userId, roomId)

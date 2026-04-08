@@ -6,7 +6,6 @@ import com.blikeng.chatapp.services.ChatService
 import com.blikeng.chatapp.services.FriendService
 import com.blikeng.chatapp.services.InviteService
 import com.fasterxml.jackson.databind.ObjectMapper
-import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.TextMessage
@@ -47,7 +46,11 @@ class SessionRegistry(
     }
 
     fun sendFriendPresenceSnapshot(userId: UUID, session: WebSocketSession) {
-        friendService.getOnlineFriends(userId, session)
+        val snapshot = friendService.getOnlineFriends(userId)
+        val payload = objectMapper.writeValueAsString(snapshot)
+        synchronized(session) {
+            if (session.isOpen) session.sendMessage(TextMessage(payload))
+        }
     }
 
     fun sendPendingInviteSnapshot(userId: UUID, session: WebSocketSession) {

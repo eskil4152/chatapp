@@ -7,7 +7,6 @@ import com.blikeng.chatapp.dtos.websocket.WsFriendSnapshot
 import com.blikeng.chatapp.entities.FriendsEntity
 import com.blikeng.chatapp.entities.FriendsId
 import com.blikeng.chatapp.entities.UserEntity
-import com.blikeng.chatapp.errors.AlreadyFriendsException
 import com.blikeng.chatapp.errors.FriendYourselfException
 import com.blikeng.chatapp.errors.InvalidUserException
 import com.blikeng.chatapp.errors.UserNotFoundException
@@ -18,8 +17,6 @@ import com.blikeng.chatapp.security.auth.getId
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
-import org.springframework.web.socket.TextMessage
-import org.springframework.web.socket.WebSocketSession
 import java.util.*
 
 // ==========================
@@ -139,35 +136,17 @@ class FriendService(
         }
     }
 
-    fun getOnlineFriends(userId: UUID, session: WebSocketSession){
-        val friends = mutableListOf<OnlineFriend>()
-
-        for (friendship in friendsRepository.findFriendsForUser(userId)) {
-            val friend = if (friendship.userA.id == userId) {
-                friendship.userB
-            } else {
-                friendship.userA
-            }
-
-            friends.add(OnlineFriend(
+    fun getOnlineFriends(userId: UUID): WsFriendSnapshot {
+        val friends = friendsRepository.findFriendsForUser(userId).map { friendship ->
+            val friend = if (friendship.userA.id == userId) friendship.userB else friendship.userA
+            OnlineFriend(
                 userId = friend.id,
                 username = friend.username,
                 avatarUrl = friend.avatarUrl,
                 online = presenceHandler.isUserOnline(friend.id)
-            ))
+            )
         }
-
-        synchronized(session) {
-            if (session.isOpen) {
-                session.sendMessage(
-                    TextMessage(
-                        objectMapper.writeValueAsString(
-                            WsFriendSnapshot(friends = friends)
-                        )
-                    )
-                )
-            }
-        }
+        return WsFriendSnapshot(friends = friends)
     }
 
     // ==========================

@@ -51,6 +51,7 @@ class WebsocketLifecycleTests {
 
         every { sessionRegistry.registerSession(any(), any()) } just Runs
         every { sessionRegistry.sendFriendPresenceSnapshot(any(), any()) } just Runs
+        every { sessionRegistry.sendPendingInviteSnapshot(any(), any()) } just Runs
         every { session.attributes } returns attributes
         every { session.id } returns "123"
 
@@ -84,6 +85,7 @@ class WebsocketLifecycleTests {
 
         every { sessionRegistry.registerSession(any(), any()) } just Runs
         every { sessionRegistry.sendFriendPresenceSnapshot(any(), any()) } just Runs
+        every { sessionRegistry.sendPendingInviteSnapshot(any(), any()) } just Runs
         every { sessionRegistry.removeSession(any(), any()) } just Runs
         every { session.attributes } returns attributes
         every { session.id } returns "123"

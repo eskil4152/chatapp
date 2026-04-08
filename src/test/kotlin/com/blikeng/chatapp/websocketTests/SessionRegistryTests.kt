@@ -1,9 +1,13 @@
 package com.blikeng.chatapp.websocketTests
 
+import com.blikeng.chatapp.dtos.invites.PendingInviteDTO
+import com.blikeng.chatapp.dtos.websocket.WsFriendSnapshot
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.services.ChatService
 import com.blikeng.chatapp.services.FriendService
+import com.blikeng.chatapp.services.InviteService
 import com.blikeng.chatapp.websocket.SessionRegistry
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.*
 import org.junit.jupiter.api.Assertions.*
@@ -19,6 +23,8 @@ class SessionRegistryTests {
     private lateinit var presenceHandler: PresenceHandler
     private lateinit var chatService: ChatService
     private lateinit var friendService: FriendService
+    private lateinit var inviteService: InviteService
+    private lateinit var objectMapper: ObjectMapper
     private lateinit var meterRegistry: SimpleMeterRegistry
 
     @BeforeEach
@@ -26,12 +32,14 @@ class SessionRegistryTests {
         presenceHandler = mockk()
         chatService = mockk()
         friendService = mockk()
+        inviteService = mockk()
+        objectMapper = mockk()
         meterRegistry = SimpleMeterRegistry()
 
         every { presenceHandler.userConnected(any()) } returns 1L
         every { presenceHandler.userDisconnected(any()) } returns 0L
 
-        sessionRegistry = SessionRegistry(presenceHandler, friendService, chatService, meterRegistry)
+        sessionRegistry = SessionRegistry(presenceHandler, friendService, chatService, inviteService, objectMapper, meterRegistry)
     }
 
     @Test
@@ -55,8 +63,8 @@ class SessionRegistryTests {
         val session1 = mockk<WebSocketSession>()
         val session2 = mockk<WebSocketSession>()
 
-        every { session1.id } returns userId.toString();
-        every { session2.id } returns userId.toString();
+        every { session1.id } returns userId.toString()
+        every { session2.id } returns userId.toString()
         every { friendService.notifyFriends(any(), any()) } just Runs
         every { chatService.notifyRoomPresence(any(), any()) } just Runs
 
@@ -160,9 +168,9 @@ class SessionRegistryTests {
         val session2 = mockk<WebSocketSession>()
         val session3 = mockk<WebSocketSession>()
 
-        every { session1.id } returns user1.toString();
-        every { session2.id } returns user1.toString();
-        every { session3.id } returns user2.toString();
+        every { session1.id } returns user1.toString()
+        every { session2.id } returns user1.toString()
+        every { session3.id } returns user2.toString()
         every { friendService.notifyFriends(any(), any()) } just Runs
         every { chatService.notifyRoomPresence(any(), any()) } just Runs
 
@@ -179,12 +187,58 @@ class SessionRegistryTests {
         val userId = UUID.randomUUID()
         val session = mockk<WebSocketSession>()
 
-        every { session.id } returns userId.toString()
-        every { friendService.getOnlineFriends(userId, session) } just Runs
+        every { friendService.getOnlineFriends(userId) } returns WsFriendSnapshot(friends = emptyList())
+        every { objectMapper.writeValueAsString(any()) } returns """{"type":"FRIEND_SNAPSHOT","friends":[]}"""
+        every { session.isOpen } returns true
+        every { session.sendMessage(any()) } just Runs
 
         sessionRegistry.sendFriendPresenceSnapshot(userId, session)
 
-        verify(exactly = 1) { friendService.getOnlineFriends(userId, session) }
+        verify(exactly = 1) { friendService.getOnlineFriends(userId) }
+        verify(exactly = 1) { session.sendMessage(any()) }
+    }
+
+    @Test
+    fun shouldNotSendFriendPresenceSnapshotWhenSessionClosed() {
+        val userId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>()
+
+        every { friendService.getOnlineFriends(userId) } returns WsFriendSnapshot(friends = emptyList())
+        every { objectMapper.writeValueAsString(any()) } returns """{"type":"FRIEND_SNAPSHOT","friends":[]}"""
+        every { session.isOpen } returns false
+
+        sessionRegistry.sendFriendPresenceSnapshot(userId, session)
+
+        verify(exactly = 0) { session.sendMessage(any()) }
+    }
+
+    @Test
+    fun shouldSendPendingInviteCountOnConnect() {
+        val userId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>()
+
+        every { inviteService.getPendingInvites(userId) } returns listOf(mockk<PendingInviteDTO>(), mockk<PendingInviteDTO>())
+        every { objectMapper.writeValueAsString(any()) } returns """{"type":"PENDING_INVITES","count":2}"""
+        every { session.isOpen } returns true
+        every { session.sendMessage(any()) } just Runs
+
+        sessionRegistry.sendPendingInviteSnapshot(userId, session)
+
+        verify(exactly = 1) { session.sendMessage(any()) }
+    }
+
+    @Test
+    fun shouldNotSendPendingInviteCountWhenSessionClosed() {
+        val userId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>()
+
+        every { inviteService.getPendingInvites(userId) } returns emptyList()
+        every { objectMapper.writeValueAsString(any()) } returns """{"type":"PENDING_INVITES","count":0}"""
+        every { session.isOpen } returns false
+
+        sessionRegistry.sendPendingInviteSnapshot(userId, session)
+
+        verify(exactly = 0) { session.sendMessage(any()) }
     }
 
     @Test

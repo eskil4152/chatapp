@@ -455,12 +455,14 @@ class E2ETests : ContainerBase() {
     @Order(26)
     fun shouldEnterRoomAndSendMessage() {
         val received = CopyOnWriteArrayList<String>()
-        val latch = CountDownLatch(2)
+        val latch = CountDownLatch(1)
 
         val handler = object : TextWebSocketHandler() {
             override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
                 received += message.payload
-                latch.countDown()
+                if (message.payload.contains("ROOM_JOINED")) {
+                    latch.countDown()
+                }
             }
         }
 
@@ -617,12 +619,14 @@ class E2ETests : ContainerBase() {
     @Order(31)
     fun shouldEnterEncryptedRoomAndSendMessage() {
         val received = CopyOnWriteArrayList<String>()
-        val latch = CountDownLatch(2)
+        val latch = CountDownLatch(1)
 
         val handler = object : TextWebSocketHandler() {
             override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
                 received += message.payload
-                latch.countDown()
+                if (message.payload.contains("ROOM_JOINED")) {
+                    latch.countDown()
+                }
             }
         }
 

@@ -13,12 +13,12 @@ import io.mockk.*
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.data.redis.core.RedisTemplate
-import org.springframework.web.socket.TextMessage
-import org.springframework.web.socket.WebSocketSession
+import kotlin.test.assertEquals
 
 @ExtendWith(MockKExtension::class)
 class FriendPresenceTests {
@@ -118,71 +118,61 @@ class FriendPresenceTests {
     }
 
     // ==========================
-    // getFriendsOnlineStatus (on-connect snapshot)
+    // getOnlineFriends (on-connect snapshot)
     // ==========================
     @Test
-    fun shouldSendPresenceSnapshotForOnlineFriends() {
+    fun shouldReturnSnapshotWithOnlineFriend() {
         val user = UserEntity(username = "user", password = "")
         val friend = UserEntity(username = "friend", password = "")
         val friendship = FriendsEntity(id = FriendsId(user.id, friend.id), userA = user, userB = friend)
-        val session = mockk<WebSocketSession>()
-        val msgSlot = slot<TextMessage>()
 
         every { friendsRepository.findFriendsForUser(user.id) } returns listOf(friendship)
         every { presenceHandler.isUserOnline(friend.id) } returns true
-        every { session.sendMessage(capture(msgSlot)) } just Runs
-        every { session.isOpen } returns true
 
-        friendService.getOnlineFriends(user.id, session)
+        val snapshot = friendService.getOnlineFriends(user.id)
 
-        verify(exactly = 1) { session.sendMessage(any()) }
-        assertTrue(msgSlot.captured.payload.contains(friend.id.toString()))
-        assertTrue(msgSlot.captured.payload.contains("true"))
+        assertEquals(1, snapshot.friends.size)
+        assertEquals(friend.id, snapshot.friends[0].userId)
+        assertTrue(snapshot.friends[0].online)
     }
 
     @Test
-    fun shouldSkipOfflineFriendsInPresenceSnapshot() {
+    fun shouldReturnSnapshotWithOfflineFriend() {
         val user = UserEntity(username = "user", password = "")
         val friend = UserEntity(username = "friend", password = "")
         val friendship = FriendsEntity(id = FriendsId(user.id, friend.id), userA = user, userB = friend)
-        val session = mockk<WebSocketSession>(relaxed = true)
 
         every { friendsRepository.findFriendsForUser(user.id) } returns listOf(friendship)
         every { presenceHandler.isUserOnline(friend.id) } returns false
 
-        friendService.getOnlineFriends(user.id, session)
+        val snapshot = friendService.getOnlineFriends(user.id)
 
-        verify(exactly = 0) { session.sendMessage(any()) }
+        assertEquals(1, snapshot.friends.size)
+        assertFalse(snapshot.friends[0].online)
     }
 
     @Test
-    fun shouldSendNoSnapshotWhenUserHasNoFriends() {
+    fun shouldReturnEmptySnapshotWhenUserHasNoFriends() {
         val user = UserEntity(username = "user", password = "")
-        val session = mockk<WebSocketSession>(relaxed = true)
 
         every { friendsRepository.findFriendsForUser(user.id) } returns emptyList()
 
-        friendService.getOnlineFriends(user.id, session)
+        val snapshot = friendService.getOnlineFriends(user.id)
 
-        verify(exactly = 0) { session.sendMessage(any()) }
+        assertTrue(snapshot.friends.isEmpty())
     }
 
     @Test
-    fun shouldResolveCorrectFriendIdInSnapshotWhenUserIsUserB() {
+    fun shouldResolveCorrectFriendIdWhenUserIsUserB() {
         val friend = UserEntity(username = "friend", password = "")
         val user = UserEntity(username = "user", password = "")
         val friendship = FriendsEntity(id = FriendsId(friend.id, user.id), userA = friend, userB = user)
-        val session = mockk<WebSocketSession>()
-        val msgSlot = slot<TextMessage>()
 
         every { friendsRepository.findFriendsForUser(user.id) } returns listOf(friendship)
         every { presenceHandler.isUserOnline(friend.id) } returns true
-        every { session.sendMessage(capture(msgSlot)) } just Runs
-        every { session.isOpen } returns true
 
-        friendService.getOnlineFriends(user.id, session)
+        val snapshot = friendService.getOnlineFriends(user.id)
 
-        verify(exactly = 1) { session.sendMessage(any()) }
-        assertTrue(msgSlot.captured.payload.contains(friend.id.toString()))
+        assertEquals(friend.id, snapshot.friends[0].userId)
     }
 }
