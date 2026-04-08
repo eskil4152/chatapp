@@ -124,15 +124,12 @@ class RoomControllerTests {
 
     @Test
     fun shouldCreatePrivateRoom(){
-        every { roomService.getOrStartPrivateMessage("dm") } returns UUID.randomUUID()
+        val friendId = UUID.randomUUID()
+        every { roomService.getOrStartPrivateMessage(friendId) } returns UUID.randomUUID()
 
         mockMvc.post("/api/rooms/dm"){
             contentType = MediaType.APPLICATION_JSON
-            content = """
-                {
-                    "username":"dm"
-                }
-            """.trimIndent()
+            content = """{"userId":"$friendId"}"""
         }
             .andExpect { status { isCreated() } }
     }

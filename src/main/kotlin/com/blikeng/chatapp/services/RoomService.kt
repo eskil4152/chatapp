@@ -1,5 +1,6 @@
 package com.blikeng.chatapp.services
 
+import com.blikeng.chatapp.dtos.UserIdDTO
 import com.blikeng.chatapp.dtos.room.AdministrationDTO
 import com.blikeng.chatapp.dtos.room.RoomAction
 import com.blikeng.chatapp.dtos.room.RoomDTO
@@ -259,11 +260,17 @@ class RoomService(
     // ==========================
     // Private message rooms
     // ==========================
-    fun getOrStartPrivateMessage(username: String): UUID {
+    fun getOrStartPrivateMessage(userIdDTO: UserIdDTO): UUID {
         val userId = getId()
         userService.getUserById(userId) ?: throw InvalidUserException()
 
-        val friend = friendService.getFriendEntity(username, userId)
+        val friendId = try {
+            UUID.fromString(userIdDTO.userId)
+        } catch (_: IllegalArgumentException) {
+            throw InvalidUUIDException()
+        }
+
+        val friend = friendService.getFriendEntityById(friendId, userId)
 
         val roomId = generatePrivateRoomId(friend.id, userId)
         val roomExists = roomRepository.findById(roomId).orElse(null)

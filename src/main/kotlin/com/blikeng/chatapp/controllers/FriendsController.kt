@@ -1,10 +1,12 @@
 package com.blikeng.chatapp.controllers
 
-import com.blikeng.chatapp.dtos.UsernameDTO
+import com.blikeng.chatapp.dtos.UserIdDTO
 import com.blikeng.chatapp.dtos.friends.FriendDTO
+import com.blikeng.chatapp.errors.InvalidUUIDException
 import com.blikeng.chatapp.services.FriendService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import java.util.UUID
 
 // ==========================
 // Exposes friend management endpoints for listing friends,
@@ -23,18 +25,18 @@ class FriendsController(private val friendService: FriendService) {
 
     @DeleteMapping("/remove")
     fun removeFriend(
-        @RequestBody usernameDTO: UsernameDTO
+        @RequestBody userIdDTO: UserIdDTO
     ) : ResponseEntity<String> {
-        friendService.removeFriend(usernameDTO.username)
+        friendService.removeFriend(userIdDTO)
 
         return ResponseEntity.ok("Removed friend successfully")
     }
 
-    @GetMapping("/{username}")
+    @GetMapping("/{userId}")
     fun getFriendsInfo(
-        @PathVariable username: String
+        @PathVariable userId: String
     ) : ResponseEntity<FriendDTO> {
-        val friend = friendService.getFriendInfo(username)
+        val friend = friendService.getFriendInfo(userId)
 
         return ResponseEntity.ok(friend)
     }

@@ -1,6 +1,8 @@
 package com.blikeng.chatapp.controllers
 
-import com.blikeng.chatapp.dtos.UsernameDTO
+import com.blikeng.chatapp.dtos.UserIdDTO
+import com.blikeng.chatapp.errors.InvalidUUIDException
+import java.util.UUID
 import com.blikeng.chatapp.dtos.room.AdministrationDTO
 import com.blikeng.chatapp.dtos.room.RoomDTO
 import com.blikeng.chatapp.dtos.room.RoomUserDTO
@@ -67,9 +69,9 @@ class RoomController(
 
     @PostMapping("/dm")
     fun privateMessage(
-        @RequestBody usernameDTO: UsernameDTO
+        @RequestBody userIdDTO: UserIdDTO
     ) : ResponseEntity<String> {
-        return ResponseEntity.status(201).body(roomService.getOrStartPrivateMessage(usernameDTO.username).toString())
+        return ResponseEntity.status(201).body(roomService.getOrStartPrivateMessage(userIdDTO).toString())
     }
 
     @PostMapping("/action")

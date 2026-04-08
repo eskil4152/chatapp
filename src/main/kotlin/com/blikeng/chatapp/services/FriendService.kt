@@ -1,5 +1,6 @@
 package com.blikeng.chatapp.services
 
+import com.blikeng.chatapp.dtos.UserIdDTO
 import com.blikeng.chatapp.dtos.friends.FriendDTO
 import com.blikeng.chatapp.dtos.websocket.OnlineFriend
 import com.blikeng.chatapp.dtos.websocket.WsFriendPresence
@@ -8,6 +9,7 @@ import com.blikeng.chatapp.entities.FriendsEntity
 import com.blikeng.chatapp.entities.FriendsId
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.errors.FriendYourselfException
+import com.blikeng.chatapp.errors.InvalidUUIDException
 import com.blikeng.chatapp.errors.InvalidUserException
 import com.blikeng.chatapp.errors.UserNotFoundException
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
@@ -75,23 +77,35 @@ class FriendService(
         ))
     }
 
-    fun removeFriend(friendUsername: String) {
+    fun removeFriend(userIdDTO: UserIdDTO) {
         val id = getId()
         userService.getUserById(id) ?: throw InvalidUserException()
 
-        val friend = userRepository.getUserByUsernameIgnoreCase(friendUsername) ?: throw UserNotFoundException()
+        val friendId = try {
+            UUID.fromString(userIdDTO.userId)
+        } catch (_: IllegalArgumentException) {
+            throw InvalidUUIDException()
+        }
 
-        val friendshipId = generateFriendshipId(id, friend.id)
+        userRepository.findById(friendId).orElseThrow { UserNotFoundException() }
+
+        val friendshipId = generateFriendshipId(id, friendId)
         if (!friendsRepository.existsById(friendshipId)) throw UserNotFoundException()
 
         friendsRepository.deleteById(friendshipId)
     }
 
-    fun getFriendInfo(friendUsername: String): FriendDTO {
+    fun getFriendInfo(friendIdString: String): FriendDTO {
         val id = getId()
         userService.getUserById(id) ?: throw InvalidUserException()
 
-        val friend = userRepository.getUserByUsernameIgnoreCase(friendUsername) ?: throw UserNotFoundException()
+        val friendId = try {
+            UUID.fromString(friendIdString)
+        } catch (_: IllegalArgumentException) {
+            throw InvalidUUIDException()
+        }
+
+        val friend = userRepository.findById(friendId).orElseThrow { UserNotFoundException() }
 
         val friendshipId = generateFriendshipId(id, friend.id)
         val friendship = friendsRepository.findById(friendshipId).orElseThrow { UserNotFoundException() }
@@ -108,8 +122,8 @@ class FriendService(
         )
     }
 
-    fun getFriendEntity(username: String, userId: UUID): UserEntity {
-        val friend = userRepository.getUserByUsernameIgnoreCase(username) ?: throw UserNotFoundException()
+    fun getFriendEntityById(friendId: UUID, userId: UUID): UserEntity {
+        val friend = userRepository.findById(friendId).orElseThrow { UserNotFoundException() }
 
         val friendshipId = generateFriendshipId(userId, friend.id)
         if (!friendsRepository.existsById(friendshipId)) throw UserNotFoundException()
