@@ -65,10 +65,13 @@ class InviteService(
         userService.getUserById(userId) ?: throw InvalidUserException()
 
         return inviteRepository.findByToUserIdAndStatus(userId, InviteStatus.PENDING).map {
+            val sender = userService.getUserById(it.fromUserId)
             PendingInviteDTO(
                 id = it.id,
                 type = it.type,
                 fromUserId = it.fromUserId,
+                fromUsername = sender?.username ?: "Unknown",
+                fromAvatarUrl = sender?.avatarUrl,
                 roomId = it.roomId,
                 expiresAt = it.expiresAt,
             )
@@ -82,7 +85,8 @@ class InviteService(
         return inviteRepository.findByFromUserIdAndStatus(id, InviteStatus.PENDING).map {
             when (it.type) {
                 InviteType.FRIEND_REQUEST -> {
-                    val friend = userRepository.findById(it.toUserId).orElseThrow { UserNotFoundException() }
+                    if (it.toUserId == null) throw InvalidInviteException()
+                    val friend = userRepository.findById(it.toUserId!!).orElseThrow { UserNotFoundException() }
 
                     OutgoingFriendRequestDTO(
                         id = it.id,
@@ -96,7 +100,8 @@ class InviteService(
                 }
 
                 InviteType.ROOM_INVITE -> {
-                    val user = userRepository.findById(it.toUserId).orElseThrow { UserNotFoundException() }
+                    if (it.toUserId == null) throw InvalidInviteException()
+                    val user = userRepository.findById(it.toUserId!!).orElseThrow { UserNotFoundException() }
                     if (it.roomId == null) throw InvalidInviteException()
 
                     OutgoingRoomInviteDTO(
@@ -133,7 +138,7 @@ class InviteService(
         if (friendRequestDTO.username.trim().isEmpty()) throw InvalidInviteException()
 
         val id = getId()
-        userService.getUserById(id) ?: throw InvalidUserException()
+        val sender = userService.getUserById(id) ?: throw InvalidUserException()
 
         val friend = userRepository.getUserByUsernameIgnoreCase(friendRequestDTO.username) ?: throw UserNotFoundException()
 
@@ -153,7 +158,7 @@ class InviteService(
         val saved = inviteRepository.save(friendship)
         eventPublisher.publishEvent(InviteSentEvent(
             toUserId = friend.id,
-            invite = PendingInviteDTO(id = saved.id, type = saved.type, fromUserId = saved.fromUserId, roomId = saved.roomId, expiresAt = saved.expiresAt)
+            invite = PendingInviteDTO(id = saved.id, type = saved.type, fromUserId = saved.fromUserId, fromUsername = sender.username, fromAvatarUrl = sender.avatarUrl, roomId = saved.roomId, expiresAt = saved.expiresAt)
         ))
     }
 
@@ -170,7 +175,7 @@ class InviteService(
         }
 
         val id = getId()
-        userService.getUserById(id) ?: throw InvalidUserException()
+        val sender = userService.getUserById(id) ?: throw InvalidUserException()
 
         if (id == targetId) throw InviteYourselfException()
 
@@ -201,7 +206,7 @@ class InviteService(
         val saved = inviteRepository.save(invite)
         eventPublisher.publishEvent(InviteSentEvent(
             toUserId = targetId,
-            invite = PendingInviteDTO(id = saved.id, type = saved.type, fromUserId = saved.fromUserId, roomId = saved.roomId, expiresAt = saved.expiresAt)
+            invite = PendingInviteDTO(id = saved.id, type = saved.type, fromUserId = saved.fromUserId, fromUsername = sender.username, fromAvatarUrl = sender.avatarUrl, roomId = saved.roomId, expiresAt = saved.expiresAt)
         ))
     }
 

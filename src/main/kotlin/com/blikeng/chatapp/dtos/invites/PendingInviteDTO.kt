@@ -8,6 +8,8 @@ data class PendingInviteDTO(
     val id: UUID,
     val type: InviteType,
     val fromUserId: UUID,
+    val fromUsername: String,
+    val fromAvatarUrl: String?,
     val roomId: UUID?,
     val expiresAt: Instant,
 )
