@@ -3,8 +3,10 @@ package com.blikeng.chatapp.controllers
 import com.blikeng.chatapp.dtos.invites.FriendRequestDTO
 import com.blikeng.chatapp.dtos.invites.InviteResponseDTO
 import com.blikeng.chatapp.dtos.invites.OpenRoomInviteDTO
+import com.blikeng.chatapp.dtos.invites.outgoing.OutgoingFriendRequestDTO
 import com.blikeng.chatapp.dtos.invites.PendingInviteDTO
 import com.blikeng.chatapp.dtos.invites.RoomInviteDTO
+import com.blikeng.chatapp.dtos.invites.outgoing.OutgoingInvitationDTO
 import com.blikeng.chatapp.services.InviteService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -26,6 +28,11 @@ class InvitesController(
     @GetMapping("/pending")
     fun getPendingInvites(): ResponseEntity<List<PendingInviteDTO>> {
         return ResponseEntity.ok(inviteService.getPendingInvites())
+    }
+
+    @GetMapping("/outgoing")
+    fun getOutgoingInvites(): ResponseEntity<List<OutgoingInvitationDTO>> {
+        return ResponseEntity.ok(inviteService.getOutgoingInvites())
     }
 
     @PostMapping("/friend")

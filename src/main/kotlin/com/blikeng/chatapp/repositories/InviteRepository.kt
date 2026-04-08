@@ -30,6 +30,8 @@ interface InviteRepository: JpaRepository<InviteEntity, UUID> {
 
     fun findByToUserIdAndStatus(toUserId: UUID, status: InviteStatus): List<InviteEntity>
 
+    fun findByFromUserIdAndStatus(fromUserId: UUID, status: InviteStatus): List<InviteEntity>
+
     fun deleteByToUserIdAndRoomId(id: UUID, roomId: UUID)
 
     @Modifying

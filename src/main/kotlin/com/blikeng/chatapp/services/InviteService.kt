@@ -4,8 +4,12 @@ import com.blikeng.chatapp.dtos.invites.FriendRequestDTO
 import com.blikeng.chatapp.dtos.invites.InviteResponse
 import com.blikeng.chatapp.dtos.invites.InviteResponseDTO
 import com.blikeng.chatapp.dtos.invites.OpenRoomInviteDTO
+import com.blikeng.chatapp.dtos.invites.outgoing.OutgoingFriendRequestDTO
 import com.blikeng.chatapp.dtos.invites.PendingInviteDTO
 import com.blikeng.chatapp.dtos.invites.RoomInviteDTO
+import com.blikeng.chatapp.dtos.invites.outgoing.OutgoingInvitationDTO
+import com.blikeng.chatapp.dtos.invites.outgoing.OutgoingOpenRoomInviteDTO
+import com.blikeng.chatapp.dtos.invites.outgoing.OutgoingRoomInviteDTO
 import com.blikeng.chatapp.entities.InviteEntity
 import com.blikeng.chatapp.entities.InviteStatus
 import com.blikeng.chatapp.entities.InviteType
@@ -68,6 +72,59 @@ class InviteService(
                 roomId = it.roomId,
                 expiresAt = it.expiresAt,
             )
+        }
+    }
+
+    fun getOutgoingInvites(): List<OutgoingInvitationDTO> {
+        val id = getId()
+        userService.getUserById(id) ?: throw InvalidUserException()
+
+        return inviteRepository.findByFromUserIdAndStatus(id, InviteStatus.PENDING).map {
+            when (it.type) {
+                InviteType.FRIEND_REQUEST -> {
+                    val friend = userRepository.findById(it.toUserId).orElseThrow { UserNotFoundException() }
+
+                    OutgoingFriendRequestDTO(
+                        id = it.id,
+                        type = it.type,
+                        fromUserId = it.fromUserId,
+                        toUserId = friend.id,
+                        toUsername = friend.username,
+                        avatar = friend.avatarUrl,
+                        expiresAt = it.expiresAt,
+                    )
+                }
+
+                InviteType.ROOM_INVITE -> {
+                    val user = userRepository.findById(it.toUserId).orElseThrow { UserNotFoundException() }
+                    if (it.roomId == null) throw InvalidInviteException()
+
+                    OutgoingRoomInviteDTO(
+                        id = it.id,
+                        type = it.type,
+                        fromUserId = it.fromUserId,
+                        toUserId = user.id,
+                        toUsername = user.username,
+                        avatar = user.avatarUrl,
+                        roomId = it.roomId!!,
+                        expiresAt = it.expiresAt
+                    )
+                }
+
+                InviteType.OPEN_ROOM_INVITE -> {
+                    if (it.roomId == null || it.usages == null || it.maxUsages == null) throw InvalidInviteException()
+
+                    OutgoingOpenRoomInviteDTO(
+                        id = it.id,
+                        type = it.type,
+                        fromUserId = it.fromUserId,
+                        roomId = it.roomId!!,
+                        usages = it.usages!!,
+                        maxUsages = it.maxUsages!!,
+                        expiresAt = it.expiresAt,
+                    )
+                }
+            }
         }
     }
 
