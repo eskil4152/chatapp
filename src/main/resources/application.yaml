@@ -44,6 +44,8 @@ spring:
       enabled: ${SPRING_RABBITMQ_SSL:false}
   lifecycle:
     timeout-per-shutdown-phase: 30s
+  profiles:
+    default: dev
 
 logging:
   level:
