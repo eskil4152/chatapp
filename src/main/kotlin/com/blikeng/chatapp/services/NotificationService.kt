@@ -2,6 +2,7 @@ package com.blikeng.chatapp.services
 
 import com.blikeng.chatapp.dtos.room.RoomAction
 import com.blikeng.chatapp.dtos.websocket.WsChat
+import com.blikeng.chatapp.dtos.websocket.WsFriendAdded
 import com.blikeng.chatapp.dtos.websocket.WsFriendPresence
 import com.blikeng.chatapp.dtos.websocket.WsInviteAccepted
 import com.blikeng.chatapp.dtos.websocket.WsInviteReceived
@@ -16,8 +17,8 @@ import com.blikeng.chatapp.events.UserJoinedRoomEvent
 import com.blikeng.chatapp.events.UserRemovedEvent
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.messaging.redis.PresenceKeys
-import java.time.Instant
 import com.fasterxml.jackson.databind.ObjectMapper
+import java.time.Instant
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.event.TransactionPhase
@@ -36,9 +37,9 @@ class NotificationService(
             WsInviteReceived(
                 id = event.invite.id,
                 inviteType = event.invite.type,
-                fromUserId = event.invite.fromUserId,
-                roomId = event.invite.roomId,
-                expiresAt = event.invite.expiresAt,
+                fromUsername = event.invite.fromUsername,
+                roomName = event.invite.roomName,
+                fromAvatarUrl = event.invite.fromAvatarUrl,
             )
         )
 
@@ -50,16 +51,32 @@ class NotificationService(
         val payload = objectMapper.writeValueAsString(
             WsInviteAccepted(inviteType = event.type, roomId = event.roomId, username = event.toUsername, avatarUrl = event.toAvatarUrl)
         )
+
         redisTemplate.convertAndSend(PresenceKeys.userChannel(event.fromUserId), payload)
 
         if (event.type == InviteType.FRIEND_REQUEST) {
             redisTemplate.convertAndSend(
                 PresenceKeys.userChannel(event.fromUserId),
-                objectMapper.writeValueAsString(WsFriendPresence(userId = event.toUserId, online = presenceHandler.isUserOnline(event.toUserId)))
+                objectMapper.writeValueAsString(
+                    WsFriendAdded(
+                        userId = event.toUserId,
+                        username = event.toUsername,
+                        avatarUrl = event.toAvatarUrl,
+                        online = presenceHandler.isUserOnline(event.toUserId),
+                    )
+                )
             )
+
             redisTemplate.convertAndSend(
                 PresenceKeys.userChannel(event.toUserId),
-                objectMapper.writeValueAsString(WsFriendPresence(userId = event.fromUserId, online = presenceHandler.isUserOnline(event.fromUserId)))
+                objectMapper.writeValueAsString(
+                    WsFriendAdded(
+                        userId = event.fromUserId,
+                        username = event.fromUsername,
+                        avatarUrl = event.fromAvatarUrl,
+                        online = presenceHandler.isUserOnline(event.fromUserId),
+                    )
+                )
             )
         }
     }

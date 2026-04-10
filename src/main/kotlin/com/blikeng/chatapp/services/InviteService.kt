@@ -251,7 +251,7 @@ class InviteService(
         }
 
         val id = getId()
-        userService.getUserById(id) ?: throw InvalidUserException()
+        val user = userService.getUserById(id) ?: throw InvalidUserException()
 
         val room = roomService.getRoom(roomId)
         if (room.isEmpty) throw InvalidInviteException()
@@ -284,9 +284,25 @@ class InviteService(
             return
         }
 
+        val sender = userService.getUserById(invite.fromUserId) ?: throw InvalidUserException()
+
         friendService.addFriend(acceptor.id, invite.fromUserId)
         invite.status = InviteStatus.ACCEPTED
-        eventPublisher.publishEvent(InviteAcceptedEvent(fromUserId = invite.fromUserId, toUserId = acceptor.id, toUsername = acceptor.username, toAvatarUrl = acceptor.avatarUrl, type = invite.type, roomId = invite.roomId))
+
+        eventPublisher.publishEvent(
+            InviteAcceptedEvent(
+                fromUserId = invite.fromUserId,
+                fromUsername = sender.username,
+                fromAvatarUrl = sender.avatarUrl,
+
+                toUserId = acceptor.id,
+                toUsername = acceptor.username,
+                toAvatarUrl = acceptor.avatarUrl,
+
+                type = invite.type,
+                roomId = invite.roomId
+            )
+        )
     }
 
     private fun handleRoomInviteResponse(response: InviteResponse, invite: InviteEntity, acceptor: UserEntity){
@@ -298,9 +314,26 @@ class InviteService(
         }
 
         if (invite.roomId == null) throw InvalidInviteException()
+
+        val sender = userService.getUserById(invite.fromUserId) ?: throw InvalidUserException()
+
         roomService.joinRoom(acceptor.id, invite.roomId!!)
         invite.status = InviteStatus.ACCEPTED
-        eventPublisher.publishEvent(InviteAcceptedEvent(fromUserId = invite.fromUserId, toUserId = acceptor.id, toUsername = acceptor.username, toAvatarUrl = acceptor.avatarUrl, type = invite.type, roomId = invite.roomId))
+
+        eventPublisher.publishEvent(
+            InviteAcceptedEvent(
+                fromUserId = invite.fromUserId,
+                fromUsername = sender.username,
+                fromAvatarUrl = sender.avatarUrl,
+
+                toUserId = acceptor.id,
+                toUsername = acceptor.username,
+                toAvatarUrl = acceptor.avatarUrl,
+
+                type = invite.type,
+                roomId = invite.roomId
+            )
+        )
     }
 
     private fun handleOpenRoomInviteResponse(invite: InviteEntity, id: UUID){

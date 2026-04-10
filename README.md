@@ -142,6 +142,8 @@ Exceeded requests return `429 Too Many Requests`.
 | Server → Client | `ROOM_MEMBERS`    | Full member snapshot sent once to the joining session    |
 | Server → Client | `ROOM_PRESENCE`   | Lightweight online/offline update for a room member      |
 | Server → Client | `FRIEND_PRESENCE` | Friend online/offline status update                      |
+| Server → Client | `FRIEND_ADDED`    | Notifies both sides when a friend request is accepted    |
+| Server → Client | `FRIEND_REMOVED`  | Notifies both sides when a friendship is removed         |
 | Server → Client | `ROOM_ACTION`     | Kick or ban notification sent to the target user         |
 | Server → Client | `ROOM_DELETED`    | Room deletion notification sent to all members           |
 | Server → Client | `pong`            | Response to client `PING`                                |
@@ -190,6 +192,8 @@ Encryption is **optional** and configured per room.
 - Friends can open private DM conversations backed by the same WebSocket and persistence pipeline as rooms.
 - Friend status is intentionally never exposed to non-friends. Looking up a non-friend returns the same response as a non-existent user, preventing user enumeration.
 - `FRIEND_PRESENCE` notifications are published to each friend’s `user:{friendId}` Redis channel, ensuring delivery across all instances.
+- When a friend request is accepted, both users receive a `FRIEND_ADDED` notification with the new friend’s profile and online status.
+- When a friendship is removed, both users receive a `FRIEND_REMOVED` notification so clients can update their friend list immediately.
 - On connect, a presence snapshot is sent to the session with the current online status of all friends.
 
 ---
@@ -240,8 +244,9 @@ Encryption is **optional** and configured per room.
 - Invitations have expiration timestamps and can be accepted or rejected.
 - Open room invites support configurable usage limits.
 - All invitation-related actions trigger real-time notifications:
-  - `INVITE_RECEIVED`
+  - `INVITE_RECEIVED` — includes invite ID, type, sender username, room name, and avatar URL, allowing the client to accept immediately
   - `INVITE_ACCEPTED`
+- On WebSocket connect, a `PENDING_INVITES` snapshot is sent containing the full list of pending invites with all details.
 - Notifications are delivered through Redis Pub/Sub and routed to active WebSocket sessions across instances.
 
 ---
