@@ -88,6 +88,7 @@ class InviteResponseTests {
         setAuth(user1.id)
         val invite = pendingFriendRequest()
         every { userService.getUserById(user1.id) } returns user1
+        every { userService.getUserById(user2.id) } returns user2
         every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
         every { friendService.addFriend(user1.id, user2.id) } just Runs
         every { inviteRepository.save(any()) } answers { firstArg() }
@@ -96,6 +97,20 @@ class InviteResponseTests {
 
         verify(exactly = 1) { friendService.addFriend(user1.id, user2.id) }
         assertEquals(InviteStatus.ACCEPTED, invite.status)
+    }
+
+    @Test
+    fun shouldFailToAcceptFriendRequestWhenSenderDeleted() {
+        setAuth(user1.id)
+        val invite = pendingFriendRequest()
+        every { userService.getUserById(user1.id) } returns user1
+        every { userService.getUserById(user2.id) } returns null
+        every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
+
+        val ex = assertFailsWith<ApiException> {
+            inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
+        }
+        assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
 
     @Test
@@ -133,6 +148,7 @@ class InviteResponseTests {
         setAuth(user1.id)
         val invite = pendingRoomInvite()
         every { userService.getUserById(user1.id) } returns user1
+        every { userService.getUserById(user2.id) } returns user2
         every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
         every { roomService.joinRoom(user1.id, roomId) } just Runs
         every { inviteRepository.save(any()) } answers { firstArg() }
@@ -141,6 +157,20 @@ class InviteResponseTests {
 
         verify(exactly = 1) { roomService.joinRoom(user1.id, roomId) }
         assertEquals(InviteStatus.ACCEPTED, invite.status)
+    }
+
+    @Test
+    fun shouldFailToAcceptRoomInviteWhenSenderDeleted() {
+        setAuth(user1.id)
+        val invite = pendingRoomInvite()
+        every { userService.getUserById(user1.id) } returns user1
+        every { userService.getUserById(user2.id) } returns null
+        every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
+
+        val ex = assertFailsWith<ApiException> {
+            inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
+        }
+        assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
 
     @Test

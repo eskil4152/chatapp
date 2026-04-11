@@ -91,6 +91,63 @@ class InviteSendTests {
     }
 
     @Test
+    fun shouldSendFriendRequestWithNullRoomNameInEvent() {
+        setAuth(user1.id)
+        val slot = slot<InviteSentEvent>()
+        every { userService.getUserById(user1.id) } returns user1
+        every { userRepository.getUserByUsernameIgnoreCase("user2") } returns user2
+        every { inviteRepository.existsPendingFriendRequest(user1.id, user2.id) } returns false
+        every { friendService.areFriends(user1.id, user2.id) } returns false
+        every { inviteRepository.save(any()) } answers { firstArg() }
+        every { eventPublisher.publishEvent(capture(slot)) } just Runs
+
+        inviteService.sendFriendRequest(FriendRequestDTO(username = "user2"))
+
+        assertEquals(null, slot.captured.invite.roomName)
+    }
+
+    @Test
+    fun shouldSendFriendRequestWithRoomNameInEventWhenSavedEntityHasRoomId() {
+        setAuth(user1.id)
+        val room = RoomEntity(name = "Test Room", type = RoomType.GROUP)
+        val slot = slot<InviteSentEvent>()
+        every { userService.getUserById(user1.id) } returns user1
+        every { userRepository.getUserByUsernameIgnoreCase("user2") } returns user2
+        every { inviteRepository.existsPendingFriendRequest(user1.id, user2.id) } returns false
+        every { friendService.areFriends(user1.id, user2.id) } returns false
+        every { inviteRepository.save(any()) } answers {
+            val e = firstArg<InviteEntity>()
+            InviteEntity(id = e.id, type = e.type, fromUserId = e.fromUserId, toUserId = e.toUserId, roomId = roomId, expiresAt = e.expiresAt, status = e.status)
+        }
+        every { roomService.getRoom(roomId) } returns Optional.of(room)
+        every { eventPublisher.publishEvent(capture(slot)) } just Runs
+
+        inviteService.sendFriendRequest(FriendRequestDTO(username = "user2"))
+
+        assertEquals("Test Room", slot.captured.invite.roomName)
+    }
+
+    @Test
+    fun shouldSendFriendRequestWithNullRoomNameInEventWhenSavedEntityHasRoomIdButRoomGone() {
+        setAuth(user1.id)
+        val slot = slot<InviteSentEvent>()
+        every { userService.getUserById(user1.id) } returns user1
+        every { userRepository.getUserByUsernameIgnoreCase("user2") } returns user2
+        every { inviteRepository.existsPendingFriendRequest(user1.id, user2.id) } returns false
+        every { friendService.areFriends(user1.id, user2.id) } returns false
+        every { inviteRepository.save(any()) } answers {
+            val e = firstArg<InviteEntity>()
+            InviteEntity(id = e.id, type = e.type, fromUserId = e.fromUserId, toUserId = e.toUserId, roomId = roomId, expiresAt = e.expiresAt, status = e.status)
+        }
+        every { roomService.getRoom(roomId) } returns Optional.empty()
+        every { eventPublisher.publishEvent(capture(slot)) } just Runs
+
+        inviteService.sendFriendRequest(FriendRequestDTO(username = "user2"))
+
+        assertEquals(null, slot.captured.invite.roomName)
+    }
+
+    @Test
     fun shouldFailToSendFriendRequestWithEmptyUsername() {
         setAuth(user1.id)
 
@@ -189,6 +246,55 @@ class InviteSendTests {
 
         verify(exactly = 1) { inviteRepository.save(any()) }
         verify(exactly = 1) { eventPublisher.publishEvent(any<InviteSentEvent>()) }
+    }
+
+    @Test
+    fun shouldSendRoomInviteWithNullRoomNameInEventWhenRoomDisappears() {
+        val room = RoomEntity(name = "Test Room", type = RoomType.GROUP)
+
+        setAuth(user1.id)
+        val userRoom = mockk<UserRoomEntity>()
+        every { userRoom.role } returns RoomRole.OWNER
+        every { userService.getUserById(user1.id) } returns user1
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(user1.id, roomId) } returns userRoom
+        every { roomService.getRoom(roomId) } returnsMany listOf(Optional.of(room), Optional.empty())
+        every { userRepository.getUserByUsernameIgnoreCase(user2.username) } returns user2
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(user2.id, roomId) } returns false
+        every { bannedUserService.isUserBanned(user2.id, roomId) } returns false
+        every { inviteRepository.existsPendingRoomInvite(user2.id, roomId) } returns false
+        every { inviteRepository.save(any()) } answers { firstArg() }
+        val slot = slot<InviteSentEvent>()
+        every { eventPublisher.publishEvent(capture(slot)) } just Runs
+
+        inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUsername = user2.username, roomId = roomId.toString()))
+
+        assertEquals(null, slot.captured.invite.roomName)
+    }
+
+    @Test
+    fun shouldSendRoomInviteWithNullRoomNameInEventWhenSavedEntityHasNullRoomId() {
+        val room = RoomEntity(name = "Test Room", type = RoomType.GROUP)
+
+        setAuth(user1.id)
+        val userRoom = mockk<UserRoomEntity>()
+        every { userRoom.role } returns RoomRole.OWNER
+        every { userService.getUserById(user1.id) } returns user1
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(user1.id, roomId) } returns userRoom
+        every { roomService.getRoom(roomId) } returns Optional.of(room)
+        every { userRepository.getUserByUsernameIgnoreCase(user2.username) } returns user2
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(user2.id, roomId) } returns false
+        every { bannedUserService.isUserBanned(user2.id, roomId) } returns false
+        every { inviteRepository.existsPendingRoomInvite(user2.id, roomId) } returns false
+        every { inviteRepository.save(any()) } answers {
+            val e = firstArg<InviteEntity>()
+            InviteEntity(id = e.id, type = e.type, fromUserId = e.fromUserId, toUserId = e.toUserId, roomId = null, expiresAt = e.expiresAt, status = e.status)
+        }
+        val slot = slot<InviteSentEvent>()
+        every { eventPublisher.publishEvent(capture(slot)) } just Runs
+
+        inviteService.sendRoomInvite(RoomInviteDTO(type = "ROOM_INVITE", targetUsername = user2.username, roomId = roomId.toString()))
+
+        assertEquals(null, slot.captured.invite.roomName)
     }
 
     @Test

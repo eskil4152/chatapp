@@ -5,8 +5,10 @@ import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.errors.InvalidCredentialsException
 import com.blikeng.chatapp.errors.UsernameAlreadyExistsException
 import com.blikeng.chatapp.security.auth.JwtAuthFilter
+import com.blikeng.chatapp.dtos.user.UserDTO
 import com.blikeng.chatapp.security.ratelimit.RateLimitService
 import com.blikeng.chatapp.services.AuthService
+import com.blikeng.chatapp.services.UserService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
 import org.junit.jupiter.api.BeforeEach
@@ -44,6 +46,7 @@ class AuthControllerTests {
     // ==========================
 
     @MockkBean private lateinit var authService: AuthService
+    @MockkBean private lateinit var userService: UserService
     @Autowired private lateinit var mockMvc: MockMvc
 
     @MockkBean
@@ -136,6 +139,12 @@ class AuthControllerTests {
     // ==========================
     @Test
     fun shouldReturnOkForAuthEndpoint() {
+        every { userService.getSelf() } returns UserDTO(
+            userId = java.util.UUID.randomUUID(),
+            username = "testuser",
+            bio = null, email = null, fullName = null, avatarUrl = null, birthday = null, createdAt = null, rooms = emptyList()
+        )
+
         mockMvc.get("/api/auth") {
         }
             .andExpect { status { isOk() } }
