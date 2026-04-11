@@ -202,15 +202,7 @@ class RoomService(
         val userId = getId()
         userService.getUserById(userId) ?: throw InvalidUserException()
 
-        val roomId: UUID
-        val targetId: UUID
-
-        try {
-            roomId = UUID.fromString(changeRoleDTO.roomId)
-            targetId = UUID.fromString(changeRoleDTO.userId)
-        } catch (_: IllegalArgumentException) {
-            throw InvalidUUIDException()
-        }
+        val (roomId, targetId) = parseIds(changeRoleDTO)
 
         if (targetId == userId) throw NotPermittedException()
 
@@ -221,34 +213,7 @@ class RoomService(
 
         if (targetUserRoom.role == RoomRole.OWNER) throw NotPermittedException()
 
-        val newRole = when (changeRoleDTO.action) {
-            RoleAction.PROMOTE -> when (targetUserRoom.role) {
-                RoomRole.MEMBER -> {
-                    if (!userUserRoom.role.isAtLeast(RoomPermissions.PROMOTE_TO_MODERATOR)) throw NotPermittedException()
-                    RoomRole.MODERATOR
-                }
-
-                RoomRole.MODERATOR -> {
-                    if (!userUserRoom.role.isAtLeast(RoomPermissions.PROMOTE_TO_ADMIN)) throw NotPermittedException()
-                    RoomRole.ADMIN
-                }
-
-                else -> throw NotPermittedException()
-            }
-
-            RoleAction.DEMOTE -> when (targetUserRoom.role) {
-                RoomRole.ADMIN -> {
-                    if (!userUserRoom.role.isAtLeast(RoomPermissions.DEMOTE_TO_MODERATOR)) throw NotPermittedException()
-                    RoomRole.MODERATOR
-                }
-
-                RoomRole.MODERATOR -> {
-                    if (!userUserRoom.role.isAtLeast(RoomPermissions.DEMOTE_TO_MEMBER)) throw NotPermittedException()
-                    RoomRole.MEMBER
-                }
-                else -> throw NotPermittedException()
-            }
-        }
+        val newRole = resolveNewRole(changeRoleDTO.action, userUserRoom.role, targetUserRoom.role)
 
         targetUserRoom.role = newRole
         userRoomRepository.save(targetUserRoom)
@@ -396,7 +361,7 @@ class RoomService(
     }
 
     // ==========================
-    // Internal helper
+    // Internal helpers
     // ==========================
     private fun generatePrivateRoomId(user1: UUID, user2: UUID): UUID {
         if (user1 == user2) throw FriendYourselfException()
@@ -408,5 +373,56 @@ class RoomService(
         }
 
         return UUID.nameUUIDFromBytes(ordered.toByteArray())
+    }
+
+    private fun parseIds(dto: ChangeRoleDTO): Pair<UUID, UUID> {
+        return try {
+            UUID.fromString(dto.roomId) to UUID.fromString(dto.userId)
+        } catch (_: IllegalArgumentException) {
+            throw InvalidUUIDException()
+        }
+    }
+
+    private fun resolveNewRole(
+        action: RoleAction,
+        actorRole: RoomRole,
+        targetRole: RoomRole
+    ): RoomRole {
+        return when (action) {
+            RoleAction.PROMOTE -> promote(actorRole, targetRole)
+            RoleAction.DEMOTE -> demote(actorRole, targetRole)
+        }
+    }
+
+    private fun promote(actor: RoomRole, target: RoomRole): RoomRole {
+        return when (target) {
+            RoomRole.MEMBER -> {
+                requirePermission(actor, RoomPermissions.PROMOTE_TO_MODERATOR)
+                RoomRole.MODERATOR
+            }
+            RoomRole.MODERATOR -> {
+                requirePermission(actor, RoomPermissions.PROMOTE_TO_ADMIN)
+                RoomRole.ADMIN
+            }
+            else -> throw NotPermittedException()
+        }
+    }
+
+    private fun demote(actor: RoomRole, target: RoomRole): RoomRole {
+        return when (target) {
+            RoomRole.ADMIN -> {
+                requirePermission(actor, RoomPermissions.DEMOTE_TO_MODERATOR)
+                RoomRole.MODERATOR
+            }
+            RoomRole.MODERATOR -> {
+                requirePermission(actor, RoomPermissions.DEMOTE_TO_MEMBER)
+                RoomRole.MEMBER
+            }
+            else -> throw NotPermittedException()
+        }
+    }
+
+    private fun requirePermission(actorRole: RoomRole, requiredRole: RoomRole) {
+        if (!actorRole.isAtLeast(requiredRole)) throw NotPermittedException()
     }
 }

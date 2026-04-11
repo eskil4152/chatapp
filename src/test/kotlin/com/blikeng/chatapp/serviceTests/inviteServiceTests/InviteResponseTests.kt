@@ -316,6 +316,7 @@ class InviteResponseTests {
         )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
+        every { userService.getUserById(user2.id) } returns user2
 
         val ex = assertFailsWith<ApiException> {
             inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
