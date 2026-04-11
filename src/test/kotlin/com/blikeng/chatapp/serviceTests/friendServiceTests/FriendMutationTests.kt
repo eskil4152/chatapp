@@ -152,6 +152,7 @@ class FriendMutationTests {
         every { userRepository.findById(user2.id) } returns Optional.of(user2)
         every { friendsRepository.existsById(any()) } returns true
         every { friendsRepository.deleteById(capture(slot)) } just Runs
+        every { redisTemplate.convertAndSend(any<String>(), any<String>()) } returns 1L
 
         friendService.removeFriend(UserIdDTO(user2.id.toString()))
 
@@ -174,6 +175,7 @@ class FriendMutationTests {
         every { userRepository.findById(lowId) } returns Optional.of(lowUser)
         every { friendsRepository.existsById(any()) } returns true
         every { friendsRepository.deleteById(capture(slot)) } just Runs
+        every { redisTemplate.convertAndSend(any<String>(), any<String>()) } returns 1L
 
         friendService.removeFriend(UserIdDTO(lowId.toString()))
 

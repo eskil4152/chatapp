@@ -69,7 +69,7 @@ class NotificationServiceTests {
         val fromUserId = UUID.randomUUID()
         val toUserId = UUID.randomUUID()
         val roomId = UUID.randomUUID()
-        val event = InviteAcceptedEvent(fromUserId = fromUserId, toUserId = toUserId, toUsername = "user2", toAvatarUrl = null, type = InviteType.ROOM_INVITE, roomId = roomId)
+        val event = InviteAcceptedEvent(fromUserId = fromUserId, fromUsername = "user1", fromAvatarUrl = null, toUserId = toUserId, toUsername = "user2", toAvatarUrl = null, type = InviteType.ROOM_INVITE, roomId = roomId)
 
         every { objectMapper.writeValueAsString(any()) } returns """{"type":"INVITE_ACCEPTED"}"""
         every { redisTemplate.convertAndSend(any(), any<String>()) } returns 1L
@@ -84,7 +84,7 @@ class NotificationServiceTests {
     fun shouldSendMutualPresenceOnFriendRequestAccepted() {
         val fromUserId = UUID.randomUUID()
         val toUserId = UUID.randomUUID()
-        val event = InviteAcceptedEvent(fromUserId = fromUserId, toUserId = toUserId, toUsername = "user2", toAvatarUrl = null, type = InviteType.FRIEND_REQUEST, roomId = null)
+        val event = InviteAcceptedEvent(fromUserId = fromUserId, fromUsername = "user1", fromAvatarUrl = null, toUserId = toUserId, toUsername = "user2", toAvatarUrl = null, type = InviteType.FRIEND_REQUEST, roomId = null)
 
         every { objectMapper.writeValueAsString(any()) } returns """{"type":"FRIEND_PRESENCE"}"""
         every { redisTemplate.convertAndSend(any(), any<String>()) } returns 1L

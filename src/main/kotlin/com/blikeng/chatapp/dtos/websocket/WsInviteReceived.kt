@@ -8,7 +8,7 @@ data class WsInviteReceived(
     val type: String = "INVITE_RECEIVED",
     val id: UUID,
     val inviteType: InviteType,
-    val fromUserId: UUID,
-    val roomId: UUID?,
-    val expiresAt: Instant,
+    val fromUsername: String,
+    val roomName: String?,
+    val fromAvatarUrl: String?,
 )

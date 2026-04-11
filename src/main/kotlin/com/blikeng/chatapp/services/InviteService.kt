@@ -67,7 +67,8 @@ class InviteService(
 
         return inviteRepository.findByToUserIdAndStatus(userId, InviteStatus.PENDING).map {
             val sender = userService.getUserById(it.fromUserId)
-            val roomName = it.roomId?.let { id -> roomService.getRoom(id).orElse(null)?.name }
+            val roomName = it.roomId?.let { roomId -> roomService.getRoom(roomId).orElse(null)?.name }
+
             PendingInviteDTO(
                 id = it.id,
                 type = it.type,
@@ -88,8 +89,8 @@ class InviteService(
         return inviteRepository.findByFromUserIdAndStatus(id, InviteStatus.PENDING).map {
             when (it.type) {
                 InviteType.FRIEND_REQUEST -> {
-                    if (it.toUserId == null) throw InvalidInviteException()
-                    val friend = userRepository.findById(it.toUserId!!).orElseThrow { UserNotFoundException() }
+                    val friendId = it.toUserId ?: throw InvalidInviteException()
+                    val friend = userRepository.findById(friendId).orElseThrow { UserNotFoundException() }
 
                     OutgoingFriendRequestDTO(
                         id = it.id,
@@ -103,9 +104,10 @@ class InviteService(
                 }
 
                 InviteType.ROOM_INVITE -> {
-                    if (it.toUserId == null) throw InvalidInviteException()
-                    val user = userRepository.findById(it.toUserId!!).orElseThrow { UserNotFoundException() }
-                    if (it.roomId == null) throw InvalidInviteException()
+                    val toUserId = it.toUserId ?: throw InvalidInviteException()
+                    val user = userRepository.findById(toUserId).orElseThrow { UserNotFoundException() }
+
+                    val roomId = it.roomId ?: throw InvalidInviteException()
 
                     OutgoingRoomInviteDTO(
                         id = it.id,
@@ -114,21 +116,23 @@ class InviteService(
                         toUserId = user.id,
                         toUsername = user.username,
                         avatar = user.avatarUrl,
-                        roomId = it.roomId!!,
+                        roomId = roomId,
                         expiresAt = it.expiresAt
                     )
                 }
 
                 InviteType.OPEN_ROOM_INVITE -> {
-                    if (it.roomId == null || it.usages == null || it.maxUsages == null) throw InvalidInviteException()
+                    val roomId = it.roomId ?: throw InvalidInviteException()
+                    val usages = it.usages ?: throw InvalidInviteException()
+                    val maxUsages = it.maxUsages ?: throw InvalidInviteException()
 
                     OutgoingOpenRoomInviteDTO(
                         id = it.id,
                         type = it.type,
                         fromUserId = it.fromUserId,
-                        roomId = it.roomId!!,
-                        usages = it.usages!!,
-                        maxUsages = it.maxUsages!!,
+                        roomId = roomId,
+                        usages = usages,
+                        maxUsages = maxUsages,
                         expiresAt = it.expiresAt,
                     )
                 }
@@ -161,7 +165,15 @@ class InviteService(
         val saved = inviteRepository.save(friendship)
         eventPublisher.publishEvent(InviteSentEvent(
             toUserId = friend.id,
-            invite = PendingInviteDTO(id = saved.id, type = saved.type, fromUserId = saved.fromUserId, fromUsername = sender.username, fromAvatarUrl = sender.avatarUrl, roomId = saved.roomId, roomName = saved.roomId?.let { id -> roomService.getRoom(id).orElse(null)?.name }, expiresAt = saved.expiresAt)
+            invite = PendingInviteDTO(
+                id = saved.id,
+                type = saved.type,
+                fromUserId = saved.fromUserId,
+                fromUsername = sender.username,
+                fromAvatarUrl = sender.avatarUrl,
+                roomId = saved.roomId,
+                roomName = saved.roomId?.let { roomId -> roomService.getRoom(roomId).orElse(null)?.name },
+                expiresAt = saved.expiresAt)
         ))
     }
 
@@ -207,7 +219,15 @@ class InviteService(
         val saved = inviteRepository.save(invite)
         eventPublisher.publishEvent(InviteSentEvent(
             toUserId = target.id,
-            invite = PendingInviteDTO(id = saved.id, type = saved.type, fromUserId = saved.fromUserId, fromUsername = sender.username, fromAvatarUrl = sender.avatarUrl, roomId = saved.roomId, roomName = saved.roomId?.let { id -> roomService.getRoom(id).orElse(null)?.name }, expiresAt = saved.expiresAt)
+            invite = PendingInviteDTO(
+                id = saved.id,
+                type = saved.type,
+                fromUserId = saved.fromUserId,
+                fromUsername = sender.username,
+                fromAvatarUrl = sender.avatarUrl,
+                roomId = saved.roomId,
+                roomName = saved.roomId?.let { roomId -> roomService.getRoom(roomId).orElse(null)?.name },
+                expiresAt = saved.expiresAt)
         ))
     }
 
@@ -284,9 +304,25 @@ class InviteService(
             return
         }
 
+        val sender = userService.getUserById(invite.fromUserId) ?: throw InvalidUserException()
+
         friendService.addFriend(acceptor.id, invite.fromUserId)
         invite.status = InviteStatus.ACCEPTED
-        eventPublisher.publishEvent(InviteAcceptedEvent(fromUserId = invite.fromUserId, toUserId = acceptor.id, toUsername = acceptor.username, toAvatarUrl = acceptor.avatarUrl, type = invite.type, roomId = invite.roomId))
+
+        eventPublisher.publishEvent(
+            InviteAcceptedEvent(
+                fromUserId = invite.fromUserId,
+                fromUsername = sender.username,
+                fromAvatarUrl = sender.avatarUrl,
+
+                toUserId = acceptor.id,
+                toUsername = acceptor.username,
+                toAvatarUrl = acceptor.avatarUrl,
+
+                type = invite.type,
+                roomId = invite.roomId
+            )
+        )
     }
 
     private fun handleRoomInviteResponse(response: InviteResponse, invite: InviteEntity, acceptor: UserEntity){
@@ -297,27 +333,47 @@ class InviteService(
             return
         }
 
-        if (invite.roomId == null) throw InvalidInviteException()
-        roomService.joinRoom(acceptor.id, invite.roomId!!)
+        val sender = userService.getUserById(invite.fromUserId) ?: throw InvalidUserException()
+
+        val roomId = invite.roomId ?: throw InvalidInviteException()
+
+        roomService.joinRoom(acceptor.id, roomId)
         invite.status = InviteStatus.ACCEPTED
-        eventPublisher.publishEvent(InviteAcceptedEvent(fromUserId = invite.fromUserId, toUserId = acceptor.id, toUsername = acceptor.username, toAvatarUrl = acceptor.avatarUrl, type = invite.type, roomId = invite.roomId))
+
+        eventPublisher.publishEvent(
+            InviteAcceptedEvent(
+                fromUserId = invite.fromUserId,
+                fromUsername = sender.username,
+                fromAvatarUrl = sender.avatarUrl,
+
+                toUserId = acceptor.id,
+                toUsername = acceptor.username,
+                toAvatarUrl = acceptor.avatarUrl,
+
+                type = invite.type,
+                roomId = invite.roomId
+            )
+        )
     }
 
     private fun handleOpenRoomInviteResponse(invite: InviteEntity, id: UUID){
-        if (invite.roomId == null) throw InvalidInviteException()
+        val roomId = invite.roomId ?: throw InvalidInviteException()
 
-        if (userRoomRepository.existsByIdUserIdAndIdRoomId(id, invite.roomId!!)) throw AlreadyInvitedException()
-        if (bannedUserService.isUserBanned(id, invite.roomId!!)) throw BannedException()
+        if (userRoomRepository.existsByIdUserIdAndIdRoomId(id, roomId)) throw AlreadyInvitedException()
+        if (bannedUserService.isUserBanned(id, roomId)) throw BannedException()
 
         val updated = inviteRepository.incrementUsagesIfAvailable(invite.id)
         if (updated == 0) throw InvalidInviteException()
 
-        inviteRepository.deleteByToUserIdAndRoomId(id, invite.roomId!!)
+        inviteRepository.deleteByToUserIdAndRoomId(id, roomId)
 
-        roomService.joinRoom(id, invite.roomId!!)
+        roomService.joinRoom(id, roomId)
 
         val refreshed = inviteRepository.findById(invite.id).orElseThrow { InvalidInviteException() }
-        if (refreshed.maxUsages != null && refreshed.usages != null && refreshed.usages!! >= refreshed.maxUsages!!) {
+        val usages = refreshed.usages
+        val maxUsages = refreshed.maxUsages
+
+        if (usages != null && maxUsages != null && usages >= maxUsages) {
             refreshed.status = InviteStatus.EXHAUSTED
             inviteRepository.save(refreshed)
         }

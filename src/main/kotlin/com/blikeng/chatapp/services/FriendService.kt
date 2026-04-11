@@ -4,6 +4,7 @@ import com.blikeng.chatapp.dtos.UserIdDTO
 import com.blikeng.chatapp.dtos.friends.FriendDTO
 import com.blikeng.chatapp.dtos.websocket.OnlineFriend
 import com.blikeng.chatapp.dtos.websocket.WsFriendPresence
+import com.blikeng.chatapp.dtos.websocket.WsFriendRemoved
 import com.blikeng.chatapp.dtos.websocket.WsFriendSnapshot
 import com.blikeng.chatapp.entities.FriendsEntity
 import com.blikeng.chatapp.entities.FriendsId
@@ -93,6 +94,11 @@ class FriendService(
         if (!friendsRepository.existsById(friendshipId)) throw UserNotFoundException()
 
         friendsRepository.deleteById(friendshipId)
+
+        val notifyRemover = objectMapper.writeValueAsString(WsFriendRemoved(userId = friendId))
+        val notifyRemoved = objectMapper.writeValueAsString(WsFriendRemoved(userId = id))
+        redisTemplate.convertAndSend("user:${id}", notifyRemover)
+        redisTemplate.convertAndSend("user:${friendId}", notifyRemoved)
     }
 
     fun getFriendInfo(friendIdString: String): FriendDTO {
@@ -135,7 +141,7 @@ class FriendService(
         val payload = objectMapper.writeValueAsString(
             WsFriendPresence(
                 userId = userId,
-                online = online
+                online = online,
             )
         )
 

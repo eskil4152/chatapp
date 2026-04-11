@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.websocket
 
-import com.blikeng.chatapp.dtos.websocket.WsPendingInviteCount
+import com.blikeng.chatapp.dtos.websocket.WsPendingInviteSnapshot
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.services.ChatService
 import com.blikeng.chatapp.services.FriendService
@@ -54,8 +54,8 @@ class SessionRegistry(
     }
 
     fun sendPendingInviteSnapshot(userId: UUID, session: WebSocketSession) {
-        val count = inviteService.getPendingInvites(userId).size
-        val payload = objectMapper.writeValueAsString(WsPendingInviteCount(count = count))
+        val invites = inviteService.getPendingInvites(userId)
+        val payload = objectMapper.writeValueAsString(WsPendingInviteSnapshot(invites = invites))
         synchronized(session) {
             if (session.isOpen) session.sendMessage(TextMessage(payload))
         }
