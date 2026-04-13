@@ -178,40 +178,46 @@ class ChatService (
         rabbitTemplate.convertAndSend("chat.buffer", rabbitMessage)
     }
 
-    private fun getPendingMessages(roomId: UUID): List<RabbitMessageDTO> {
-        return redisTemplate.opsForList()
-            .range("chat.peek.$roomId", 0, -1)
-            ?.mapNotNull { objectMapper.readValue(it, RabbitMessageDTO::class.java) }
-            ?: emptyList()
-    }
-
     fun getRoomMessages(roomId: UUID, page: Int, size: Int): List<SendMessageDTO> {
         if (page < 0 || size !in setOf(25, 50, 100)) throw InvalidParametersException()
 
+        val room = roomRepository.findById(roomId).orElseThrow { RoomNotFoundException() }
         val persisted = chatRepository
             .findByRoomIdOrderByTimestampDesc(
                 roomId,
                 PageRequest.of(page, size)
             )
             .content
-            .map { toSendMessageDTO(it) }
+            .map { toSendMessageDTO(it, room.encrypted) }
 
         if (page != 0) {
             return persisted.sortedBy { it.timestamp }
         }
 
-        val buffered = getPendingMessages(roomId).map { message ->
-            SendMessageDTO(
-                id = message.id,
-                roomId = message.roomId,
-                userId = message.userId,
-                username = message.username,
-                message = message.message,
-                nonce = message.nonce,
-                ciphertext = message.ciphertext,
-                timestamp = message.timestamp,
-                keyVersion = message.keyVersion
-            )
+        val buffered = if (room.encrypted) {
+            getPendingMessages(roomId).map { message ->
+                if (message.ciphertext == null || message.nonce == null) throw InvalidMessageException()
+
+                SendMessageDTO(
+                    id = message.id,
+                    roomId = message.roomId,
+                    userId = message.userId,
+                    username = message.username,
+                    message = encrypt.decrypt(message.ciphertext, message.nonce, aad = configureAad(roomId, message.id, message.userId)),
+                    timestamp = message.timestamp,
+                )
+            }
+        } else {
+            getPendingMessages(roomId).map { message ->
+                SendMessageDTO(
+                    id = message.id,
+                    roomId = message.roomId,
+                    userId = message.userId,
+                    username = message.username,
+                    message = message.message,
+                    timestamp = message.timestamp,
+                )
+            }
         }
 
         return (persisted + buffered)
@@ -220,23 +226,41 @@ class ChatService (
             .takeLast(size)
     }
 
-    private fun toSendMessageDTO(message: ChatEntity): SendMessageDTO {
+    private fun toSendMessageDTO(message: ChatEntity, encrypted: Boolean): SendMessageDTO {
+        if (encrypted) {
+            val cipher = message.ciphertext ?: throw InvalidMessageException()
+            val nonce = message.nonce ?: throw InvalidMessageException()
+
+            return SendMessageDTO(
+                id = message.id,
+                roomId = message.roomId,
+                userId = message.user.id,
+                username = message.user.username,
+                message = encrypt.decrypt(cipher, nonce, aad = configureAad(message.roomId, message.id, message.user.id)),
+                timestamp = message.timestamp,
+            )
+        }
+
         return SendMessageDTO(
             id = message.id,
             roomId = message.roomId,
             userId = message.user.id,
             username = message.user.username,
             message = message.message,
-            nonce = message.nonce,
-            ciphertext = message.ciphertext,
             timestamp = message.timestamp,
-            keyVersion = message.keyVersion
         )
     }
 
     // ==========================
     // Helper methods
     // ==========================
+    private fun getPendingMessages(roomId: UUID): List<RabbitMessageDTO> {
+        return redisTemplate.opsForList()
+            .range("chat.peek.$roomId", 0, -1)
+            ?.mapNotNull { objectMapper.readValue(it, RabbitMessageDTO::class.java) }
+            ?: emptyList()
+    }
+
     fun getUsersInRoom(roomId: UUID): List<RoomUserDTO> {
         val userRooms = userRoomRepository.findUserRoomsByRoomId(roomId).associateBy { it.id.userId }
         val users = userService.getAllById(userRooms.keys.toList())

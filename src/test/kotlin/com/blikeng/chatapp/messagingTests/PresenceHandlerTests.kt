@@ -10,6 +10,7 @@ import io.mockk.just
 import io.mockk.Runs
 import io.mockk.mockk
 import io.mockk.verify
+import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.data.redis.core.Cursor
@@ -45,6 +46,13 @@ class PresenceHandlerTests {
         presenceHandler.clearStalePresence()
 
         verify(exactly = 1) { redisTemplate.delete(any<Collection<String>>()) }
+    }
+
+    @Test
+    fun shouldNotThrowWhenRedisScanFailsDuringStartup() {
+        every { redisTemplate.scan(any()) } throws RuntimeException("Redis unavailable")
+
+        assertDoesNotThrow { presenceHandler.clearStalePresence() }
     }
 
     @Test
