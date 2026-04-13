@@ -3,8 +3,6 @@ server:
   shutdown: graceful
 
 spring:
-  main:
-    lazy-initialization: true
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/chatdb}
     username: ${SPRING_DATASOURCE_USERNAME:eskil}

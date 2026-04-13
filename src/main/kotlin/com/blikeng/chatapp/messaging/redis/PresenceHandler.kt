@@ -15,7 +15,6 @@ import java.util.*
 class PresenceHandler(
     private val redisTemplate: RedisTemplate<String, String>
 ) {
-
     @EventListener(ApplicationReadyEvent::class)
     fun clearStalePresence() {
         try {
