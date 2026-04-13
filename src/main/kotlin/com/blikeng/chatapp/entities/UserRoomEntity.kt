@@ -18,7 +18,7 @@ class UserRoomEntity (
 )
 
 @Embeddable
-class UserRoomId(
+data class UserRoomId(
     var userId: UUID,
     var roomId: UUID
 ) : Serializable
