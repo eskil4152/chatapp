@@ -3,13 +3,19 @@ server:
   shutdown: graceful
 
 spring:
+  main:
+    lazy-initialization: true
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/chatdb}
     username: ${SPRING_DATASOURCE_USERNAME:eskil}
     password: ${SPRING_DATASOURCE_PASSWORD:password1}
     hikari:
       maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 5000
+      initialization-fail-timeout: 10000
   jpa:
+    open-in-view: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -49,7 +55,7 @@ spring:
 
 logging:
   level:
-    root: INFO
+    root: WARN
     org.springframework: WARN
     org.springframework.web: INFO
     org.hibernate: WARN
@@ -64,6 +70,8 @@ management:
         include: health,info,metrics
   endpoint:
     health:
+      probes:
+        enabled: true
       show-details: never
   info:
     env:

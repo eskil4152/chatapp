@@ -25,7 +25,7 @@ class FriendsEntity (
 )
 
 @Embeddable
-class FriendsId(
+data class FriendsId(
     val userA: UUID,
     val userB: UUID
 ): Serializable

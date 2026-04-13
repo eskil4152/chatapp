@@ -16,7 +16,7 @@ class BannedUser (
 )
 
 @Embeddable
-class BannedUserId (
+data class BannedUserId (
     val userId:UUID,
     val roomId: UUID
 ) : Serializable
