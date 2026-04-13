@@ -30,13 +30,7 @@ spring:
       include-message: always
   data:
     redis:
-      host: ${SPRING_DATA_REDIS_HOST:localhost}
-      port: ${SPRING_DATA_REDIS_PORT:6379}
-      username: ${SPRING_DATA_REDIS_USERNAME:}
-      password: ${SPRING_DATA_REDIS_PASSWORD:}
-      timeout: 10000
-      ssl:
-        enabled: ${SPRING_DATA_REDIS_SSL:false}
+      url: ${SPRING_REDIS_URL:redis://localhost:6379}
   rabbitmq:
     host: ${SPRING_RABBITMQ_HOST:localhost}
     port: ${SPRING_RABBITMQ_PORT:5672}

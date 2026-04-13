@@ -1,6 +1,7 @@
 package com.blikeng.chatapp.messaging.redis
 
-import jakarta.annotation.PostConstruct
+import org.springframework.boot.context.event.ApplicationReadyEvent
+import org.springframework.context.event.EventListener
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.core.ScanOptions
 import org.springframework.stereotype.Component
@@ -14,12 +15,24 @@ import java.util.*
 class PresenceHandler(
     private val redisTemplate: RedisTemplate<String, String>
 ) {
-    @PostConstruct
+
+    @EventListener(ApplicationReadyEvent::class)
     fun clearStalePresence() {
-        val scanOptions = ScanOptions.scanOptions().match("presence:user:*").build()
-        val cursor = redisTemplate.scan(scanOptions)
-        val keys = cursor.asSequence().toList()
-        if (keys.isNotEmpty()) redisTemplate.delete(keys)
+        try {
+            val scanOptions = ScanOptions.scanOptions()
+                .match("presence:user:*")
+                .build()
+
+            val cursor = redisTemplate.scan(scanOptions)
+            val keys = cursor.asSequence().toList()
+
+            if (keys.isNotEmpty()) {
+                redisTemplate.delete(keys)
+            }
+
+        } catch (e: Exception) {
+            println("Redis cleanup failed: ${e.message}")
+        }
     }
 
     fun userConnected(userId: UUID): Long {
