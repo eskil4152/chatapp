@@ -719,16 +719,7 @@ class E2ETests : ContainerBase() {
         }
             .andExpect { status { isOk() } }
             .andExpect {
-                jsonPath("$[0].message") { doesNotExist() }
-            }
-            .andExpect {
-                jsonPath("$[0].ciphertext") { exists() }
-            }
-            .andExpect {
-                jsonPath("$[0].nonce") { exists() }
-            }
-            .andExpect {
-                jsonPath("$[0].keyVersion") { value(1) }
+                jsonPath("$[0].message") { value("encrypted hello from user1") }
             }
     }
 

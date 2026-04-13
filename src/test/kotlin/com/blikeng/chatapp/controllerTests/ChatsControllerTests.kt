@@ -59,10 +59,7 @@ class ChatsControllerTests {
             userId = UUID.randomUUID(),
             username = "user",
             message = "message",
-            nonce = null,
-            ciphertext = null,
             timestamp = Instant.now(),
-            keyVersion = null,
         )
 
         every { chatService.getRoomMessages(any(), any(), any()) } returns listOf(message)
