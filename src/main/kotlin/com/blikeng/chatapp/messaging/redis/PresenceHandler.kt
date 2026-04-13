@@ -2,6 +2,7 @@ package com.blikeng.chatapp.messaging.redis
 
 import jakarta.annotation.PostConstruct
 import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.data.redis.core.ScanOptions
 import org.springframework.stereotype.Component
 import java.util.*
 
@@ -15,7 +16,9 @@ class PresenceHandler(
 ) {
     @PostConstruct
     fun clearStalePresence() {
-        val keys = redisTemplate.keys("presence:user:*")
+        val scanOptions = ScanOptions.scanOptions().match("presence:user:*").build()
+        val cursor = redisTemplate.scan(scanOptions)
+        val keys = cursor.asSequence().toList()
         if (keys.isNotEmpty()) redisTemplate.delete(keys)
     }
 

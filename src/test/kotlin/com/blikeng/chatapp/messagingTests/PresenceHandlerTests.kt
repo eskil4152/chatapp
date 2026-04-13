@@ -8,9 +8,11 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.just
 import io.mockk.Runs
+import io.mockk.mockk
 import io.mockk.verify
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.data.redis.core.Cursor
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.core.ValueOperations
 import java.util.*
@@ -33,14 +35,16 @@ class PresenceHandlerTests {
 
     @Test
     fun shouldDeleteAllStalePresenceKeysOnStartup() {
-        val keys = setOf("presence:user:abc", "presence:user:def")
+        val cursor = mockk<Cursor<String>>()
 
-        every { redisTemplate.keys("presence:user:*") } returns keys
-        every { redisTemplate.delete(keys) } returns 2L
+        every { cursor.hasNext() } returnsMany listOf(true, true, false)
+        every { cursor.next() } returnsMany listOf("presence:user:abc", "presence:user:def")
+        every { redisTemplate.scan(any()) } returns cursor
+        every { redisTemplate.delete(any<Collection<String>>()) } returns 2L
 
         presenceHandler.clearStalePresence()
 
-        verify(exactly = 1) { redisTemplate.delete(keys) }
+        verify(exactly = 1) { redisTemplate.delete(any<Collection<String>>()) }
     }
 
     @Test
