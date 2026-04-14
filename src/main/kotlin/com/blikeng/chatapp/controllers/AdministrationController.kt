@@ -1,5 +1,8 @@
 package com.blikeng.chatapp.controllers;
 
+import com.blikeng.chatapp.dtos.UserIdDTO
+import com.blikeng.chatapp.dtos.administration.ElevatedUserDTO
+import com.blikeng.chatapp.dtos.administration.ElevatedUserDetailDTO
 import com.blikeng.chatapp.services.AdministrationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -10,13 +13,15 @@ class AdministrationController(
     private val administrationService: AdministrationService
 ) {
     @GetMapping("/users")
-    fun getElevatedUsers(): ResponseEntity<String> {
-        return ResponseEntity.ok("Elevated users")
+    fun getElevatedUsers(): ResponseEntity<List<ElevatedUserDTO>> {
+        return ResponseEntity.ok(administrationService.getElevatedUsers())
     }
 
     @PostMapping("/change-user-role")
-    fun changeUserRole(): ResponseEntity<String> {
-        return ResponseEntity.ok("Banned user")
+    fun changeUserRole(
+        @RequestBody userIdDTO: UserIdDTO
+    ) : ResponseEntity<ElevatedUserDetailDTO> {
+        return ResponseEntity.ok(administrationService.getUser(userIdDTO))
     }
 
     @GetMapping("/user/{userId}")

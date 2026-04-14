@@ -1,1 +1,6 @@
-UPDATE users SET role = 'SUPERUSER' WHERE username = 'admin';
+UPDATE users
+SET
+    username = 'SUPERUSER',
+    bio = 'There can only be one.',
+    role = 'SUPERUSER'
+WHERE username = 'admin';

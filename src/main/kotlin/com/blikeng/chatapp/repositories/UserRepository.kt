@@ -8,4 +8,6 @@ import java.util.*
 @Repository
 interface UserRepository: JpaRepository<UserEntity, UUID> {
     fun getUserByUsernameIgnoreCase(username: String): UserEntity?
+
+    fun findAllUsersWhereUserRoleIsNotUser(): List<UserEntity>
 }
