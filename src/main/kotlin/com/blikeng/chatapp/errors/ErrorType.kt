@@ -35,8 +35,11 @@ class AlreadyFriendsException : ApiException(HttpStatus.CONFLICT, ErrorMessages.
 class FriendYourselfException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.CANT_FRIEND_YOURSELF)
 
 // Bans
+class AlreadyBannedException : ApiException(HttpStatus.CONFLICT, ErrorMessages.ALREADY_BANNED)
 class BannedException : ApiException(HttpStatus.FORBIDDEN, ErrorMessages.BANNED)
 class InvalidBanException : ApiException(HttpStatus.FORBIDDEN, ErrorMessages.INVALID_BAN)
+class InvalidUnbanException : ApiException(HttpStatus.FORBIDDEN, ErrorMessages.INVALID_UNBAN)
+class NotBannedException : ApiException(HttpStatus.FORBIDDEN, ErrorMessages.NOT_BANNED)
 
 // Invites
 class InvalidInviteException : ApiException(HttpStatus.BAD_REQUEST, ErrorMessages.INVALID_INVITE)

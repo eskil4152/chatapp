@@ -1,8 +1,8 @@
 package com.blikeng.chatapp.serviceTests
 
-import com.blikeng.chatapp.entities.BannedUser
-import com.blikeng.chatapp.entities.BannedUserId
-import com.blikeng.chatapp.repositories.BannedUserRepository
+import com.blikeng.chatapp.entities.RoomBan
+import com.blikeng.chatapp.entities.RoomBanId
+import com.blikeng.chatapp.repositories.RoomBanRepository
 import com.blikeng.chatapp.services.BannedUserService
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
@@ -19,7 +19,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 @ExtendWith(MockKExtension::class)
-class BannedUserServiceTests {
+class RoomBanServiceTests {
     // ==========================
     // Tests for BannedUserService. Verifies:
     // - Banned status check returns true/false correctly
@@ -27,7 +27,7 @@ class BannedUserServiceTests {
     // - unbanUser deletes the BannedUser entity
     // ==========================
 
-    @MockK lateinit var bannedUserRepository: BannedUserRepository
+    @MockK lateinit var roomBanRepository: RoomBanRepository
 
     @InjectMockKs lateinit var bannedUserService: BannedUserService
 
@@ -36,7 +36,7 @@ class BannedUserServiceTests {
         val userId = UUID.randomUUID()
         val roomId = UUID.randomUUID()
 
-        every { bannedUserRepository.existsById(any()) } returns true
+        every { roomBanRepository.existsById(any()) } returns true
 
         assertTrue(bannedUserService.isUserBanned(userId, roomId))
     }
@@ -46,7 +46,7 @@ class BannedUserServiceTests {
         val userId = UUID.randomUUID()
         val roomId = UUID.randomUUID()
 
-        every { bannedUserRepository.existsById(any()) } returns false
+        every { roomBanRepository.existsById(any()) } returns false
 
         assertFalse(bannedUserService.isUserBanned(userId, roomId))
     }
@@ -56,11 +56,11 @@ class BannedUserServiceTests {
         val userId = UUID.randomUUID()
         val roomId = UUID.randomUUID()
 
-        every { bannedUserRepository.save(any()) } answers { firstArg() }
+        every { roomBanRepository.save(any()) } answers { firstArg() }
 
         bannedUserService.banUser(userId, roomId)
 
-        verify(exactly = 1) { bannedUserRepository.save(match { it.id.userId == userId && it.id.roomId == roomId }) }
+        verify(exactly = 1) { roomBanRepository.save(match { it.id.userId == userId && it.id.roomId == roomId }) }
     }
 
     @Test
@@ -68,26 +68,26 @@ class BannedUserServiceTests {
         val userId = UUID.randomUUID()
         val roomId = UUID.randomUUID()
 
-        every { bannedUserRepository.deleteById(any()) } just Runs
+        every { roomBanRepository.deleteById(any()) } just Runs
 
         bannedUserService.unbanUser(userId, roomId)
 
-        verify(exactly = 1) { bannedUserRepository.deleteById(match { it.userId == userId && it.roomId == roomId }) }
+        verify(exactly = 1) { roomBanRepository.deleteById(match { it.userId == userId && it.roomId == roomId }) }
     }
 
     @Test
     fun shouldGetBannedUserIds() {
         val roomId = UUID.randomUUID()
-        val bannedUsers: List<BannedUser> = listOf(
-            BannedUser(BannedUserId(UUID.randomUUID(), roomId)),
-            BannedUser(BannedUserId(UUID.randomUUID(), roomId))
+        val roomBans: List<RoomBan> = listOf(
+            RoomBan(RoomBanId(UUID.randomUUID(), roomId)),
+            RoomBan(RoomBanId(UUID.randomUUID(), roomId))
         )
 
-        every { bannedUserRepository.findAllByIdRoomId(roomId) } returns bannedUsers
+        every { roomBanRepository.findAllByIdRoomId(roomId) } returns roomBans
 
         val userIds = bannedUserService.getBannedUserIds(roomId)
 
         assertEquals(userIds.size, 2)
-        assertTrue(userIds.containsAll(bannedUsers.map { it.id.userId }))
+        assertTrue(userIds.containsAll(roomBans.map { it.id.userId }))
     }
 }

@@ -1,30 +1,30 @@
 package com.blikeng.chatapp.services
 
-import com.blikeng.chatapp.entities.BannedUser
-import com.blikeng.chatapp.entities.BannedUserId
-import com.blikeng.chatapp.repositories.BannedUserRepository
+import com.blikeng.chatapp.entities.RoomBan
+import com.blikeng.chatapp.entities.RoomBanId
+import com.blikeng.chatapp.repositories.RoomBanRepository
 import org.springframework.stereotype.Service
 import java.util.UUID
 
 @Service
 class BannedUserService(
-    val bannedUserRepository: BannedUserRepository
+    val roomBanRepository: RoomBanRepository
 ) {
     fun isUserBanned(userId: UUID, roomId: UUID): Boolean {
-        return bannedUserRepository.existsById(BannedUserId(userId, roomId))
+        return roomBanRepository.existsById(RoomBanId(userId, roomId))
     }
 
     fun banUser(userId: UUID, roomId: UUID) {
-        val bannedUser = BannedUser(BannedUserId(userId, roomId))
-        bannedUserRepository.save(bannedUser);
+        val roomBan = RoomBan(RoomBanId(userId, roomId))
+        roomBanRepository.save(roomBan);
     }
 
     fun unbanUser(userId: UUID, roomId: UUID) {
-        val id = BannedUserId(userId, roomId)
-        bannedUserRepository.deleteById(id)
+        val id = RoomBanId(userId, roomId)
+        roomBanRepository.deleteById(id)
     }
 
     fun getBannedUserIds(roomId: UUID): List<UUID> {
-        return bannedUserRepository.findAllByIdRoomId(roomId).map { it.id.userId }
+        return roomBanRepository.findAllByIdRoomId(roomId).map { it.id.userId }
     }
 }
