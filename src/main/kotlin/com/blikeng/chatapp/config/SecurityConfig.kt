@@ -30,9 +30,12 @@ class SecurityConfig(
                 authRequest.requestMatchers("/api/login").permitAll()
                 authRequest.requestMatchers("/api/register").permitAll()
                 authRequest.requestMatchers("/error").permitAll()
+
                 authRequest.requestMatchers("/actuator/health").permitAll()
                 authRequest.requestMatchers("/actuator/info").permitAll()
-                authRequest.requestMatchers("/actuator/**").hasRole("ADMIN")
+                authRequest.requestMatchers("/actuator/**").hasRole("TRUSTED")
+                authRequest.requestMatchers("/api/admin/**").hasRole("MODERATOR")
+
                 authRequest.anyRequest().hasRole("USER")
             }
             .httpBasic { it.disable() }
