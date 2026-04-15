@@ -10,6 +10,7 @@ import com.blikeng.chatapp.errors.ShortPasswordException
 import com.blikeng.chatapp.errors.WrongPasswordException
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
+import com.blikeng.chatapp.security.UserRole
 import com.blikeng.chatapp.security.auth.PasswordService
 import com.blikeng.chatapp.security.auth.getId
 import org.springframework.stereotype.Service
@@ -45,6 +46,13 @@ class UserService(
             createdAt = user.createdAt,
             rooms = roomRepository.findRoomsForUser(id)
         )
+    }
+
+    fun getRole(): UserRole {
+        val id = getId()
+        val user = getUserById(id) ?: throw InvalidUserException()
+
+        return user.role
     }
 
     @Transactional

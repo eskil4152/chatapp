@@ -33,7 +33,7 @@ class AdministrationService(
     fun getElevatedUsers(): List<ElevatedUserDTO> {
         userRepository.findById(getId()).orElseThrow { InvalidUserException() }
 
-        return userRepository.findAllUsersWhereUserRoleIsNotUser().map { user ->
+        return userRepository.findAllByRoleNot(UserRole.USER).map { user ->
             ElevatedUserDTO(
                 id = user.id,
                 username = user.username,

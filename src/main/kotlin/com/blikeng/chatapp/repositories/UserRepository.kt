@@ -1,6 +1,7 @@
 package com.blikeng.chatapp.repositories
 
 import com.blikeng.chatapp.entities.UserEntity
+import com.blikeng.chatapp.security.UserRole
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 import java.util.*
@@ -9,5 +10,5 @@ import java.util.*
 interface UserRepository: JpaRepository<UserEntity, UUID> {
     fun getUserByUsernameIgnoreCase(username: String): UserEntity?
 
-    fun findAllUsersWhereUserRoleIsNotUser(): List<UserEntity>
+    fun findAllByRoleNot(role: UserRole): List<UserEntity>
 }
