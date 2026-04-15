@@ -5,7 +5,7 @@ import com.blikeng.chatapp.security.UserRole
 import java.time.Instant
 import java.util.UUID
 
-data class ElevatedUserDetailDTO (
+data class UserDetailDTO (
     val id: UUID,
     val username: String,
     val bio: String?,

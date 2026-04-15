@@ -1,8 +1,11 @@
 package com.blikeng.chatapp.controllers;
 
 import com.blikeng.chatapp.dtos.UserIdDTO
+import com.blikeng.chatapp.dtos.administration.BanUserDTO
+import com.blikeng.chatapp.dtos.administration.BannedUserDTO
 import com.blikeng.chatapp.dtos.administration.ElevatedUserDTO
-import com.blikeng.chatapp.dtos.administration.ElevatedUserDetailDTO
+import com.blikeng.chatapp.dtos.administration.UserDetailDTO
+import com.blikeng.chatapp.dtos.administration.UserRoleDTO
 import com.blikeng.chatapp.services.AdministrationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,27 +20,45 @@ class AdministrationController(
         return ResponseEntity.ok(administrationService.getElevatedUsers())
     }
 
-    @PostMapping("/change-user-role")
-    fun changeUserRole(
-        @RequestBody userIdDTO: UserIdDTO
-    ) : ResponseEntity<ElevatedUserDetailDTO> {
-        return ResponseEntity.ok(administrationService.getUser(userIdDTO))
-    }
-
     @GetMapping("/user/{userId}")
     fun getUser(
         @PathVariable userId: String
+    ) : ResponseEntity<UserDetailDTO> {
+        return ResponseEntity.ok(administrationService.getUser(userId))
+    }
+
+    @PostMapping("/change-user-role")
+    fun changeUserRole(
+        @RequestBody userRoleDTO: UserRoleDTO
     ) : ResponseEntity<String> {
-        return ResponseEntity.ok("User: $userId")
+        administrationService.changeUserRole(userRoleDTO)
+
+        return ResponseEntity.ok("Role updated successfully")
     }
 
     @PostMapping("/ban-user")
-    fun banUser(): ResponseEntity<String>{
+    fun banUser(
+      @RequestBody banUserDTO: BanUserDTO
+    ) : ResponseEntity<String>{
+        administrationService.banUser(banUserDTO)
+
         return ResponseEntity.ok("Banned user")
     }
 
     @PostMapping("/unban-user")
-    fun unbanUser(): ResponseEntity<String> {
+    fun unbanUser(
+        @RequestBody userIdDTO: UserIdDTO
+    ) : ResponseEntity<String> {
+        administrationService.unbanUser(userIdDTO)
+
         return ResponseEntity.ok("Unbanned user")
+    }
+
+    @GetMapping("/banned")
+    fun getBannedUsers(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "25") size: Int
+    ) : ResponseEntity<List<BannedUserDTO>> {
+        return ResponseEntity.ok(administrationService.getAllUserBans(page, size))
     }
 }

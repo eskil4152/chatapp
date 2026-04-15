@@ -1,18 +1,14 @@
 package com.blikeng.chatapp.services
 
-import com.blikeng.chatapp.config.configureAad
 import com.blikeng.chatapp.dtos.UserIdDTO
 import com.blikeng.chatapp.dtos.administration.BanUserDTO
 import com.blikeng.chatapp.dtos.administration.BannedUserDTO
 import com.blikeng.chatapp.dtos.administration.ElevatedUserDTO
-import com.blikeng.chatapp.dtos.administration.ElevatedUserDetailDTO
+import com.blikeng.chatapp.dtos.administration.UserDetailDTO
 import com.blikeng.chatapp.dtos.administration.UserRoleDTO
-import com.blikeng.chatapp.dtos.messaging.SendMessageDTO
 import com.blikeng.chatapp.dtos.room.RoleAction
 import com.blikeng.chatapp.entities.BannedUser
-import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.errors.AlreadyBannedException
-import com.blikeng.chatapp.errors.InvalidMessageException
 import com.blikeng.chatapp.errors.InvalidParametersException
 import com.blikeng.chatapp.errors.InvalidUUIDException
 import com.blikeng.chatapp.errors.InvalidUnbanException
@@ -48,17 +44,17 @@ class AdministrationService(
         }
     }
 
-    fun getUser(userIdDTO: UserIdDTO): ElevatedUserDetailDTO {
+    fun getUser(userId: String): UserDetailDTO {
         userRepository.findById(getId()).orElseThrow { InvalidUserException() }
 
         val id = try {
-            UUID.fromString(userIdDTO.userId)
+            UUID.fromString(userId)
         } catch (_: IllegalArgumentException) {
             throw InvalidUUIDException()
         }
 
         val user = userRepository.findById(id).map { user ->
-            ElevatedUserDetailDTO(
+            UserDetailDTO(
                 id = user.id,
                 username = user.username,
                 bio = user.bio,
