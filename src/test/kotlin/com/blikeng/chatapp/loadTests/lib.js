@@ -13,10 +13,13 @@ export function getAuthCookie(res) {
     return c && c.length > 0 ? c[0].value : null;
 }
 
-// Ramp to 25% → full → hold 2m → ramp down
-// setupTimeout scales with VU count: ~14 reqs/s in setup, +60s headroom
-// setupReqsPerUser: HTTP calls per user in setup (1 for HTTP tests, 3 for WS: register+login+join)
-export function makeOptions(target, setupReqsPerUser = 1) {
+// Ramp to 25% → full → hold 2m → ramp down.
+// setupTimeout scales with VU count: ~14 reqs/s in setup, +60s headroom.
+// setupReqsPerUser: HTTP calls per user in setup.
+//   - HTTP tests (roomList, roomCreation, multiRoom): 0 — setup is instant (just slicing cookies array)
+//   - WS tests (wsRoom, wsMultiRoom): 1 — one invite accept per user
+//   - login.js and auth.js manage their own options
+export function makeOptions(target, setupReqsPerUser = 0) {
     const setupSecs = Math.ceil(target * setupReqsPerUser / 14) + 60;
     return {
         setupTimeout: `${setupSecs}s`,

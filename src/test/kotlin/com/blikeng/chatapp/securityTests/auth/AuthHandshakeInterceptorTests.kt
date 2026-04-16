@@ -1,9 +1,8 @@
 package com.blikeng.chatapp.securityTests.auth
 
-import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.security.auth.AuthHandshakeInterceptor
 import com.blikeng.chatapp.security.auth.JwtService
-import com.blikeng.chatapp.services.UserService
+import com.blikeng.chatapp.services.UserRevocationService
 import io.mockk.Called
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
@@ -39,13 +38,13 @@ class AuthHandshakeInterceptorTests {
     lateinit var jwtService: JwtService
 
     @MockK
-    lateinit var userService: UserService
+    lateinit var userRevocationService: UserRevocationService
 
     lateinit var interceptor: AuthHandshakeInterceptor
 
     @BeforeEach
     fun setUp() {
-        interceptor = AuthHandshakeInterceptor(jwtService, userService)
+        interceptor = AuthHandshakeInterceptor(jwtService, userRevocationService)
     }
 
     @Test
@@ -59,7 +58,7 @@ class AuthHandshakeInterceptorTests {
             userId = userId,
             role = "USER"
         )
-        every { userService.getUserById(userId) } returns UserEntity(username = "user", password = "")
+        every { userRevocationService.isRevoked(userId) } returns false
 
         val servletRequest = mockk<HttpServletRequest> {
             every { cookies } returns cookiesList
@@ -175,7 +174,7 @@ class AuthHandshakeInterceptorTests {
     }
 
     @Test
-    fun shouldFailWhenUserDoesNotExistInDatabase() {
+    fun shouldFailWhenUserIsRevoked() {
         val cookiesList: Array<Cookie> = arrayOf(Cookie("AUTH", "token"))
         val userId = UUID.randomUUID()
 
@@ -184,7 +183,7 @@ class AuthHandshakeInterceptorTests {
             userId = userId,
             role = "USER"
         )
-        every { userService.getUserById(userId) } returns null
+        every { userRevocationService.isRevoked(userId) } returns true
 
         val servletRequest = mockk<HttpServletRequest> {
             every { cookies } returns cookiesList

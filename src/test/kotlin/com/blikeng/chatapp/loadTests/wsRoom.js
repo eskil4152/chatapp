@@ -1,33 +1,22 @@
 import http from 'k6/http';
 import ws from 'k6/ws';
 import { check, sleep } from 'k6';
-import { BASE, WS_URL, PASSWORD, jsonParams, getAuthCookie, makeOptions } from './lib.js';
+import { BASE, WS_URL, jsonParams, makeOptions } from './lib.js';
 
-const USERS_FILE = __ENV.USERS_FILE;
-const _preloaded = USERS_FILE ? JSON.parse(open(USERS_FILE)) : null;
+const COOKIES_FILE = __ENV.COOKIES_FILE;
+if (!COOKIES_FILE) throw new Error('COOKIES_FILE is required — run auth.js first');
+const _cookies = JSON.parse(open(COOKIES_FILE));
 const TARGET_VUS = __ENV.USERS ? parseInt(__ENV.USERS) : 100;
 const RUN_ID = Date.now();
 const ROOM_NAME = `ws-room-${RUN_ID}`;
 
-export const options = { ...makeOptions(TARGET_VUS, _preloaded ? 2 : 3) };
+// Setup creates 1 room + 1 invite per user (accept step).
+export const options = { ...makeOptions(TARGET_VUS, 1) };
 
 export function setup() {
-    let users;
-    if (_preloaded) {
-        users = _preloaded.slice(0, TARGET_VUS);
-    } else {
-        users = [];
-        for (let i = 1; i <= TARGET_VUS; i++) {
-            const user = { username: `ws_${RUN_ID}_${i}`, password: PASSWORD };
-            http.post(`${BASE}/api/register`, JSON.stringify(user), jsonParams());
-            users.push(user);
-        }
-    }
-
-    const owner = users[0];
-    const ownerLoginRes = http.post(`${BASE}/api/login`, JSON.stringify(owner), jsonParams());
-    const ownerCookie = getAuthCookie(ownerLoginRes);
-    if (!ownerCookie) throw new Error('Setup: owner login failed');
+    const cookies = _cookies.slice(0, TARGET_VUS);
+    const ownerCookie = cookies[0];
+    if (!ownerCookie) throw new Error('Setup: no cookie for owner');
 
     const createRes = http.post(
         `${BASE}/api/rooms/make`,
@@ -37,28 +26,32 @@ export function setup() {
     check(createRes, { 'setup room created': (r) => r.status === 201 });
 
     const roomsRes = http.get(`${BASE}/api/rooms`, jsonParams(ownerCookie));
-    const rooms = roomsRes.json();
-    const room = rooms.find((r) => r.roomName === ROOM_NAME);
+    const room = roomsRes.json().find((r) => r.roomName === ROOM_NAME);
     if (!room) throw new Error(`Setup: room "${ROOM_NAME}" not found`);
 
-    for (let i = 1; i < users.length; i++) {
-        const loginRes = http.post(`${BASE}/api/login`, JSON.stringify(users[i]), jsonParams());
-        const cookie = getAuthCookie(loginRes);
-        if (!cookie) continue;
+    const openInviteRes = http.post(
+        `${BASE}/api/invites/open`,
+        JSON.stringify({ type: 'OPEN_ROOM_INVITE', roomId: room.roomId, maxUsages: cookies.length }),
+        jsonParams(ownerCookie)
+    );
+    check(openInviteRes, { 'setup open invite created': (r) => r.status === 200 });
+    const inviteId = openInviteRes.body.trim().replace(/^"|"$/g, '');
 
-        http.post(`${BASE}/api/rooms/join`, JSON.stringify({ roomId: room.roomId }), jsonParams(cookie));
+    for (let i = 1; i < cookies.length; i++) {
+        if (!cookies[i]) continue;
+        http.post(
+            `${BASE}/api/invites/respond`,
+            JSON.stringify({ inviteId, response: 'ACCEPTED' }),
+            jsonParams(cookies[i])
+        );
     }
 
-    return { users, roomId: room.roomId };
+    return { cookies, roomId: room.roomId };
 }
 
 export default function (data) {
-    const user = data.users[(__VU - 1) % data.users.length];
-
-    const loginRes = http.post(`${BASE}/api/login`, JSON.stringify(user), jsonParams());
-    check(loginRes, { 'login ok': (r) => r.status === 200 });
-
-    const cookie = getAuthCookie(loginRes);
+    const idx = (__VU - 1) % data.cookies.length;
+    const cookie = data.cookies[idx];
     if (!cookie) return;
 
     const response = ws.connect(WS_URL, { headers: { Cookie: `AUTH=${cookie}` } }, function (socket) {
@@ -76,7 +69,7 @@ export default function (data) {
                     socket.send(JSON.stringify({
                         type: 'MESSAGE',
                         roomId: data.roomId,
-                        message: `hello from ${user.username}`,
+                        message: `hello from VU ${__VU}`,
                     }));
                 }
             } catch (_) {}

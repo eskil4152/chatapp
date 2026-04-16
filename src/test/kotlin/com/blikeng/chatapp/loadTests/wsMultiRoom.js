@@ -1,34 +1,23 @@
 import http from 'k6/http';
 import ws from 'k6/ws';
 import { check, sleep } from 'k6';
-import { BASE, WS_URL, PASSWORD, jsonParams, getAuthCookie, makeOptions } from './lib.js';
+import { BASE, WS_URL, jsonParams, makeOptions } from './lib.js';
 
-const USERS_FILE = __ENV.USERS_FILE;
-const _preloaded = USERS_FILE ? JSON.parse(open(USERS_FILE)) : null;
+const COOKIES_FILE = __ENV.COOKIES_FILE;
+if (!COOKIES_FILE) throw new Error('COOKIES_FILE is required — run auth.js first');
+const _cookies = JSON.parse(open(COOKIES_FILE));
 const TARGET_VUS = __ENV.USERS ? parseInt(__ENV.USERS) : 100;
 const RUN_ID = Date.now();
 const ROOM_COUNT = 5;
 const ROOM_PREFIX = `ws-multi-${RUN_ID}`;
 
-export const options = { ...makeOptions(TARGET_VUS, _preloaded ? 2 : 3) };
+// Setup creates ROOM_COUNT rooms + 1 invite accept per user.
+export const options = { ...makeOptions(TARGET_VUS, 1) };
 
 export function setup() {
-    let users;
-    if (_preloaded) {
-        users = _preloaded.slice(0, TARGET_VUS);
-    } else {
-        users = [];
-        for (let i = 1; i <= TARGET_VUS; i++) {
-            const user = { username: `wsmulti_${RUN_ID}_${i}`, password: PASSWORD };
-            http.post(`${BASE}/api/register`, JSON.stringify(user), jsonParams());
-            users.push(user);
-        }
-    }
-
-    const owner = users[0];
-    const ownerLoginRes = http.post(`${BASE}/api/login`, JSON.stringify(owner), jsonParams());
-    const ownerCookie = getAuthCookie(ownerLoginRes);
-    if (!ownerCookie) throw new Error('Setup: owner login failed');
+    const cookies = _cookies.slice(0, TARGET_VUS);
+    const ownerCookie = cookies[0];
+    if (!ownerCookie) throw new Error('Setup: no cookie for owner');
 
     const roomNames = Array.from({ length: ROOM_COUNT }, (_, i) => `${ROOM_PREFIX}-${i}`);
     for (const roomName of roomNames) {
@@ -48,28 +37,38 @@ export function setup() {
         return room.roomId;
     });
 
-    for (let i = 1; i < users.length; i++) {
-        const loginRes = http.post(`${BASE}/api/login`, JSON.stringify(users[i]), jsonParams());
-        const cookie = getAuthCookie(loginRes);
-        if (!cookie) continue;
+    const usersPerRoom = Math.ceil((cookies.length - 1) / ROOM_COUNT);
+    const inviteIds = roomIds.map((roomId) => {
+        const res = http.post(
+            `${BASE}/api/invites/open`,
+            JSON.stringify({ type: 'OPEN_ROOM_INVITE', roomId, maxUsages: usersPerRoom }),
+            jsonParams(ownerCookie)
+        );
+        check(res, { [`setup open invite created for ${roomId}`]: (r) => r.status === 200 });
+        return res.body.trim().replace(/^"|"$/g, '');
+    });
 
-        const assignedRoomId = roomIds[(i - 1) % roomIds.length];
-        http.post(`${BASE}/api/rooms/join`, JSON.stringify({ roomId: assignedRoomId }), jsonParams(cookie));
+    // Each user accepts the invite for their assigned room.
+    const assignedRoomIds = [roomIds[0]]; // owner is in room 0
+    for (let i = 1; i < cookies.length; i++) {
+        if (!cookies[i]) { assignedRoomIds.push(null); continue; }
+        const assignedIdx = (i - 1) % ROOM_COUNT;
+        http.post(
+            `${BASE}/api/invites/respond`,
+            JSON.stringify({ inviteId: inviteIds[assignedIdx], response: 'ACCEPTED' }),
+            jsonParams(cookies[i])
+        );
+        assignedRoomIds.push(roomIds[assignedIdx]);
     }
 
-    return { users, roomIds };
+    return { cookies, assignedRoomIds };
 }
 
 export default function (data) {
-    const idx = (__VU - 1) % data.users.length;
-    const user = data.users[idx];
-    const roomId = data.roomIds[idx % data.roomIds.length];
-
-    const loginRes = http.post(`${BASE}/api/login`, JSON.stringify(user), jsonParams());
-    check(loginRes, { 'login ok': (r) => r.status === 200 });
-
-    const cookie = getAuthCookie(loginRes);
-    if (!cookie) return;
+    const idx = (__VU - 1) % data.cookies.length;
+    const cookie = data.cookies[idx];
+    const roomId = data.assignedRoomIds[idx];
+    if (!cookie || !roomId) return;
 
     const response = ws.connect(WS_URL, { headers: { Cookie: `AUTH=${cookie}` } }, function (socket) {
         let joined = false;
@@ -86,7 +85,7 @@ export default function (data) {
                     socket.send(JSON.stringify({
                         type: 'MESSAGE',
                         roomId,
-                        message: `hello from ${user.username}`,
+                        message: `hello from VU ${__VU}`,
                     }));
                 }
             } catch (_) {}
