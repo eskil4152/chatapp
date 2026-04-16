@@ -7,6 +7,7 @@ import com.blikeng.chatapp.services.FriendService
 import com.blikeng.chatapp.services.InviteService
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.micrometer.core.instrument.MeterRegistry
+import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
@@ -46,16 +47,13 @@ class SessionRegistry(
         }
     }
 
-    fun sendFriendPresenceSnapshot(userId: UUID, session: WebSocketSession) {
-        val snapshot = friendService.getOnlineFriends(userId)
-        val payload = objectMapper.writeValueAsString(snapshot)
-        trySend(session, payload)
-    }
+    @Async("snapshotExecutor")
+    fun sendSnapshots(userId: UUID, session: WebSocketSession) {
+        val presencePayload = objectMapper.writeValueAsString(friendService.getOnlineFriends(userId))
+        trySend(session, presencePayload)
 
-    fun sendPendingInviteSnapshot(userId: UUID, session: WebSocketSession) {
-        val invites = inviteService.getPendingInvites(userId)
-        val payload = objectMapper.writeValueAsString(WsPendingInviteSnapshot(invites = invites))
-        trySend(session, payload)
+        val invitePayload = objectMapper.writeValueAsString(WsPendingInviteSnapshot(invites = inviteService.getPendingInvites(userId)))
+        trySend(session, invitePayload)
     }
 
     private fun trySend(session: WebSocketSession, payload: String) {
