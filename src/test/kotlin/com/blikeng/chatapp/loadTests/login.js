@@ -1,21 +1,16 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
-import { BASE, PASSWORD, jsonParams, getAuthCookie, makeOptions } from './lib.js';
+import { BASE, jsonParams, getAuthCookie, makeOptions } from './lib.js';
 
+const USERS_FILE = __ENV.USERS_FILE;
+const _preloaded = USERS_FILE ? JSON.parse(open(USERS_FILE)) : null;
 const TARGET_VUS = __ENV.USERS ? parseInt(__ENV.USERS) : 100;
-const RUN_ID = Date.now();
 
 export const options = { ...makeOptions(TARGET_VUS) };
 
 export function setup() {
-    const users = [];
-    for (let i = 1; i <= TARGET_VUS; i++) {
-        const user = { username: `ral_${RUN_ID}_${i}`, password: PASSWORD };
-        const res = http.post(`${BASE}/api/register`, JSON.stringify(user), jsonParams());
-        check(res, { 'register ok': (r) => r.status === 201 });
-        users.push(user);
-    }
-    return users;
+    if (!_preloaded) throw new Error('USERS_FILE is required for login.js — run seed.js first');
+    return _preloaded.slice(0, TARGET_VUS);
 }
 
 export default function (users) {

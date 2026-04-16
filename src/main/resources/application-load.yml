@@ -1,0 +1,36 @@
+rate-limit:
+  login:
+    max-tokens: 10000000
+  register:
+    max-tokens: 10000000
+  edit-user:
+    max-tokens: 10000000
+  edit-password:
+    max-tokens: 10000000
+  others:
+    max-tokens: 1000000000
+
+spring:
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: jdbc:postgresql://localhost:5433/chatapp_test
+    username: test
+    password: test
+    hikari:
+      maximum-pool-size: 75
+      minimum-idle: 75
+      connection-timeout: 10000
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+  rabbitmq:
+    host: localhost
+    port: 5673
+  data:
+    redis:
+      host: localhost15
+      port: 6380

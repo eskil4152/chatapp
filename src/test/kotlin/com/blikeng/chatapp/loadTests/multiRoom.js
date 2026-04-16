@@ -1,66 +1,45 @@
 import http from 'k6/http';
-import {check, sleep} from 'k6';
+import { check, sleep } from 'k6';
+import { BASE, PASSWORD, jsonParams, getAuthCookie, makeOptions } from './lib.js';
 
-const BASE = 'http://localhost:5050';
-const PASSWORD = 'testpassword123';
+const USERS_FILE = __ENV.USERS_FILE;
+const _preloaded = USERS_FILE ? JSON.parse(open(USERS_FILE)) : null;
+const TARGET_VUS = __ENV.USERS ? parseInt(__ENV.USERS) : 100;
+const RUN_ID = Date.now();
+const ROOM_COUNT = 10;
 
-export const options = {
-    vus: 50,
-    duration: '60s',
-};
+export const options = { ...makeOptions(TARGET_VUS) };
 
 export function setup() {
+    if (_preloaded) return _preloaded.slice(0, TARGET_VUS);
     const users = [];
-
-    for (let i = 1; i <= options.vus; i++) {
-        const username = `multi_user_${i}`;
-        const payload = JSON.stringify({
-            username: username,
-            password: PASSWORD,
-        });
-
-        const params = {
-            headers: { 'Content-Type': 'application/json' }
-        };
-
-        http.post(`${BASE}/api/register`, payload, params);
-
-        users.push({
-            username: username,
-            password: PASSWORD,
-        });
+    for (let i = 1; i <= TARGET_VUS; i++) {
+        const user = { username: `multi_${RUN_ID}_${i}`, password: PASSWORD };
+        http.post(`${BASE}/api/register`, JSON.stringify(user), jsonParams());
+        users.push(user);
     }
-
     return users;
 }
 
 export default function (users) {
-    const user = users[__VU - 1];
+    const user = users[(__VU - 1) % users.length];
 
-    const loginRes = http.post(`${BASE}/api/login`, JSON.stringify(user), {
-        headers: { 'Content-Type': 'application/json' }
-    });
+    const loginRes = http.post(`${BASE}/api/login`, JSON.stringify(user), jsonParams());
+    check(loginRes, { 'login ok': (r) => r.status === 200 });
 
-    check(loginRes, {
-        'login success': (r) => r.status === 200,
-    });
+    const cookie = getAuthCookie(loginRes);
+    if (!cookie) return;
 
-    const createRoomRes = http.post(`${BASE}/api/rooms/make`, JSON.stringify({
-        roomName: `room-${Math.floor(__VU % 10)}`,
-        encrypted: false
-    }), {
-        headers: { 'Content-Type': 'application/json' }
-    });
+    // Compete for a small pool of room names — tests conflict handling
+    const createRes = http.post(
+        `${BASE}/api/rooms/make`,
+        JSON.stringify({ roomName: `multi_room_${__VU % ROOM_COUNT}`, encrypted: false }),
+        jsonParams(cookie)
+    );
+    check(createRes, { 'room create accepted': (r) => [201, 400, 409].includes(r.status) });
 
-    check(createRoomRes, {
-        'room create accepted': (r) => r.status === 201 || r.status === 400 || r.status === 409,
-    });
-
-    const roomsRes = http.get(`${BASE}/api/rooms`);
-
-    check(roomsRes, {
-        'rooms fetched': (r) => r.status === 200,
-    });
+    const roomsRes = http.get(`${BASE}/api/rooms`, jsonParams(cookie));
+    check(roomsRes, { 'rooms fetched': (r) => r.status === 200 });
 
     sleep(Math.random() * 2);
 }

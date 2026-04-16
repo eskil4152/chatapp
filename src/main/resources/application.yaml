@@ -72,6 +72,18 @@ info:
     description: Real-time messaging service
     version: 1.0
 
+rate-limit:
+  login:
+    max-tokens: 5
+  register:
+    max-tokens: 10
+  edit-user:
+    max-tokens: 3
+  edit-password:
+    max-tokens: 3
+  others:
+    max-tokens: 60
+
 chat:
   flush:
     fixedDelayMs: 10000

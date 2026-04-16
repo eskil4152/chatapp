@@ -1,8 +1,26 @@
 #!/bin/bash
+set -e
 
-k6 run --summary-export=results/registerAndLogin.json registerAndLogin.js
-k6 run --summary-export=results/roomList.json roomList.js
-k6 run --summary-export=results/roomCreation.json roomCreation.js
-k6 run --summary-export=results/multiRoom.json multiRoom.js
-k6 run --summary-export=results/wsRoom.json wsRoom.js
-k6 run --summary-export=results/wsMultiRoom.json wsMultiRoom.js
+USERS=${USERS:-100}
+RUN_ID=$(date +%s%3N)
+USERS_FILE="./results/users.json"
+SCRIPTS=(login roomList roomCreation multiRoom wsRoom wsMultiRoom)
+
+echo "Seeding ${USERS} users (RUN_ID=${RUN_ID})..."
+k6 run -e USERS=$USERS -e RUN_ID=$RUN_ID seed.js
+echo "Seed complete: ${USERS_FILE}"
+echo "--------------------------------"
+
+echo "Running all load tests with ${USERS} VUs..."
+echo "================================"
+
+for SCRIPT in "${SCRIPTS[@]}"; do
+    echo "Running ${SCRIPT}.js..."
+    k6 run -e USERS=$USERS -e USERS_FILE=$USERS_FILE \
+        --summary-export="results/${SCRIPT}.json" \
+        "${SCRIPT}.js"
+    echo "Done: ${SCRIPT}"
+    echo "--------------------------------"
+done
+
+echo "All tests complete."

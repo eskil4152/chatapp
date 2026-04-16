@@ -1,57 +1,43 @@
 import http from 'k6/http';
-import {check, sleep} from 'k6';
+import { check, sleep } from 'k6';
+import { BASE, PASSWORD, jsonParams, getAuthCookie, makeOptions } from './lib.js';
 
-const BASE = 'http://localhost:5050';
-const PASSWORD = 'testpassword123';
-const USER_COUNT = 100;
+const USERS_FILE = __ENV.USERS_FILE;
+const _preloaded = USERS_FILE ? JSON.parse(open(USERS_FILE)) : null;
+const TARGET_VUS = __ENV.USERS ? parseInt(__ENV.USERS) : 100;
+const RUN_ID = Date.now();
 
-export const options = {
-    stages: [
-        { duration: '20s', target: 25 },
-        { duration: '40s', target: 50 },
-        { duration: '1m', target: 100 },
-        { duration: '20s', target: 0 },
-    ],
-};
+export const options = { ...makeOptions(TARGET_VUS) };
 
 export function setup() {
+    if (_preloaded) return _preloaded.slice(0, TARGET_VUS);
     const users = [];
-
-    for (let i = 1; i <= USER_COUNT; i++) {
-        const username = `list_user_${i}`;
-        const payload = JSON.stringify({
-            username,
-            password: PASSWORD
-        });
-        const params = {
-            headers: { 'Content-Type': 'application/json' }
-        };
-
-        http.post(`${BASE}/api/register`, payload, params);
-        users.push({ username, password: PASSWORD });
+    for (let i = 1; i <= TARGET_VUS; i++) {
+        const user = { username: `creator_${RUN_ID}_${i}`, password: PASSWORD };
+        http.post(`${BASE}/api/register`, JSON.stringify(user), jsonParams());
+        users.push(user);
     }
-
     return users;
 }
 
 export default function (users) {
     const user = users[(__VU - 1) % users.length];
 
-    const loginRes = http.post(
-        `${BASE}/api/login`,
-        JSON.stringify(user),
-        { headers: { 'Content-Type': 'application/json' } }
+    const loginRes = http.post(`${BASE}/api/login`, JSON.stringify(user), jsonParams());
+    check(loginRes, { 'login ok': (r) => r.status === 200 });
+
+    const cookie = getAuthCookie(loginRes);
+    if (!cookie) return;
+
+    const createRes = http.post(
+        `${BASE}/api/rooms/make`,
+        JSON.stringify({ roomName: `room_${__VU}_${__ITER}`, encrypted: false }),
+        jsonParams(cookie)
     );
+    check(createRes, { 'room created': (r) => r.status === 201 });
 
-    check(loginRes, {
-        'login ok': (r) => r.status === 200,
-    });
-
-    const roomsRes = http.get(`${BASE}/api/rooms`);
-
-    check(roomsRes, {
-        'rooms fetched': (r) => r.status === 200,
-    });
+    const roomsRes = http.get(`${BASE}/api/rooms`, jsonParams(cookie));
+    check(roomsRes, { 'rooms fetched': (r) => r.status === 200 });
 
     sleep(1);
 }

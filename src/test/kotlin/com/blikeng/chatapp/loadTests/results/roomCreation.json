@@ -1,536 +1,102 @@
 {
-    "metrics": {
-        "checks": {
-            "passes": 12830,
-            "fails": 0,
-            "value": 1
-        },
-        "http_req_sending": {
-            "p(90)": 0.015,
-            "p(95)": 0.019,
-            "avg": 0.008922196442382232,
-            "min": 0.001,
-            "med": 0.007,
-            "max": 4.815
-        },
-        "http_req_waiting": {
-            "avg": 65.04209590100537,
-            "min": 0.238,
-            "med": 72.8135,
-            "max": 378.057,
-            "p(90)": 147.1757,
-            "p(95)": 186.2541
-        },
-        "iteration_duration": {
-            "p(95)": 1284.9859413999998,
-            "avg": 1132.3802444062344,
-            "min": 1068.667417,
-            "med": 1102.182042,
-            "max": 1503.893417,
-            "p(90)": 1233.1630918
-        },
-        "vus": {
-            "min": 2,
-            "max": 100,
-            "value": 3
-        },
-        "http_reqs": {
-            "count": 12930,
-            "rate": 92.04800554788208
-        },
-        "http_req_duration": {
-            "p(95)": 186.28299999999996,
-            "avg": 65.12441701469444,
-            "min": 0.247,
-            "med": 72.846,
-            "max": 378.104,
-            "p(90)": 147.2091
-        },
-        "http_req_connecting": {
-            "avg": 0.005368213457076566,
-            "min": 0,
-            "med": 0,
-            "max": 9.815,
-            "p(90)": 0,
-            "p(95)": 0
-        },
-        "data_sent": {
-            "rate": 24407.94890126895,
-            "count": 3428589
-        },
-        "vus_max": {
-            "value": 100,
-            "min": 100,
-            "max": 100
-        },
-        "iterations": {
-            "count": 6415,
-            "rate": 45.66805534336145
-        },
-        "http_req_tls_handshaking": {
-            "p(90)": 0,
-            "p(95)": 0,
-            "avg": 0,
-            "min": 0,
-            "med": 0,
-            "max": 0
-        },
-        "http_req_duration{expected_response:true}": {
-            "avg": 65.62824333593136,
-            "min": 0.639,
-            "med": 73.2875,
-            "max": 378.104,
-            "p(90)": 147.93320000000006,
-            "p(95)": 186.51239999999996
-        },
-        "http_req_blocked": {
-            "avg": 0.008255065738592537,
-            "min": 0,
-            "med": 0.002,
-            "max": 9.858,
-            "p(90)": 0.004,
-            "p(95)": 0.005
-        },
-        "http_req_receiving": {
-            "max": 13.872,
-            "p(90)": 0.136,
-            "p(95)": 0.162,
-            "avg": 0.07339891724671241,
-            "min": 0.005,
-            "med": 0.038
-        },
-        "http_req_failed": {
-            "passes": 100,
-            "fails": 12830,
-            "value": 0.007733952049497293
-        },
-        "data_received": {
-            "count": 7339334,
-            "rate": 52248.341589308555
-        }
-    },
-    "setup_data": [
-        {
-            "password": "testpassword123",
-            "username": "list_user_1"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_2"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_3"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_4"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_5"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_6"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_7"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_8"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_9"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_10"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_11"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_12"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_13"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_14"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_15"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_16"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_17"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_18"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_19"
-        },
-        {
-            "username": "list_user_20",
-            "password": "testpassword123"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_21"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_22"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_23"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_24"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_25"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_26"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_27"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_28"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_29"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_30"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_31"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_32"
-        },
-        {
-            "username": "list_user_33",
-            "password": "testpassword123"
-        },
-        {
-            "username": "list_user_34",
-            "password": "testpassword123"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_35"
-        },
-        {
-            "username": "list_user_36",
-            "password": "testpassword123"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_37"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_38"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_39"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_40"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_41"
-        },
-        {
-            "username": "list_user_42",
-            "password": "testpassword123"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_43"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_44"
-        },
-        {
-            "username": "list_user_45",
-            "password": "testpassword123"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_46"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_47"
-        },
-        {
-            "username": "list_user_48",
-            "password": "testpassword123"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_49"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_50"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_51"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_52"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_53"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_54"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_55"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_56"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_57"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_58"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_59"
-        },
-        {
-            "username": "list_user_60",
-            "password": "testpassword123"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_61"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_62"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_63"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_64"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_65"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_66"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_67"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_68"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_69"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_70"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_71"
-        },
-        {
-            "username": "list_user_72",
-            "password": "testpassword123"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_73"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_74"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_75"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_76"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_77"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_78"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_79"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_80"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_81"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_82"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_83"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_84"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_85"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_86"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_87"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_88"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_89"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_90"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_91"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_92"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_93"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_94"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_95"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_96"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_97"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_98"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_99"
-        },
-        {
-            "password": "testpassword123",
-            "username": "list_user_100"
-        }
-    ],
     "root_group": {
         "name": "",
         "path": "",
         "id": "d41d8cd98f00b204e9800998ecf8427e",
         "groups": {},
-        "checks": {
-                "login ok": {
-                    "name": "login ok",
-                    "path": "::login ok",
-                    "id": "0ddcda49e3a8b9d6d2e015dafbaafe65",
-                    "passes": 6415,
-                    "fails": 0
-                },
-                "rooms fetched": {
-                    "id": "857684b62ab300bfcb0c170c4ee8a318",
-                    "passes": 6415,
-                    "fails": 0,
-                    "name": "rooms fetched",
-                    "path": "::rooms fetched"
-                }
-            }
+        "checks": {}
+    },
+    "metrics": {
+        "data_received": {
+            "count": 303540,
+            "rate": 275.64451563613403
+        },
+        "http_req_connecting": {
+            "avg": 0.010157068062827226,
+            "min": 0,
+            "med": 0,
+            "max": 3.515,
+            "p(90)": 0,
+            "p(95)": 0
+        },
+        "http_req_tls_handshaking": {
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0,
+            "min": 0,
+            "med": 0
+        },
+        "http_req_waiting": {
+            "max": 929938.623,
+            "p(90)": 73.9975,
+            "p(95)": 78.28224999999996,
+            "avg": 2882.569486910997,
+            "min": 65.369,
+            "med": 70.535
+        },
+        "http_reqs": {
+            "count": 382,
+            "rate": 0.3468940007017302
+        },
+        "http_req_duration": {
+            "p(90)": 74.0399,
+            "p(95)": 78.35789999999996,
+            "avg": 2882.6135994764436,
+            "min": 65.415,
+            "med": 70.57050000000001,
+            "max": 929938.728
+        },
+        "vus_max": {
+            "value": 1000,
+            "min": 1000,
+            "max": 1000
+        },
+        "http_req_duration{expected_response:true}": {
+            "med": 70.57050000000001,
+            "max": 929938.728,
+            "p(90)": 74.0399,
+            "p(95)": 78.35789999999996,
+            "avg": 2882.6135994764436,
+            "min": 65.415
+        },
+        "http_req_blocked": {
+            "avg": 0.013531413612565458,
+            "min": 0,
+            "med": 0.002,
+            "max": 3.968,
+            "p(90)": 0.003,
+            "p(95)": 0.004949999999999983
+        },
+        "http_req_sending": {
+            "avg": 0.009175392670157045,
+            "min": 0.001,
+            "med": 0.008,
+            "max": 0.152,
+            "p(90)": 0.013,
+            "p(95)": 0.016949999999999986
+        },
+        "http_req_receiving": {
+            "p(95)": 0.063,
+            "avg": 0.03493717277486911,
+            "min": 0.008,
+            "med": 0.03,
+            "max": 0.898,
+            "p(90)": 0.049
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 382,
+            "value": 0
+        },
+        "vus": {
+            "value": 0,
+            "min": 0,
+            "max": 0
+        },
+        "data_sent": {
+            "count": 192799,
+            "rate": 175.08067131228503
+        }
     }
 }
