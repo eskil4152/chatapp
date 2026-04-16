@@ -63,8 +63,6 @@ class InviteService(
     }
 
     fun getPendingInvites(userId: UUID): List<PendingInviteDTO> {
-        userService.getUserById(userId) ?: throw InvalidUserException()
-
         return inviteRepository.findByToUserIdAndStatus(userId, InviteStatus.PENDING).map {
             val sender = userService.getUserById(it.fromUserId)
             val roomName = it.roomId?.let { roomId -> roomService.getRoom(roomId).orElse(null)?.name }
@@ -84,8 +82,6 @@ class InviteService(
 
     fun getOutgoingInvites(): List<OutgoingInvitationDTO> {
         val id = getId()
-        userService.getUserById(id) ?: throw InvalidUserException()
-
         return inviteRepository.findByFromUserIdAndStatus(id, InviteStatus.PENDING).map {
             when (it.type) {
                 InviteType.FRIEND_REQUEST -> {
@@ -271,8 +267,6 @@ class InviteService(
         }
 
         val id = getId()
-        userService.getUserById(id) ?: throw InvalidUserException()
-
         val room = roomService.getRoom(roomId)
         if (room.isEmpty) throw InvalidInviteException()
 

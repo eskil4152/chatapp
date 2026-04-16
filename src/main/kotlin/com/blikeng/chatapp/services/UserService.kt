@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.*
 
+
 // ==========================
 // Handles user retrieval, authenticated profile access,
 // profile updates, and password changes.
@@ -26,6 +27,7 @@ class UserService(
     private val userRepository: UserRepository,
     private val passwordService: PasswordService,
     private val roomRepository: RoomRepository,
+    private val userRevocationService: UserRevocationService,
 ) {
     fun getUserById(id: UUID): UserEntity? {
         return userRepository.findById(id).orElse(null)
@@ -94,6 +96,7 @@ class UserService(
         val id = getId()
         val user = getUserById(id) ?: throw InvalidUserException()
 
+        userRevocationService.revoke(id)
         userRepository.delete(user)
     }
 

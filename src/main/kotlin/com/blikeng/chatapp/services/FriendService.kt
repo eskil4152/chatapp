@@ -39,8 +39,6 @@ class FriendService(
 ) {
     fun getFriends(): List<FriendDTO> {
         val id = getId()
-        userService.getUserById(id) ?: throw InvalidUserException()
-
         val friends = friendsRepository.findFriendsForUser(id)
 
         return friends.map { friendship ->
@@ -80,8 +78,6 @@ class FriendService(
 
     fun removeFriend(userIdDTO: UserIdDTO) {
         val id = getId()
-        userService.getUserById(id) ?: throw InvalidUserException()
-
         val friendId = try {
             UUID.fromString(userIdDTO.userId)
         } catch (_: IllegalArgumentException) {
@@ -103,8 +99,6 @@ class FriendService(
 
     fun getFriendInfo(friendIdString: String): FriendDTO {
         val id = getId()
-        userService.getUserById(id) ?: throw InvalidUserException()
-
         val friendId = try {
             UUID.fromString(friendIdString)
         } catch (_: IllegalArgumentException) {

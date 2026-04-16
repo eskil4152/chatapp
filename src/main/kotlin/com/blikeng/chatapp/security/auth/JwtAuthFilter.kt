@@ -1,5 +1,6 @@
 package com.blikeng.chatapp.security.auth
 
+import com.blikeng.chatapp.services.UserRevocationService
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -16,6 +17,7 @@ import org.springframework.web.filter.OncePerRequestFilter
 @Component
 class JwtAuthFilter(
     private val jwtService: JwtService,
+    private val userRevocationService: UserRevocationService,
 ) : OncePerRequestFilter() {
 
     override fun doFilterInternal(
@@ -30,7 +32,7 @@ class JwtAuthFilter(
         if (!token.isNullOrBlank() && SecurityContextHolder.getContext().authentication == null) {
             val principal = jwtService.validateToken(token)
 
-            if (principal != null) {
+            if (principal != null && !userRevocationService.isRevoked(principal.userId)) {
                 val authorities = listOf(
                     SimpleGrantedAuthority("ROLE_${principal.role}")
                 )

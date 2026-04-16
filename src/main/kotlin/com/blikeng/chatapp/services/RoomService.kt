@@ -43,7 +43,6 @@ class RoomService(
     // ==========================
     fun makeNewRoom(roomName: String?, encrypted: Boolean?) {
         val userId = getId()
-        userService.getUserById(userId) ?: throw InvalidUserException()
 
         val trimmedName = roomName?.trim()
         if (trimmedName.isNullOrEmpty()) throw InvalidRoomNameException()
@@ -63,23 +62,22 @@ class RoomService(
 
     fun getAllUserRooms(): List<RoomDTO> {
         val userId = getId()
-        userService.getUserById(userId) ?: throw InvalidUserException()
 
         val joinedRooms = roomRepository.findRoomsForUser(userId)
 
-        val roomDTOs = joinedRooms.map { room ->
-            if (room.type == RoomType.PRIVATE) {
-                val otherUser = userRoomRepository.findOtherUser(room.room.id, userId)
-                if (otherUser == null) {
-                    room.room.name = "Error"
-                } else {
-                    room.room.name = otherUser.username
-                }
-            }
-            RoomDTO(roomId = room.room.id.toString(), roomName = room.room.name, encrypted = room.room.encrypted, role = room.role, type = room.type)
+        val privateRoomIds = joinedRooms.filter { it.type == RoomType.PRIVATE }.map { it.room.id }
+        val dmPartners: Map<UUID, String> = if (privateRoomIds.isNotEmpty()) {
+            userRoomRepository.findOtherUsersInPrivateRooms(privateRoomIds, userId)
+                .associate { it.roomId to it.username }
+        } else {
+            emptyMap()
         }
 
-        return roomDTOs
+        return joinedRooms.map { room ->
+            val name = if (room.type == RoomType.PRIVATE) dmPartners[room.room.id] ?: "Error"
+                       else room.room.name
+            RoomDTO(roomId = room.room.id.toString(), roomName = name, encrypted = room.room.encrypted, role = room.role, type = room.type)
+        }
     }
 
     fun getRoom(roomId: UUID): Optional<RoomEntity> {
@@ -94,7 +92,6 @@ class RoomService(
         }
 
         val userId = getId()
-        userService.getUserById(userId) ?: throw InvalidUserException()
 
         val userRoom = userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
             ?: throw RoomNotFoundException()
@@ -128,7 +125,6 @@ class RoomService(
     @Transactional
     fun leaveRoom(roomId: String?){
         val userId = getId()
-        userService.getUserById(userId) ?: throw InvalidUserException()
 
         val roomUUID = try {
             UUID.fromString(roomId)
@@ -149,7 +145,6 @@ class RoomService(
     // ==========================
     fun editRoom(roomDTO: RoomDTO) {
         val userId = getId()
-        userService.getUserById(userId) ?: throw InvalidUserException()
 
         val roomId = try {
             UUID.fromString(roomDTO.roomId)
@@ -176,7 +171,6 @@ class RoomService(
     @Transactional
     fun deleteRoom(roomId: String?){
         val userId = getId()
-        userService.getUserById(userId) ?: throw InvalidUserException()
 
         val roomUUID = try {
             UUID.fromString(roomId)
@@ -200,7 +194,6 @@ class RoomService(
     @Transactional
     fun changeRole(changeRoleDTO: ChangeRoleDTO) {
         val userId = getId()
-        userService.getUserById(userId) ?: throw InvalidUserException()
 
         val (roomId, targetId) = parseIds(changeRoleDTO)
 
@@ -222,7 +215,6 @@ class RoomService(
     @Transactional
     fun removeUserFromRoom(administrationDTO: AdministrationDTO){
         val userId = getId()
-        userService.getUserById(userId) ?: throw InvalidUserException()
 
         val roomId: UUID;
         val targetId: UUID;
@@ -258,7 +250,6 @@ class RoomService(
 
     fun unbanUser(unbanDTO: UnbanDTO) {
         val userId = getId()
-        userService.getUserById(userId) ?: throw InvalidUserException()
 
         val roomId: UUID;
         val targetId: UUID;
@@ -284,7 +275,6 @@ class RoomService(
 
     fun getAllBansForRoom(roomIdString: String?): List<RoomUserDTO> {
         val userId = getId()
-        userService.getUserById(userId) ?: throw InvalidUserException()
 
         val roomId = try {
             UUID.fromString(roomIdString)
@@ -315,7 +305,6 @@ class RoomService(
     // ==========================
     fun getOrStartPrivateMessage(userIdDTO: UserIdDTO): UUID {
         val userId = getId()
-        userService.getUserById(userId) ?: throw InvalidUserException()
 
         val friendId = try {
             UUID.fromString(userIdDTO.userId)

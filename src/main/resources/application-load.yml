@@ -15,13 +15,17 @@ spring:
     virtual:
       enabled: true
   datasource:
-    url: jdbc:postgresql://localhost:5433/chatapp_test
+    url: jdbc:postgresql://localhost:5434/chatapp_test
     username: test
     password: test
     hikari:
-      maximum-pool-size: 75
-      minimum-idle: 75
-      connection-timeout: 10000
+      maximum-pool-size: 15
+      minimum-idle: 2
+      connection-timeout: 30000
+      max-lifetime: 1800000
+      leak-detection-threshold: 0
+      data-source-properties:
+        prepareThreshold: 0
 
   jpa:
     hibernate:
@@ -32,5 +36,5 @@ spring:
     port: 5673
   data:
     redis:
-      host: localhost15
+      host: localhost
       port: 6380

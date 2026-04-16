@@ -31,8 +31,6 @@ class AdministrationService(
     val userBanRepository: UserBanRepository
 ) {
     fun getElevatedUsers(): List<ElevatedUserDTO> {
-        userRepository.findById(getId()).orElseThrow { InvalidUserException() }
-
         return userRepository.findAllByRoleNot(UserRole.USER).map { user ->
             ElevatedUserDTO(
                 id = user.id,
@@ -45,8 +43,6 @@ class AdministrationService(
     }
 
     fun getUser(userId: String): UserDetailDTO {
-        userRepository.findById(getId()).orElseThrow { InvalidUserException() }
-
         val id = try {
             UUID.fromString(userId)
         } catch (_: IllegalArgumentException) {
@@ -142,8 +138,6 @@ class AdministrationService(
 
     fun getAllUserBans(page: Int, size: Int): List<BannedUserDTO> {
         if (page < 0 || size !in setOf(25, 50, 100)) throw InvalidParametersException()
-
-        userRepository.findById(getId()).orElseThrow { InvalidUserException() }
 
         return userBanRepository.findAllWithUsers(PageRequest.of(page, size)).map { ban ->
             BannedUserDTO(
