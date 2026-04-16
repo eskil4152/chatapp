@@ -10,6 +10,7 @@ import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
+import java.io.IOException
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
@@ -48,16 +49,23 @@ class SessionRegistry(
     fun sendFriendPresenceSnapshot(userId: UUID, session: WebSocketSession) {
         val snapshot = friendService.getOnlineFriends(userId)
         val payload = objectMapper.writeValueAsString(snapshot)
-        synchronized(session) {
-            if (session.isOpen) session.sendMessage(TextMessage(payload))
-        }
+        trySend(session, payload)
     }
 
     fun sendPendingInviteSnapshot(userId: UUID, session: WebSocketSession) {
         val invites = inviteService.getPendingInvites(userId)
         val payload = objectMapper.writeValueAsString(WsPendingInviteSnapshot(invites = invites))
+        trySend(session, payload)
+    }
+
+    private fun trySend(session: WebSocketSession, payload: String) {
         synchronized(session) {
-            if (session.isOpen) session.sendMessage(TextMessage(payload))
+            if (!session.isOpen) return
+            try {
+                session.sendMessage(TextMessage(payload))
+            } catch (_: IOException) {
+                // Client disconnected between isOpen check and send — ignore
+            }
         }
     }
 
