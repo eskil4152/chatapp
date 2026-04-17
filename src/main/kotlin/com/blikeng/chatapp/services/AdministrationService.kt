@@ -42,14 +42,8 @@ class AdministrationService(
         }
     }
 
-    fun getUser(userId: String): UserDetailDTO {
-        val id = try {
-            UUID.fromString(userId)
-        } catch (_: IllegalArgumentException) {
-            throw InvalidUUIDException()
-        }
-
-        val user = userRepository.findById(id).map { user ->
+    fun getUser(username: String): UserDetailDTO {
+        val user = userRepository.findByUsername(username).map { user ->
             UserDetailDTO(
                 id = user.id,
                 username = user.username,

@@ -11,4 +11,6 @@ interface UserRepository: JpaRepository<UserEntity, UUID> {
     fun getUserByUsernameIgnoreCase(username: String): UserEntity?
 
     fun findAllByRoleNot(role: UserRole): List<UserEntity>
+
+    fun findByUsername(username: String): Optional<UserEntity>
 }

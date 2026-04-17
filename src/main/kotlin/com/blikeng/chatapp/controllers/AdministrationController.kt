@@ -20,11 +20,11 @@ class AdministrationController(
         return ResponseEntity.ok(administrationService.getElevatedUsers())
     }
 
-    @GetMapping("/user/{userId}")
+    @GetMapping("/user/{username}")
     fun getUser(
-        @PathVariable userId: String
+        @PathVariable username: String
     ) : ResponseEntity<UserDetailDTO> {
-        return ResponseEntity.ok(administrationService.getUser(userId))
+        return ResponseEntity.ok(administrationService.getUser(username))
     }
 
     @PostMapping("/change-user-role")
