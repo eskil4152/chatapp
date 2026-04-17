@@ -11,8 +11,8 @@ const RUN_ID = Date.now();
 const ROOM_COUNT = 5;
 const ROOM_PREFIX = `ws-multi-${RUN_ID}`;
 
-// Setup creates ROOM_COUNT rooms + 1 invite accept per user.
-export const options = { ...makeOptions(TARGET_VUS, 1) };
+// Setup: invite accept per user involves a DB write — assume ~7 req/s, not 14.
+export const options = { ...makeOptions(TARGET_VUS, 0) };
 
 export function setup() {
     const cookies = _cookies.slice(0, TARGET_VUS);
@@ -48,18 +48,21 @@ export function setup() {
         return res.body.trim().replace(/^"|"$/g, '');
     });
 
-    // Each user accepts the invite for their assigned room.
+    // Each user accepts the invite for their assigned room (batched to avoid sequential bottleneck).
     const assignedRoomIds = [roomIds[0]]; // owner is in room 0
+    const batchRequests = [];
     for (let i = 1; i < cookies.length; i++) {
         if (!cookies[i]) { assignedRoomIds.push(null); continue; }
         const assignedIdx = (i - 1) % ROOM_COUNT;
-        http.post(
-            `${BASE}/api/invites/respond`,
-            JSON.stringify({ inviteId: inviteIds[assignedIdx], response: 'ACCEPTED' }),
-            jsonParams(cookies[i])
-        );
         assignedRoomIds.push(roomIds[assignedIdx]);
+        batchRequests.push({
+            method: 'POST',
+            url: `${BASE}/api/invites/respond`,
+            body: JSON.stringify({ inviteId: inviteIds[assignedIdx], response: 'ACCEPTED' }),
+            params: jsonParams(cookies[i]),
+        });
     }
+    http.batch(batchRequests);
 
     return { cookies, assignedRoomIds };
 }
@@ -74,13 +77,14 @@ export default function (data) {
         let joined = false;
 
         socket.on('open', () => {
+            socket.send(JSON.stringify({ type: 'SYNC' }));
             socket.send(JSON.stringify({ type: 'JOIN', roomId }));
         });
 
         socket.on('message', (raw) => {
             try {
                 const msg = JSON.parse(raw);
-                if (msg.type === 'JOINED' && !joined) {
+                if (msg.type === 'ROOM_JOINED' && !joined) {
                     joined = true;
                     socket.send(JSON.stringify({
                         type: 'MESSAGE',

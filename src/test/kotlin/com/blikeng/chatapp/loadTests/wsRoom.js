@@ -10,8 +10,8 @@ const TARGET_VUS = __ENV.USERS ? parseInt(__ENV.USERS) : 100;
 const RUN_ID = Date.now();
 const ROOM_NAME = `ws-room-${RUN_ID}`;
 
-// Setup creates 1 room + 1 invite per user (accept step).
-export const options = { ...makeOptions(TARGET_VUS, 1) };
+// Setup: invite accept per user involves a DB write — assume ~7 req/s, not 14.
+export const options = { ...makeOptions(TARGET_VUS, 0) };
 
 export function setup() {
     const cookies = _cookies.slice(0, TARGET_VUS);
@@ -37,14 +37,17 @@ export function setup() {
     check(openInviteRes, { 'setup open invite created': (r) => r.status === 200 });
     const inviteId = openInviteRes.body.trim().replace(/^"|"$/g, '');
 
+    const batchRequests = [];
     for (let i = 1; i < cookies.length; i++) {
         if (!cookies[i]) continue;
-        http.post(
-            `${BASE}/api/invites/respond`,
-            JSON.stringify({ inviteId, response: 'ACCEPTED' }),
-            jsonParams(cookies[i])
-        );
+        batchRequests.push({
+            method: 'POST',
+            url: `${BASE}/api/invites/respond`,
+            body: JSON.stringify({ inviteId, response: 'ACCEPTED' }),
+            params: jsonParams(cookies[i]),
+        });
     }
+    http.batch(batchRequests);
 
     return { cookies, roomId: room.roomId };
 }
@@ -58,13 +61,14 @@ export default function (data) {
         let joined = false;
 
         socket.on('open', () => {
+            socket.send(JSON.stringify({ type: 'SYNC' }));
             socket.send(JSON.stringify({ type: 'JOIN', roomId: data.roomId }));
         });
 
         socket.on('message', (raw) => {
             try {
                 const msg = JSON.parse(raw);
-                if (msg.type === 'JOINED' && !joined) {
+                if (msg.type === 'ROOM_JOINED' && !joined) {
                     joined = true;
                     socket.send(JSON.stringify({
                         type: 'MESSAGE',
@@ -76,7 +80,7 @@ export default function (data) {
         });
 
         socket.on('error', (e) => console.log(`ws error: ${JSON.stringify(e)}`));
-        socket.setTimeout(() => socket.close(), 5000);
+        socket.setTimeout(() => socket.close(), 8000);
     });
 
     check(response, { 'ws upgrade 101': (r) => r && r.status === 101 });

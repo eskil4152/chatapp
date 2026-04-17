@@ -36,7 +36,7 @@ and horizontally scalable WebSocket messaging using Redis Pub/Sub and RabbitMQ.
 - [Deployment](#deployment)
 - [CI/CD Pipeline](#cicd-pipeline)
 - [Testing](#testing)
-- [Load Testing & Multi-Instance Testing](#load-testing-and-multi-instance-testing)
+- [Load Testing](#load-testing)
 - [Privacy](#privacy)
 - [License](#license)
 
@@ -123,6 +123,7 @@ Exceeded requests return `429 Too Many Requests`.
 - Room session state is managed with thread-safe data structures: `ConcurrentHashMap` for room-to-sessions mapping and `CopyOnWriteArraySet` for per-room session sets.
 - Only `MESSAGE` events are persisted to the database. `JOIN` and `LEAVE` are broadcast-only.
 - On room join, history is assembled from both the database and the current Redis message buffer to ensure no messages are missed between persistence batches.
+- Fan-out broadcasts are dispatched to a dedicated virtual-thread executor, keeping the Redis NIO event loop unblocked under high connection counts.
 
 **Session Liveness (PING/TTL)**
 - Clients send a `PING` event at regular intervals. The server resets a per-session last-seen timestamp and responds with `pong`.
@@ -264,6 +265,10 @@ On room join, a full `ROOM_MEMBERS` snapshot is sent to the joining session. Sub
 
 On WebSocket connect, a `FRIEND_PRESENCE` snapshot is sent to the session with the current online status of all friends, so clients have accurate presence state immediately without waiting for a change event.
 
+**Snapshot delivery** is asynchronous and off the WebSocket handler thread. Friend presence and pending invite snapshots are fetched in parallel and delivered via virtual threads, so the handler returns immediately after a `SYNC` request. Friend online status is checked in a single Redis `MGET` rather than one round-trip per friend.
+
+**Redis caching** is applied to per-user room lists, friend ID lists, and pending invite lists to reduce database pressure on connect and sync.
+
 ---
 
 ### Buffered Message Persistence
@@ -378,18 +383,81 @@ user flow, from registering to adding friends and chatting.
 
 ---
 
-## Load testing and multi-instance testing
+## Load Testing
 
-| Test                      | Scenario                                                                  | Result                                                                         |
-|---------------------------|---------------------------------------------------------------------------|--------------------------------------------------------------------------------|
-| Multi-instance validation | 2 local application instances with shared PostgreSQL, Redis, and RabbitMQ | Passed                                                                         |
-| HTTP load test            | Register + login + authenticated access                                   | 0 failed checks, avg 51 ms, p95 90 ms                                          |
-| HTTP load test            | Room listing                                                              | 0 failed checks, ~88–92 req/s, p95 177–186 ms                                  |
-| WebSocket load test       | 25 users, 1 shared room                                                   | 211 successful WebSocket sessions, 100% successful login/cookie/upgrade checks |
-| WebSocket load test       | 30 users, 5 rooms                                                         | 267 successful WebSocket sessions, 100% successful login/cookie/upgrade checks |
+Load tests use [k6](https://k6.io) against a single instance running with `--spring.profiles.active=load` (rate limiting disabled, test DB/Redis). 
+All runs are warm (server pre-started). Results are from a MacBook Air M4.
 
-These tests were performed locally on a single development machine. The results are therefore most useful as validation of concurrency 
-behavior, distributed setup correctness, and baseline performance rather than production-capacity benchmarks.
+The tests in order are: 
+* login: logs in the user
+* roomCreation: Creates 5 rooms per user, for sync and list
+* wsSync: Connects via WebSocket, triggers presence, receives
+   friends and invites snapshots
+* roomList: Lists all rooms
+* multiRoom: Creates many rooms per user, and assert they are listed
+* wsMultiRoom: Splits up users in rooms, asserts messages are sent and received
+* roomHistory: Lists all messages in a room
+* wsRoom: Adds all users to a single room, and asserts messages are sent and received
+
+### HTTP Tests
+
+| Test                       | VUs  | Checks | avg    | p90    | p95    | Failures |
+|----------------------------|------|--------|--------|--------|--------|----------|
+| Login (bcrypt)             | 250  | 100%   | 824ms  | 1907ms | 2156ms | 0        |
+| Login (bcrypt)             | 500  | 100%   | 1920ms | 4290ms | 4800ms | 0        |
+| Login (bcrypt)             | 1000 | 100%   | 4470ms | 8130ms | 9620ms | 0        |
+| Room creation              | 250  | 100%   | 51ms   | 151ms  | 196ms  | 0        |
+| Room creation              | 500  | 100%   | 78ms   | 232ms  | 278ms  | 0        |
+| Room creation              | 1000 | 100%   | 104ms  | 322ms  | 550ms  | 0        |
+| Multi-room (create + list) | 250  | 100%   | 3ms    | 4ms    | 6ms    | 0        |
+| Multi-room (create + list) | 500  | 100%   | 4ms    | 6ms    | 7ms    | 0        |
+| Multi-room (create + list) | 1000 | 100%   | 125ms  | 284ms  | 387ms  | 0        |
+| Room list                  | 250  | 100%   | 12ms   | 20ms   | 23ms   | 0        |
+| Room list                  | 500  | 100%   | 7ms    | 18ms   | 21ms   | 0        |
+| Room list                  | 1000 | 100%   | 18ms   | 36ms   | 44ms   | 0        |
+| Room history               | 250  | 100%   | 19ms   | 29ms   | 33ms   | 0        |
+| Room history               | 500  | 100%   | 19ms   | 32ms   | 39ms   | 0        |
+| Room history               | 1000 | 100%   | 17ms   | 35ms   | 53ms   | 0        |
+
+### WebSocket Tests
+
+| Test                               | VUs  | WS connect avg | WS connect p95 | Check pass rate | Failures |
+|------------------------------------|------|----------------|----------------|-----------------|----------|
+| wsSync (friend + invite snapshot)  | 250  | 10ms           | 24ms           | 100%            | 0        |
+| wsSync (friend + invite snapshot)  | 500  | 3ms            | 10ms           | 100%            | 0        |
+| wsSync (friend + invite snapshot)  | 1000 | 2ms            | 4ms            | 100%            | 0        |
+| wsRoom (1 shared room, fan-out)    | 250  | 2ms            | 2ms            | 100%            | 0        |
+| wsRoom (1 shared room, fan-out)    | 500  | 42ms           | 73ms           | 100%            | 0        |
+| wsRoom (1 shared room, fan-out)    | 1000 | OOM            | OOM            | OOM             | OOM      |
+| wsMultiRoom (5 rooms, distributed) | 250  | 1ms            | 2ms            | 100%            | 0        |
+| wsMultiRoom (5 rooms, distributed) | 500  | 57ms           | 107ms          | 100%            | 0        |
+| wsMultiRoom (5 rooms, distributed) | 1000 | 247ms          | 610ms          | 100%            | 0        |
+
+> wsRoom at 1000 VUs (all users in a single room) is the worst-case fan-out scenario — every message fans out to 1000 concurrent WebSocket writes simultaneously. 
+> This exceeds the single-instance heap ceiling on the test machine. 500 VUs is the validated limit for this scenario.
+
+### Mixed Traffic (realistic workload)
+
+Simulates concurrent realistic traffic: 40% WS messaging, 20% WS sync, 20% room list, 10% room creation, 10% room history.
+
+| VUs  | Checks | HTTP avg | HTTP p95 | WS connect avg | WS connect p95 | Failures |
+|------|--------|----------|----------|----------------|----------------|----------|
+| 250  | 100%   | 8ms      | 23ms     | 8ms            | 19ms           | 0        |
+| 500  | 100%   | 10ms     | 27ms     | 7ms            | 19ms           | 0        |
+| 1000 | 100%   | 6ms      | 20ms     | 3ms            | 8ms            | 0        |
+| 2000 | 100%   | 5ms      | 11ms     | 4ms            | 10ms           | 0        |
+
+### Multi-Instance Validation
+
+Two instances running locally against shared PostgreSQL, Redis, and RabbitMQ:
+
+| Scenario                                                       | Result |
+|----------------------------------------------------------------|--------|
+| Messages sent to instance A delivered to clients on instance B | Passed |
+| Presence updates propagated across instances via Redis Pub/Sub | Passed |
+| Invite and friend notifications routed to correct instance     | Passed |
+
+These tests were performed locally on a single development machine. Results validate concurrency behavior and baseline performance, not production capacity.
 
 ---
 

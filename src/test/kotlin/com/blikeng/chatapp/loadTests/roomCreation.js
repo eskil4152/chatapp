@@ -7,7 +7,7 @@ if (!COOKIES_FILE) throw new Error('COOKIES_FILE is required — run auth.js fir
 const _cookies = JSON.parse(open(COOKIES_FILE));
 const TARGET_VUS = __ENV.USERS ? parseInt(__ENV.USERS) : 100;
 
-export const options = { ...makeOptions(TARGET_VUS) };
+export const options = { vus: TARGET_VUS, iterations: TARGET_VUS * 5 };
 
 export function setup() {
     return _cookies.slice(0, TARGET_VUS);

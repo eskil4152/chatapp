@@ -50,15 +50,12 @@ class WebsocketLifecycleTests {
         val attributes: MutableMap<String, Any> = mutableMapOf("userId" to userId, "username" to "u")
 
         every { sessionRegistry.registerSession(any(), any()) } just Runs
-        every { sessionRegistry.sendFriendPresenceSnapshot(any(), any()) } just Runs
-        every { sessionRegistry.sendPendingInviteSnapshot(any(), any()) } just Runs
         every { session.attributes } returns attributes
         every { session.id } returns "123"
 
         handler.afterConnectionEstablished(session)
 
         verify(exactly = 1) { sessionRegistry.registerSession(userId, session) }
-        verify(exactly = 1) { sessionRegistry.sendFriendPresenceSnapshot(userId, session) }
         verify(exactly = 0) { chatService.joinRoom(any(), any()) }
     }
 
@@ -84,8 +81,6 @@ class WebsocketLifecycleTests {
         val attributes: MutableMap<String, Any> = mutableMapOf("userId" to userId, "username" to "u")
 
         every { sessionRegistry.registerSession(any(), any()) } just Runs
-        every { sessionRegistry.sendFriendPresenceSnapshot(any(), any()) } just Runs
-        every { sessionRegistry.sendPendingInviteSnapshot(any(), any()) } just Runs
         every { sessionRegistry.removeSession(any(), any()) } just Runs
         every { session.attributes } returns attributes
         every { session.id } returns "123"

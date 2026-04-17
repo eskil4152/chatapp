@@ -10,7 +10,9 @@ const USERS_FILE = __ENV.USERS_FILE;
 if (!USERS_FILE) throw new Error('USERS_FILE is required — run seed.js first');
 const users = JSON.parse(open(USERS_FILE));
 
-export const options = { vus: 1, iterations: 1 };
+// ~200ms per bcrypt login sequentially; add 60s headroom
+const setupSecs = Math.ceil(users.length * 0.2) + 60;
+export const options = { vus: 1, iterations: 1, setupTimeout: `${setupSecs}s` };
 
 export function setup() {
     return users.map((user) => {

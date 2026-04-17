@@ -3,7 +3,7 @@
 # (disables rate limiting and uses the test DB/Redis).
 set -e
 
-USERS=${USERS:-100}
+USERS=${USERS:-250}
 RUN_ID=$(date +%s%3N)
 USERS_FILE="./results/users.json"
 COOKIES_FILE="./results/cookies.json"
@@ -25,7 +25,7 @@ k6 run -e USERS_FILE=$USERS_FILE auth.js
 echo "Auth complete: ${COOKIES_FILE}"
 echo "--------------------------------"
 
-SCRIPTS=(roomCreation multiRoom roomList wsRoom wsMultiRoom)
+SCRIPTS=(roomCreation wsSync roomList multiRoom wsMultiRoom roomHistory wsRoom)
 
 echo "Running remaining load tests with ${USERS} VUs..."
 echo "================================"
