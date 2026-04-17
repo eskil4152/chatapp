@@ -7,14 +7,17 @@ import com.blikeng.chatapp.services.FriendService
 import com.blikeng.chatapp.services.InviteService
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.micrometer.core.instrument.MeterRegistry
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import java.io.IOException
 import java.util.*
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
+import java.util.concurrent.Executor
 
 @Component
 class SessionRegistry(
@@ -23,6 +26,7 @@ class SessionRegistry(
     private val chatService: ChatService,
     private val inviteService: InviteService,
     private val objectMapper: ObjectMapper,
+    @Qualifier("snapshotExecutor") private val snapshotExecutor: Executor,
     meterRegistry: MeterRegistry
 ) {
     val users = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
@@ -49,11 +53,21 @@ class SessionRegistry(
 
     @Async("snapshotExecutor")
     fun sendSnapshots(userId: UUID, session: WebSocketSession) {
-        val presencePayload = objectMapper.writeValueAsString(friendService.getOnlineFriends(userId))
-        trySend(session, presencePayload)
+        val presenceFuture = CompletableFuture.supplyAsync(
+            { objectMapper.writeValueAsString(friendService.getOnlineFriends(userId)) },
+            snapshotExecutor
+        )
+        val inviteFuture = CompletableFuture.supplyAsync(
+            { objectMapper.writeValueAsString(WsPendingInviteSnapshot(invites = inviteService.getPendingInvites(userId))) },
+            snapshotExecutor
+        )
 
-        val invitePayload = objectMapper.writeValueAsString(WsPendingInviteSnapshot(invites = inviteService.getPendingInvites(userId)))
-        trySend(session, invitePayload)
+        try {
+            trySend(session, presenceFuture.get())
+            trySend(session, inviteFuture.get())
+        } catch (_: Exception) {
+            // snapshot delivery failed (e.g. DB pool exhaustion under load) — client will not receive snapshot
+        }
     }
 
     private fun trySend(session: WebSocketSession, payload: String) {

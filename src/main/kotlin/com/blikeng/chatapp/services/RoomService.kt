@@ -18,9 +18,13 @@ import com.blikeng.chatapp.events.UserRemovedEvent
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.auth.getId
+import com.fasterxml.jackson.core.type.TypeReference
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Duration
 import java.util.*
 
 // ==========================
@@ -37,7 +41,14 @@ class RoomService(
     private val friendService: FriendService,
     private val bannedUserService: BannedUserService,
     private val eventPublisher: ApplicationEventPublisher,
+    private val redisTemplate: RedisTemplate<String, String>,
+    private val objectMapper: ObjectMapper,
 ) {
+    private val roomListType = object : TypeReference<List<RoomDTO>>() {}
+    private val ROOMS_CACHE_TTL = Duration.ofMinutes(5)
+
+    private fun bustRoomsCache(vararg userIds: UUID) =
+        userIds.forEach { redisTemplate.delete("user:$it:rooms") }
     // ==========================
     // Room creation and retrieval
     // ==========================
@@ -58,10 +69,15 @@ class RoomService(
 
         val userRoom = UserRoomEntity(UserRoomId(userId, room.id), RoomRole.OWNER, RoomType.GROUP)
         userRoomRepository.save(userRoom)
+        bustRoomsCache(userId)
     }
 
     fun getAllUserRooms(): List<RoomDTO> {
         val userId = getId()
+        val key = "user:$userId:rooms"
+
+        val cached = redisTemplate.opsForValue().get(key)
+        if (cached != null) return objectMapper.readValue(cached, roomListType)
 
         val joinedRooms = roomRepository.findRoomsForUser(userId)
 
@@ -73,11 +89,13 @@ class RoomService(
             emptyMap()
         }
 
-        return joinedRooms.map { room ->
+        val rooms = joinedRooms.map { room ->
             val name = if (room.type == RoomType.PRIVATE) dmPartners[room.room.id] ?: "Error"
                        else room.room.name
             RoomDTO(roomId = room.room.id.toString(), roomName = name, encrypted = room.room.encrypted, role = room.role, type = room.type)
         }
+        redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(rooms), ROOMS_CACHE_TTL)
+        return rooms
     }
 
     fun getRoom(roomId: UUID): Optional<RoomEntity> {
@@ -119,6 +137,7 @@ class RoomService(
         val user = userService.getUserById(id) ?: throw InvalidUserException()
         val userRoom = UserRoomEntity(UserRoomId(id, roomId), RoomRole.MEMBER, RoomType.GROUP)
         userRoomRepository.save(userRoom)
+        bustRoomsCache(id)
         eventPublisher.publishEvent(UserJoinedRoomEvent(userId = id, username = user.username, roomId = roomId))
     }
 
@@ -138,6 +157,7 @@ class RoomService(
         }
 
         userRoomRepository.deleteByIdUserIdAndIdRoomId(userId, roomUUID)
+        bustRoomsCache(userId)
     }
 
     // ==========================
@@ -166,6 +186,9 @@ class RoomService(
 
         room.name = name
         roomRepository.save(room)
+
+        val memberIds = userRoomRepository.findUsersByRoomId(roomId).map { it.id }
+        bustRoomsCache(*memberIds.toTypedArray())
     }
 
     @Transactional
@@ -187,6 +210,7 @@ class RoomService(
 
         val room = roomRepository.findById(roomUUID).orElseThrow { RoomNotFoundException() }
         roomRepository.delete(room)
+        bustRoomsCache(*memberIds.toTypedArray())
 
         eventPublisher.publishEvent(RoomDeletedEvent(roomUUID, room.name, memberIds))
     }
@@ -210,6 +234,7 @@ class RoomService(
 
         targetUserRoom.role = newRole
         userRoomRepository.save(targetUserRoom)
+        bustRoomsCache(targetId)
     }
 
     @Transactional
@@ -242,6 +267,7 @@ class RoomService(
         if (!userRoom.role.isAtLeast(requiredPermission)) throw NotPermittedException()
 
         userRoomRepository.deleteByIdUserIdAndIdRoomId(targetId, roomId)
+        bustRoomsCache(targetId)
 
         if (action == RoomAction.BAN) bannedUserService.banUser(targetId, roomId)
 
@@ -345,6 +371,7 @@ class RoomService(
                 type = RoomType.PRIVATE,
             )
         )
+        bustRoomsCache(userId, friend.id)
 
         return room.id
     }

@@ -19,6 +19,8 @@ import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.crypto.ChatEncrypt
+import com.blikeng.chatapp.dtos.room.RoomDTO
+import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
@@ -52,6 +54,7 @@ class ChatService (
     meterRegistry: MeterRegistry,
 ) {
     val rooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
+    private val roomListType = object : TypeReference<List<RoomDTO>>() {}
 
     init {
         meterRegistry.gauge("chat.rooms", rooms) { it.size.toDouble() }
@@ -108,7 +111,12 @@ class ChatService (
     }
 
     fun notifyRoomPresence(userId: UUID, online: Boolean) {
-        val roomIds = userRoomRepository.findAllIdRoomIdsByIdUserId(userId);
+        val cached = redisTemplate.opsForValue().get("user:$userId:rooms")
+        val roomIds = if (cached != null) {
+            objectMapper.readValue(cached, roomListType).map { UUID.fromString(it.roomId) }
+        } else {
+            userRoomRepository.findAllIdRoomIdsByIdUserId(userId)
+        }
 
         roomIds.forEach { roomId ->
             val payload = objectMapper.writeValueAsString(
