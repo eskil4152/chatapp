@@ -12,12 +12,15 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.*
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
+import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit5.MockKExtension
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.data.redis.core.ValueOperations
 import kotlin.test.assertEquals
 
 @ExtendWith(MockKExtension::class)
@@ -35,8 +38,15 @@ class FriendPresenceTests {
     @MockK private lateinit var userService: UserService
     @MockK private lateinit var userRepository: UserRepository
     @MockK private lateinit var presenceHandler: PresenceHandler
-    @MockK private lateinit var redisTemplate: RedisTemplate<String, String>
+    @RelaxedMockK private lateinit var redisTemplate: RedisTemplate<String, String>
     private val objectMapper = ObjectMapper()
+
+    @BeforeEach
+    fun setupCache() {
+        val ops = mockk<ValueOperations<String, String>>(relaxed = true)
+        every { ops.get(any<String>()) } returns null
+        every { redisTemplate.opsForValue() } returns ops
+    }
 
     @Test
     fun shouldNotifyFriendsWhenUserComesOnline() {
@@ -127,7 +137,8 @@ class FriendPresenceTests {
         val friendship = FriendsEntity(id = FriendsId(user.id, friend.id), userA = user, userB = friend)
 
         every { friendsRepository.findFriendsForUser(user.id) } returns listOf(friendship)
-        every { presenceHandler.isUserOnline(friend.id) } returns true
+        every { presenceHandler.getOnlineUsers(listOf(friend.id)) } returns setOf(friend.id)
+        every { userService.getAllById(listOf(friend.id)) } returns listOf(friend)
 
         val snapshot = friendService.getOnlineFriends(user.id)
 
@@ -143,7 +154,8 @@ class FriendPresenceTests {
         val friendship = FriendsEntity(id = FriendsId(user.id, friend.id), userA = user, userB = friend)
 
         every { friendsRepository.findFriendsForUser(user.id) } returns listOf(friendship)
-        every { presenceHandler.isUserOnline(friend.id) } returns false
+        every { presenceHandler.getOnlineUsers(listOf(friend.id)) } returns emptySet()
+        every { userService.getAllById(listOf(friend.id)) } returns listOf(friend)
 
         val snapshot = friendService.getOnlineFriends(user.id)
 
@@ -169,7 +181,8 @@ class FriendPresenceTests {
         val friendship = FriendsEntity(id = FriendsId(friend.id, user.id), userA = friend, userB = user)
 
         every { friendsRepository.findFriendsForUser(user.id) } returns listOf(friendship)
-        every { presenceHandler.isUserOnline(friend.id) } returns true
+        every { presenceHandler.getOnlineUsers(listOf(friend.id)) } returns setOf(friend.id)
+        every { userService.getAllById(listOf(friend.id)) } returns listOf(friend)
 
         val snapshot = friendService.getOnlineFriends(user.id)
 

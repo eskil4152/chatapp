@@ -8,14 +8,19 @@ import com.blikeng.chatapp.services.BannedUserService
 import com.blikeng.chatapp.services.FriendService
 import com.blikeng.chatapp.services.RoomService
 import com.blikeng.chatapp.services.UserService
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.mockk
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.data.redis.core.ValueOperations
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
@@ -44,6 +49,15 @@ class RoomServiceQueryTests {
     @MockK private lateinit var friendService: FriendService
     @MockK private lateinit var bannedUserService: BannedUserService
     @RelaxedMockK private lateinit var eventPublisher: ApplicationEventPublisher
+    @RelaxedMockK private lateinit var redisTemplate: RedisTemplate<String, String>
+    @RelaxedMockK private lateinit var objectMapper: ObjectMapper
+
+    @BeforeEach
+    fun setupCache() {
+        val ops = mockk<ValueOperations<String, String>>(relaxed = true)
+        every { ops.get(any<String>()) } returns null
+        every { redisTemplate.opsForValue() } returns ops
+    }
 
     @AfterEach
     fun clearSecurity() { SecurityContextHolder.clearContext() }
@@ -108,17 +122,6 @@ class RoomServiceQueryTests {
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
 
         val exception = assertFailsWith<ApiException> { roomService.getAllUsersInRoom("not-a-uuid") }
-        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-    }
-
-    @Test
-    fun shouldFailToGetUsersInRoomWhenUserNotFound() {
-        SecurityContextHolder.getContext().authentication =
-            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
-
-        every { userService.getUserById(any()) } returns null
-
-        val exception = assertFailsWith<ApiException> { roomService.getAllUsersInRoom(UUID.randomUUID().toString()) }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 

@@ -3,6 +3,7 @@ package com.blikeng.chatapp.security.ratelimit
 import com.github.benmanes.caffeine.cache.Caffeine
 import io.github.bucket4j.Bandwidth
 import io.github.bucket4j.Bucket
+import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.binder.cache.CaffeineStatsCounter
 import org.springframework.stereotype.Service
@@ -16,6 +17,7 @@ class RateLimitService(
         .expireAfterAccess(Duration.ofMinutes(10))
         .recordStats { CaffeineStatsCounter(meterRegistry, "rate.limit.buckets") }
         .build<String, Bucket>()
+        .also { cache -> Gauge.builder("rate.limit.buckets", cache) { it.asMap().size.toDouble() }.register(meterRegistry) }
 
     fun tryConsume(key: String, maxTokens: Long, window: Duration): Boolean {
         val bucket = buckets.get(key) {

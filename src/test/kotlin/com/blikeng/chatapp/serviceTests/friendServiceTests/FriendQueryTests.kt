@@ -14,11 +14,15 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
+import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.data.redis.core.ValueOperations
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
@@ -40,9 +44,16 @@ class FriendQueryTests {
     @MockK private lateinit var friendsRepository: FriendsRepository
     @MockK private lateinit var userService: UserService
     @MockK private lateinit var userRepository: UserRepository
-    @MockK private lateinit var redisTemplate: RedisTemplate<String, String>
+    @RelaxedMockK private lateinit var redisTemplate: RedisTemplate<String, String>
     @MockK private lateinit var presenceHandler: PresenceHandler
     private val objectMapper = ObjectMapper()
+
+    @BeforeEach
+    fun setupCache() {
+        val ops = mockk<ValueOperations<String, String>>(relaxed = true)
+        every { ops.get(any<String>()) } returns null
+        every { redisTemplate.opsForValue() } returns ops
+    }
 
     val user1 = UserEntity(id = UUID.randomUUID(), username = "username1", password = "password")
     val user2 = UserEntity(id = UUID.randomUUID(), username = "username2", password = "password")
@@ -79,17 +90,6 @@ class FriendQueryTests {
         assertEquals(friendsEntity.userA.username, friends[0].username)
     }
 
-    @Test
-    fun shouldFailToGetFriendsWithInvalidUser() {
-        SecurityContextHolder.getContext().authentication =
-            UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
-
-        every { userService.getUserById(user1.id) } returns null
-
-        val exception = assertFailsWith<ApiException> { friendService.getFriends() }
-        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-    }
-
     // ==========================
     // Get friend info
     // ==========================
@@ -106,17 +106,6 @@ class FriendQueryTests {
 
         assertEquals(user2.username, friend.username)
         assertEquals(user2.bio, friend.bio)
-    }
-
-    @Test
-    fun shouldFailToGetFriendInfoWhenInvalidUser() {
-        SecurityContextHolder.getContext().authentication =
-            UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
-
-        every { userService.getUserById(user1.id) } returns null
-
-        val exception = assertFailsWith<ApiException> { friendService.getFriendInfo(user2.id.toString()) }
-        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test

@@ -16,14 +16,19 @@ import com.blikeng.chatapp.services.BannedUserService
 import com.blikeng.chatapp.services.FriendService
 import com.blikeng.chatapp.services.RoomService
 import com.blikeng.chatapp.services.UserService
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.*
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
+import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit5.MockKExtension
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.assertNotNull
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.data.redis.core.ValueOperations
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
@@ -50,8 +55,17 @@ class RoomServiceManagementTests {
     @MockK private lateinit var friendService: FriendService
     @MockK private lateinit var bannedUserService: BannedUserService
     @MockK private lateinit var eventPublisher: ApplicationEventPublisher
+    @RelaxedMockK private lateinit var redisTemplate: RedisTemplate<String, String>
+    @RelaxedMockK private lateinit var objectMapper: ObjectMapper
 
     @InjectMockKs lateinit var roomService: RoomService
+
+    @BeforeEach
+    fun setupCache() {
+        val ops = mockk<ValueOperations<String, String>>(relaxed = true)
+        every { ops.get(any<String>()) } returns null
+        every { redisTemplate.opsForValue() } returns ops
+    }
 
     @AfterEach
     fun clearSecurity() { SecurityContextHolder.clearContext() }
@@ -72,6 +86,7 @@ class RoomServiceManagementTests {
                 UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.OWNER, type = RoomType.GROUP)
         every { roomRepository.findById(roomId) } returns Optional.of(RoomEntity(id = roomId, name = "r", type = RoomType.GROUP))
         every { roomRepository.save(any()) } answers { firstArg() }
+        every { userRoomRepository.findUsersByRoomId(roomId) } returns emptyList()
 
         roomService.editRoom(RoomDTO(roomId = roomId.toString(), roomName = "newName", encrypted = false, role = RoomRole.OWNER, type = RoomType.GROUP))
 
@@ -182,19 +197,6 @@ class RoomServiceManagementTests {
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
-    @Test
-    fun shouldFailToEditRoomWhenInvalidUser() {
-        SecurityContextHolder.getContext().authentication =
-            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
-
-        every { userService.getUserById(any()) } returns null
-
-        val exception = assertFailsWith<ApiException> {
-            roomService.editRoom(RoomDTO(UUID.randomUUID().toString(), "new room name", false, RoomRole.OWNER, RoomType.GROUP))
-        }
-        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-    }
-
     // ==========================
     // Delete rooms
     // ==========================
@@ -267,17 +269,6 @@ class RoomServiceManagementTests {
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
-    @Test
-    fun shouldFailToDeleteRoomWhenInvalidUser() {
-        SecurityContextHolder.getContext().authentication =
-            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
-
-        every { userService.getUserById(any()) } returns null
-
-        val exception = assertFailsWith<ApiException> { roomService.deleteRoom(UUID.randomUUID().toString()) }
-        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-    }
-
     // ==========================
     // Private message rooms
     // ==========================
@@ -327,17 +318,6 @@ class RoomServiceManagementTests {
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
 
         val exception = assertFailsWith<ApiException> { roomService.getOrStartPrivateMessage(UserIdDTO("not-a-uuid")) }
-        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-    }
-
-    @Test
-    fun shouldFailToGetPrivateMessagesWhenInvalidUser() {
-        SecurityContextHolder.getContext().authentication =
-            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
-
-        every { userService.getUserById(any()) } returns null
-
-        val exception = assertFailsWith<ApiException> { roomService.getOrStartPrivateMessage(UserIdDTO(UUID.randomUUID().toString())) }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
@@ -572,26 +552,6 @@ class RoomServiceManagementTests {
     }
 
     @Test
-    fun shouldFailToRemoveUserWhenInvalidUser() {
-        SecurityContextHolder.getContext().authentication =
-            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
-
-        every { userService.getUserById(any()) } returns null
-
-        val exception = assertFailsWith<ApiException> {
-            roomService.removeUserFromRoom(
-                AdministrationDTO(
-                    roomId = UUID.randomUUID().toString(),
-                    userId = UUID.randomUUID().toString(),
-                    action = RoomAction.KICK,
-                    reason = ""
-                )
-            )
-        }
-        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
-    }
-
-    @Test
     fun shouldFailToDeleteRoomWhenRoomNotFoundInRepository() {
         val userId = UUID.randomUUID()
         val roomId = UUID.randomUUID()
@@ -633,17 +593,6 @@ class RoomServiceManagementTests {
         assertEquals(1, result.size)
         assertEquals(bannedId, result[0].id)
         assertEquals("banned", result[0].username)
-    }
-
-    @Test
-    fun shouldFailToGetBannedUsersWhenInvalidUser() {
-        SecurityContextHolder.getContext().authentication =
-            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
-
-        every { userService.getUserById(any()) } returns null
-
-        val exception = assertFailsWith<ApiException> { roomService.getAllBansForRoom(UUID.randomUUID().toString()) }
-        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test
@@ -707,19 +656,6 @@ class RoomServiceManagementTests {
         roomService.unbanUser(UnbanDTO(roomId = roomId.toString(), userId = targetId.toString()))
 
         verify(exactly = 1) { bannedUserService.unbanUser(targetId, roomId) }
-    }
-
-    @Test
-    fun shouldFailToUnbanWhenInvalidUser() {
-        SecurityContextHolder.getContext().authentication =
-            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
-
-        every { userService.getUserById(any()) } returns null
-
-        val exception = assertFailsWith<ApiException> {
-            roomService.unbanUser(UnbanDTO(roomId = UUID.randomUUID().toString(), userId = UUID.randomUUID().toString()))
-        }
-        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test

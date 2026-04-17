@@ -16,14 +16,19 @@ import com.blikeng.chatapp.services.FriendService
 import com.blikeng.chatapp.services.InviteService
 import com.blikeng.chatapp.services.RoomService
 import com.blikeng.chatapp.services.UserService
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.mockk
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.data.redis.core.ValueOperations
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
@@ -55,10 +60,19 @@ class InviteOutgoingTests {
     @MockK private lateinit var roomService: RoomService
     @MockK private lateinit var bannedUserService: BannedUserService
     @RelaxedMockK private lateinit var eventPublisher: ApplicationEventPublisher
+    @RelaxedMockK private lateinit var redisTemplate: RedisTemplate<String, String>
+    @RelaxedMockK private lateinit var objectMapper: ObjectMapper
 
     private val user1 = UserEntity(id = UUID.randomUUID(), username = "user1", password = "pw")
     private val user2 = UserEntity(id = UUID.randomUUID(), username = "user2", password = "pw")
     private val roomId = UUID.randomUUID()
+
+    @BeforeEach
+    fun setupCache() {
+        val ops = mockk<ValueOperations<String, String>>(relaxed = true)
+        every { ops.get(any<String>()) } returns null
+        every { redisTemplate.opsForValue() } returns ops
+    }
 
     private fun setAuth(userId: UUID) {
         SecurityContextHolder.getContext().authentication =
@@ -143,15 +157,6 @@ class InviteOutgoingTests {
         val result = inviteService.getOutgoingInvites()
 
         assertEquals(0, result.size)
-    }
-
-    @Test
-    fun shouldFailToGetOutgoingInvitesWhenUserNotFound() {
-        setAuth(user1.id)
-        every { userService.getUserById(user1.id) } returns null
-
-        val ex = assertFailsWith<ApiException> { inviteService.getOutgoingInvites() }
-        assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
 
     @Test

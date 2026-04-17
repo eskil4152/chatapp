@@ -3,21 +3,30 @@ server:
   shutdown: graceful
 
 spring:
+  threads:
+    virtual:
+      enabled: true
+
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/chatdb}
     username: ${SPRING_DATASOURCE_USERNAME:eskil}
     password: ${SPRING_DATASOURCE_PASSWORD:password1}
     hikari:
-      maximum-pool-size: 10
+      maximum-pool-size: 15
       minimum-idle: 2
-      connection-timeout: 5000
-      initialization-fail-timeout: 10000
+      connection-timeout: 30000
+      max-lifetime: 1800000
+      leak-detection-threshold: 0
+      data-source-properties:
+        prepareThreshold: 0
+
   jpa:
     open-in-view: false
     database: postgresql
     show-sql: false
     hibernate:
       ddl-auto: none
+
   flyway:
     baseline-on-migrate: true
     placeholders:
