@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.security.auth
 
-import com.blikeng.chatapp.services.UserService
+import com.blikeng.chatapp.services.UserRevocationService
 import org.slf4j.LoggerFactory
 import org.springframework.http.server.ServerHttpRequest
 import org.springframework.http.server.ServerHttpResponse
@@ -12,13 +12,12 @@ import org.springframework.web.socket.server.HandshakeInterceptor
 // ==========================
 // Validates the AUTH cookie during the WebSocket handshake and stores
 // the authenticated user ID and username in the session attributes.
-// Also verifies the user exists in the database to reject deleted accounts
-// before the connection is established.
+// Rejects deleted accounts via the Redis revocation set.
 // ==========================
 @Component
 class AuthHandshakeInterceptor(
     private val jwtService: JwtService,
-    private val userService: UserService,
+    private val userRevocationService: UserRevocationService,
 ) : HandshakeInterceptor {
     private val log = LoggerFactory.getLogger(this::class.java)
 
@@ -35,7 +34,7 @@ class AuthHandshakeInterceptor(
 
         val (username, id) = jwtService.validateToken(token.value) ?: return false
 
-        userService.getUserById(id) ?: return false
+        if (userRevocationService.isRevoked(id)) return false
 
         attributes["userId"] = id
         attributes["username"] = username

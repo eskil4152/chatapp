@@ -13,14 +13,18 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
+import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.just
+import io.mockk.mockk
 import io.mockk.Runs
 import io.mockk.slot
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.data.redis.core.ValueOperations
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
@@ -43,10 +47,17 @@ class FriendMutationTests {
     @MockK private lateinit var friendsRepository: FriendsRepository
     @MockK private lateinit var userService: UserService
     @MockK private lateinit var userRepository: UserRepository
-    @MockK private lateinit var redisTemplate: RedisTemplate<String, String>
+    @RelaxedMockK private lateinit var redisTemplate: RedisTemplate<String, String>
     @MockK private lateinit var presenceHandler: PresenceHandler
 
     private val objectMapper = ObjectMapper()
+
+    @BeforeEach
+    fun setupCache() {
+        val ops = mockk<ValueOperations<String, String>>(relaxed = true)
+        every { ops.get(any<String>()) } returns null
+        every { redisTemplate.opsForValue() } returns ops
+    }
 
     val user1 = UserEntity(id = UUID.randomUUID(), username = "username1", password = "password")
     val user2 = UserEntity(id = UUID.randomUUID(), username = "username2", password = "password")
@@ -181,17 +192,6 @@ class FriendMutationTests {
 
         assertEquals(lowId, slot.captured.userA)
         assertEquals(highId, slot.captured.userB)
-    }
-
-    @Test
-    fun shouldFailToRemoveFriendsWithInvalidUser() {
-        SecurityContextHolder.getContext().authentication =
-            UsernamePasswordAuthenticationToken(user1.id, null, emptyList())
-
-        every { userService.getUserById(user1.id) } returns null
-
-        val exception = assertFailsWith<ApiException> { friendService.removeFriend(UserIdDTO(user2.id.toString())) }
-        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test

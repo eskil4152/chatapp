@@ -8,11 +8,13 @@ import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.security.auth.PasswordService
+import com.blikeng.chatapp.services.UserRevocationService
 import com.blikeng.chatapp.services.UserService
 import io.mockk.Runs
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
+import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.just
 import io.mockk.verify
@@ -40,6 +42,7 @@ class UserServiceTests {
     @MockK private lateinit var userRepository: UserRepository
     @MockK private lateinit var roomRepository: RoomRepository
     @MockK private lateinit var passwordService: PasswordService
+    @RelaxedMockK private lateinit var userRevocationService: UserRevocationService
 
     @InjectMockKs
     lateinit var userService: UserService
@@ -452,5 +455,16 @@ class UserServiceTests {
             listOf(user1, user2, user3),
             users
         )
+    }
+
+    @Test
+    fun shouldFailToGetRoleWhenInvalidUser() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userRepository.findById(any()) } returns Optional.empty()
+
+        val exception = assertFailsWith<ApiException> { userService.getRole() }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 }

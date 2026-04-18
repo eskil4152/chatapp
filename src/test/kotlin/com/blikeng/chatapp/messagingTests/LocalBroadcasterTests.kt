@@ -6,17 +6,19 @@ import com.blikeng.chatapp.websocket.SessionRegistry
 import io.mockk.*
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
+import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit5.MockKExtension
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.Mock
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
+import java.util.concurrent.Executor
 
 @ExtendWith(MockKExtension::class)
 class LocalBroadcasterTests {
@@ -31,6 +33,12 @@ class LocalBroadcasterTests {
 
     @MockK lateinit var chatService: ChatService
     @MockK lateinit var sessionRegistry: SessionRegistry
+    @MockK lateinit var broadcastExecutor: Executor
+
+    @BeforeEach
+    fun setup() {
+        every { broadcastExecutor.execute(any()) } answers { firstArg<Runnable>().run() }
+    }
 
     @Test
     fun shouldBroadcastToAllOpenSessionsInRoom() {

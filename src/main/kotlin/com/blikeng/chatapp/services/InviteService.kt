@@ -34,9 +34,13 @@ import com.blikeng.chatapp.repositories.InviteRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.auth.getId
+import com.fasterxml.jackson.core.type.TypeReference
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Duration
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
@@ -57,15 +61,21 @@ class InviteService(
     private val roomService: RoomService,
     private val bannedUserService: BannedUserService,
     private val eventPublisher: ApplicationEventPublisher,
+    private val redisTemplate: RedisTemplate<String, String>,
+    private val objectMapper: ObjectMapper,
 ) {
+    private val pendingInviteListType = object : TypeReference<List<PendingInviteDTO>>() {}
+    private val PENDING_INVITES_TTL = Duration.ofMinutes(5)
     fun getPendingInvites(): List<PendingInviteDTO> {
         return getPendingInvites(getId())
     }
 
     fun getPendingInvites(userId: UUID): List<PendingInviteDTO> {
-        userService.getUserById(userId) ?: throw InvalidUserException()
+        val key = "user:$userId:pending_invites"
+        val cached = redisTemplate.opsForValue().get(key)
+        if (cached != null) return objectMapper.readValue(cached, pendingInviteListType)
 
-        return inviteRepository.findByToUserIdAndStatus(userId, InviteStatus.PENDING).map {
+        val invites = inviteRepository.findByToUserIdAndStatus(userId, InviteStatus.PENDING).map {
             val sender = userService.getUserById(it.fromUserId)
             val roomName = it.roomId?.let { roomId -> roomService.getRoom(roomId).orElse(null)?.name }
 
@@ -80,12 +90,12 @@ class InviteService(
                 expiresAt = it.expiresAt,
             )
         }
+        redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(invites), PENDING_INVITES_TTL)
+        return invites
     }
 
     fun getOutgoingInvites(): List<OutgoingInvitationDTO> {
         val id = getId()
-        userService.getUserById(id) ?: throw InvalidUserException()
-
         return inviteRepository.findByFromUserIdAndStatus(id, InviteStatus.PENDING).map {
             when (it.type) {
                 InviteType.FRIEND_REQUEST -> {
@@ -163,6 +173,7 @@ class InviteService(
         )
 
         val saved = inviteRepository.save(friendship)
+        redisTemplate.delete("user:${friend.id}:pending_invites")
         eventPublisher.publishEvent(InviteSentEvent(
             toUserId = friend.id,
             invite = PendingInviteDTO(
@@ -217,6 +228,7 @@ class InviteService(
         )
 
         val saved = inviteRepository.save(invite)
+        redisTemplate.delete("user:${target.id}:pending_invites")
         eventPublisher.publishEvent(InviteSentEvent(
             toUserId = target.id,
             invite = PendingInviteDTO(
@@ -252,6 +264,7 @@ class InviteService(
             throw InviteNotFoundException()
         }
 
+        redisTemplate.delete("user:$id:pending_invites")
         when (invite.type) {
             InviteType.FRIEND_REQUEST -> handleFriendRequestResponse(inviteResponseDTO.response, invite, acceptor)
             InviteType.ROOM_INVITE -> handleRoomInviteResponse(inviteResponseDTO.response, invite, acceptor)
@@ -271,8 +284,6 @@ class InviteService(
         }
 
         val id = getId()
-        userService.getUserById(id) ?: throw InvalidUserException()
-
         val room = roomService.getRoom(roomId)
         if (room.isEmpty) throw InvalidInviteException()
 

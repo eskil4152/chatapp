@@ -17,9 +17,11 @@ import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.repositories.FriendsRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.security.auth.getId
+import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
+import java.time.Duration
 import java.util.*
 
 // ==========================
@@ -39,8 +41,6 @@ class FriendService(
 ) {
     fun getFriends(): List<FriendDTO> {
         val id = getId()
-        userService.getUserById(id) ?: throw InvalidUserException()
-
         val friends = friendsRepository.findFriendsForUser(id)
 
         return friends.map { friendship ->
@@ -76,12 +76,12 @@ class FriendService(
             userA = userA,
             userB = userB
         ))
+        redisTemplate.delete("user:$id:friends")
+        redisTemplate.delete("user:$friendId:friends")
     }
 
     fun removeFriend(userIdDTO: UserIdDTO) {
         val id = getId()
-        userService.getUserById(id) ?: throw InvalidUserException()
-
         val friendId = try {
             UUID.fromString(userIdDTO.userId)
         } catch (_: IllegalArgumentException) {
@@ -94,6 +94,8 @@ class FriendService(
         if (!friendsRepository.existsById(friendshipId)) throw UserNotFoundException()
 
         friendsRepository.deleteById(friendshipId)
+        redisTemplate.delete("user:$id:friends")
+        redisTemplate.delete("user:$friendId:friends")
 
         val notifyRemover = objectMapper.writeValueAsString(WsFriendRemoved(userId = friendId))
         val notifyRemoved = objectMapper.writeValueAsString(WsFriendRemoved(userId = id))
@@ -103,8 +105,6 @@ class FriendService(
 
     fun getFriendInfo(friendIdString: String): FriendDTO {
         val id = getId()
-        userService.getUserById(id) ?: throw InvalidUserException()
-
         val friendId = try {
             UUID.fromString(friendIdString)
         } catch (_: IllegalArgumentException) {
@@ -139,31 +139,23 @@ class FriendService(
 
     fun notifyFriends(userId: UUID, online: Boolean) {
         val payload = objectMapper.writeValueAsString(
-            WsFriendPresence(
-                userId = userId,
-                online = online,
-            )
+            WsFriendPresence(userId = userId, online = online)
         )
-
-        for (friendship in friendsRepository.findFriendsForUser(userId)) {
-            val friendId = if (friendship.userA.id == userId) {
-                friendship.userB.id
-            } else {
-                friendship.userA.id
-            }
-
-            redisTemplate.convertAndSend("user:${friendId}", payload)
+        for (friendId in getCachedFriendIds(userId)) {
+            redisTemplate.convertAndSend("user:$friendId", payload)
         }
     }
 
     fun getOnlineFriends(userId: UUID): WsFriendSnapshot {
-        val friends = friendsRepository.findFriendsForUser(userId).map { friendship ->
-            val friend = if (friendship.userA.id == userId) friendship.userB else friendship.userA
+        val friendIds = getCachedFriendIds(userId)
+        if (friendIds.isEmpty()) return WsFriendSnapshot(friends = emptyList())
+        val onlineIds = presenceHandler.getOnlineUsers(friendIds)
+        val friends = userService.getAllById(friendIds).map { friend ->
             OnlineFriend(
                 userId = friend.id,
                 username = friend.username,
                 avatarUrl = friend.avatarUrl,
-                online = presenceHandler.isUserOnline(friend.id)
+                online = friend.id in onlineIds
             )
         }
         return WsFriendSnapshot(friends = friends)
@@ -172,6 +164,20 @@ class FriendService(
     // ==========================
     // Internal helpers
     // ==========================
+    private val friendIdListType = object : TypeReference<List<UUID>>() {}
+
+    private fun getCachedFriendIds(userId: UUID): List<UUID> {
+        val key = "user:$userId:friends"
+        val cached = redisTemplate.opsForValue().get(key)
+        if (cached != null) return objectMapper.readValue(cached, friendIdListType)
+
+        val friendIds = friendsRepository.findFriendsForUser(userId).map { friendship ->
+            if (friendship.userA.id == userId) friendship.userB.id else friendship.userA.id
+        }
+        redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(friendIds), Duration.ofHours(24))
+        return friendIds
+    }
+
     private fun generateFriendshipId(user1: UUID, user2: UUID): FriendsId {
         if (user1 == user2) throw FriendYourselfException()
 

@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: chatapp-postgres-test
+    environment:
+      POSTGRES_DB: chatapp_test
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  pgbouncer:
+    image: edoburu/pgbouncer
+    container_name: chatapp-pgbouncer-test
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: chatapp_test
+      DB_USER: test
+      DB_PASSWORD: test
+
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 2000
+      DEFAULT_POOL_SIZE: 50
+      RESERVED_POOL_SIZE: 10
+
+      AUTH_TYPE: scram-sha-256
+      AUTH_FILE: /etc/pgbouncer/userlist.txt
+    volumes:
+      - ./pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt
+    ports:
+      - "5434:5432"
+    depends_on:
+      - postgres
+
+  redis:
+    image: redis:7
+    container_name: chatapp-redis-test
+    ports:
+      - "6380:6379"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: chatapp-rabbitmq-test
+    ports:
+      - "5673:5672"
+      - "15673:15672"

@@ -2,6 +2,7 @@ package com.blikeng.chatapp.securityTests.auth
 
 import com.blikeng.chatapp.security.auth.JwtAuthFilter
 import com.blikeng.chatapp.security.auth.JwtService
+import com.blikeng.chatapp.services.UserRevocationService
 import io.mockk.Called
 import io.mockk.every
 import io.mockk.mockk
@@ -30,7 +31,8 @@ class JwtAuthFilterTests {
     // - Failure cases: missing AUTH cookie, wrong cookie name, invalid token, empty cookie, and whitespace-only cookie
     // ==========================
     private val jwtService = mockk<JwtService>()
-    private val filter = JwtAuthFilter(jwtService)
+    private val userRevocationService = mockk<UserRevocationService>()
+    private val filter = JwtAuthFilter(jwtService, userRevocationService)
 
     @BeforeEach
     fun setup() {
@@ -84,6 +86,7 @@ class JwtAuthFilterTests {
             userId = userId,
             role = "ADMIN"
         )
+        every { userRevocationService.isRevoked(userId) } returns false
 
         val req = MockHttpServletRequest()
         req.setCookies(Cookie("AUTH", "good"))
@@ -143,5 +146,26 @@ class JwtAuthFilterTests {
 
         assertNull(SecurityContextHolder.getContext().authentication)
         verify { jwtService wasNot Called }
+    }
+
+    @Test
+    fun shouldNotAuthenticateRevokedUser() {
+        val userId = UUID.randomUUID()
+        every { jwtService.validateToken("good") } returns JwtService.JwtPrincipal(
+            username = "u",
+            userId = userId,
+            role = "USER"
+        )
+        every { userRevocationService.isRevoked(userId) } returns true
+
+        val req = MockHttpServletRequest()
+        req.setCookies(Cookie("AUTH", "good"))
+
+        val res = MockHttpServletResponse()
+        val chain = MockFilterChain()
+
+        filter.doFilter(req, res, chain)
+
+        assertNull(SecurityContextHolder.getContext().authentication)
     }
 }

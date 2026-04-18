@@ -30,8 +30,11 @@ object ErrorMessages {
 
     const val INVALID_PARAMETERS = "Invalid parameters"
 
+    const val ALREADY_BANNED = "User already banned"
     const val BANNED = "You have been banned from this room"
     const val INVALID_BAN = "You can not ban this user"
+    const val INVALID_UNBAN = "You can't unban this user"
+    const val NOT_BANNED = "This user is not banned"
 
     const val INVITE_NOT_FOUND = "Invite not found"
     const val INVALID_INVITE = "Invalid invite"

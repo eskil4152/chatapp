@@ -139,11 +139,7 @@ class AuthControllerTests {
     // ==========================
     @Test
     fun shouldReturnOkForAuthEndpoint() {
-        every { userService.getSelf() } returns UserDTO(
-            userId = java.util.UUID.randomUUID(),
-            username = "testuser",
-            bio = null, email = null, fullName = null, avatarUrl = null, birthday = null, createdAt = null, rooms = emptyList()
-        )
+        every { userService.getRole() } returns com.blikeng.chatapp.security.UserRole.USER
 
         mockMvc.get("/api/auth") {
         }

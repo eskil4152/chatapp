@@ -4,5 +4,6 @@ enum class UserRole {
     USER,
     TRUSTED,
     MODERATOR,
-    ADMIN
+    ADMIN,
+    SUPERUSER
 }

@@ -1,52 +1,24 @@
 import http from 'k6/http';
-import {check, sleep} from 'k6';
+import { check, sleep } from 'k6';
+import { BASE, jsonParams, makeOptions } from './lib.js';
 
-const BASE = 'http://localhost:5050';
-const PASSWORD = 'testpassword123';
-const USER_COUNT = 100;
+const COOKIES_FILE = __ENV.COOKIES_FILE;
+if (!COOKIES_FILE) throw new Error('COOKIES_FILE is required — run auth.js first');
+const _cookies = JSON.parse(open(COOKIES_FILE));
+const TARGET_VUS = __ENV.USERS ? parseInt(__ENV.USERS) : 100;
 
-export const options = {
-    stages: [
-        { duration: '20s', target: 25 },
-        { duration: '40s', target: 50 },
-        { duration: '1m', target: 100 },
-        { duration: '20s', target: 0 },
-    ],
-};
+export const options = { ...makeOptions(TARGET_VUS) };
 
 export function setup() {
-    const users = [];
-
-    for (let i = 1; i <= USER_COUNT; i++) {
-        const username = `list_user_${i}`;
-        const payload = JSON.stringify({ username, password: PASSWORD });
-        const params = { headers: { 'Content-Type': 'application/json' } };
-
-        http.post(`${BASE}/api/register`, payload, params);
-        users.push({ username, password: PASSWORD });
-    }
-
-    return users;
+    return _cookies.slice(0, TARGET_VUS);
 }
 
-export default function (users) {
-    const user = users[(__VU - 1) % users.length];
+export default function (cookies) {
+    const cookie = cookies[(__VU - 1) % cookies.length];
+    if (!cookie) return;
 
-    const loginRes = http.post(
-        `${BASE}/api/login`,
-        JSON.stringify(user),
-        { headers: { 'Content-Type': 'application/json' } }
-    );
-
-    check(loginRes, {
-        'login ok': (r) => r.status === 200,
-    });
-
-    const roomsRes = http.get(`${BASE}/api/rooms`);
-
-    check(roomsRes, {
-        'rooms fetched': (r) => r.status === 200,
-    });
+    const roomsRes = http.get(`${BASE}/api/rooms`, jsonParams(cookie));
+    check(roomsRes, { 'rooms fetched': (r) => r.status === 200 });
 
     sleep(1);
 }

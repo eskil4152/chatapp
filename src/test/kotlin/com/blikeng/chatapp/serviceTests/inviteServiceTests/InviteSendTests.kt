@@ -21,6 +21,7 @@ import com.blikeng.chatapp.services.FriendService
 import com.blikeng.chatapp.services.InviteService
 import com.blikeng.chatapp.services.RoomService
 import com.blikeng.chatapp.services.UserService
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
@@ -31,9 +32,12 @@ import io.mockk.mockk
 import io.mockk.Runs
 import io.mockk.slot
 import io.mockk.verify
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.data.redis.core.ValueOperations
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
@@ -61,10 +65,19 @@ class InviteSendTests {
     @MockK private lateinit var roomService: RoomService
     @MockK private lateinit var bannedUserService: BannedUserService
     @RelaxedMockK private lateinit var eventPublisher: ApplicationEventPublisher
+    @RelaxedMockK private lateinit var redisTemplate: RedisTemplate<String, String>
+    @RelaxedMockK private lateinit var objectMapper: ObjectMapper
 
     private val user1 = UserEntity(id = UUID.randomUUID(), username = "user1", password = "pw")
     private val user2 = UserEntity(id = UUID.randomUUID(), username = "user2", password = "pw")
     private val roomId = UUID.randomUUID()
+
+    @BeforeEach
+    fun setupCache() {
+        val ops = mockk<ValueOperations<String, String>>(relaxed = true)
+        every { ops.get(any<String>()) } returns null
+        every { redisTemplate.opsForValue() } returns ops
+    }
 
     private fun setAuth(userId: UUID) {
         SecurityContextHolder.getContext().authentication =
@@ -479,17 +492,6 @@ class InviteSendTests {
     }
 
     @Test
-    fun shouldFailToCreateOpenRoomInviteWhenSenderDeleted() {
-        setAuth(user1.id)
-        every { userService.getUserById(user1.id) } returns null
-
-        val ex = assertFailsWith<ApiException> {
-            inviteService.createOpenRoomInvite(OpenRoomInviteDTO(type = "OPEN_ROOM_INVITE", roomId = roomId.toString(), maxUsages = 5))
-        }
-        assertEquals(HttpStatus.BAD_REQUEST, ex.status)
-    }
-
-    @Test
     fun shouldFailToCreateOpenRoomInviteWithZeroMaxUsages() {
         setAuth(user1.id)
 
@@ -634,16 +636,6 @@ class InviteSendTests {
         val result = inviteService.getPendingInvites(user1.id)
 
         assertEquals(0, result.size)
-    }
-
-    @Test
-    fun shouldFailToGetPendingInvitesWhenUserNotFound() {
-        every { userService.getUserById(user1.id) } returns null
-
-        val ex = assertFailsWith<ApiException> {
-            inviteService.getPendingInvites(user1.id)
-        }
-        assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
 
     @Test
@@ -897,5 +889,30 @@ class InviteSendTests {
 
         assertEquals(null, eventSlot.captured.invite.roomId)
         assertEquals(null, eventSlot.captured.invite.roomName)
+    }
+
+    @Test
+    fun shouldReturnCachedPendingInvites() {
+        val cached = listOf(
+            com.blikeng.chatapp.dtos.invites.PendingInviteDTO(
+                id = UUID.randomUUID(),
+                type = InviteType.FRIEND_REQUEST,
+                fromUserId = user2.id,
+                fromUsername = "user2",
+                fromAvatarUrl = null,
+                roomId = null,
+                roomName = null,
+                expiresAt = java.time.Instant.now()
+            )
+        )
+        val ops = mockk<ValueOperations<String, String>>(relaxed = true)
+        every { ops.get("user:${user1.id}:pending_invites") } returns "cached-json"
+        every { redisTemplate.opsForValue() } returns ops
+        every { objectMapper.readValue("cached-json", any<com.fasterxml.jackson.core.type.TypeReference<List<com.blikeng.chatapp.dtos.invites.PendingInviteDTO>>>()) } returns cached
+
+        val result = inviteService.getPendingInvites(user1.id)
+
+        assertEquals(cached, result)
+        verify(exactly = 0) { inviteRepository.findByToUserIdAndStatus(any(), any()) }
     }
 }

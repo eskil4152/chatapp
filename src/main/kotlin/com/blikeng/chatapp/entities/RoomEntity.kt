@@ -10,7 +10,7 @@ class RoomEntity(
     @Id
     val id: UUID = UUID.randomUUID(),
 
-    @Column(unique = true, nullable = false)
+    @Column(nullable = false)
     var name: String,
 
     val encrypted: Boolean = false,

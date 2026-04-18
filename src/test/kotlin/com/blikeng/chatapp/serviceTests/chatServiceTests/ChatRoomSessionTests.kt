@@ -20,6 +20,7 @@ import io.micrometer.core.instrument.MeterRegistry
 import io.mockk.*
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
+import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit5.MockKExtension
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -29,6 +30,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.data.redis.core.ListOperations
 import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.data.redis.core.ValueOperations
 import org.springframework.http.HttpStatus
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
@@ -51,7 +53,7 @@ class ChatRoomSessionTests {
     @MockK lateinit var roomRepository: RoomRepository
     @MockK lateinit var userRoomRepository: UserRoomRepository
     @MockK lateinit var encrypt: ChatEncrypt
-    @MockK lateinit var redisTemplate: RedisTemplate<String, String>
+    @RelaxedMockK lateinit var redisTemplate: RedisTemplate<String, String>
     @MockK lateinit var rabbitTemplate: RabbitTemplate
     @MockK lateinit var listOps: ListOperations<String, String>
     @MockK lateinit var presenceHandler: PresenceHandler
@@ -63,6 +65,9 @@ class ChatRoomSessionTests {
 
     @BeforeEach
     fun setup() {
+        val ops = mockk<ValueOperations<String, String>>(relaxed = true)
+        every { ops.get(any<String>()) } returns null
+        every { redisTemplate.opsForValue() } returns ops
         every { rabbitTemplate.convertAndSend(any<String>(), any<Any>()) } just Runs
         every { redisTemplate.convertAndSend(any<String>(), any<String>()) } returns 1L
         every { redisTemplate.opsForList() } returns listOps

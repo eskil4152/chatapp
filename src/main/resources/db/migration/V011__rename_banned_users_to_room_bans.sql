@@ -1,0 +1,1 @@
+ALTER TABLE banned_user RENAME TO room_bans;

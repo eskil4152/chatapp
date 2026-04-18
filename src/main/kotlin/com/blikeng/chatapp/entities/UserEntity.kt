@@ -42,5 +42,5 @@ class UserEntity (
 
     @Column(name = "role")
     @Enumerated(EnumType.STRING)
-    val role: UserRole = UserRole.USER,
+    var role: UserRole = UserRole.USER,
 )

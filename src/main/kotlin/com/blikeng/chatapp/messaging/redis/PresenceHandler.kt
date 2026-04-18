@@ -53,4 +53,14 @@ class PresenceHandler(
         val value = redisTemplate.opsForValue()[PresenceKeys.userPresence(userId)]
         return value?.toLongOrNull()?.let { it > 0 } == true
     }
+
+    fun getOnlineUsers(userIds: List<UUID>): Set<UUID> {
+        if (userIds.isEmpty()) return emptySet()
+        val keys = userIds.map { PresenceKeys.userPresence(it) }
+        val values = redisTemplate.opsForValue().multiGet(keys) ?: return emptySet()
+        return userIds.zip(values)
+            .filter { (_, v) -> v?.toLongOrNull()?.let { it > 0 } == true }
+            .map { (id, _) -> id }
+            .toSet()
+    }
 }

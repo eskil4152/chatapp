@@ -5,8 +5,14 @@ import com.blikeng.chatapp.entities.UserRoomEntity
 import com.blikeng.chatapp.entities.UserRoomId
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import java.util.*
+
+interface PrivateRoomPartner {
+    val roomId: UUID
+    val username: String
+}
 
 @Repository
 interface UserRoomRepository: JpaRepository<UserRoomEntity, UserRoomId> {
@@ -36,8 +42,19 @@ interface UserRoomRepository: JpaRepository<UserRoomEntity, UserRoomId> {
     fun findOtherUser(roomId: UUID, userId: UUID): UserEntity?
 
     @Query("""
-        SELECT ur.id.roomId 
-        FROM UserRoomEntity ur 
+        SELECT ur.id.roomId
+        FROM UserRoomEntity ur
         WHERE ur.id.userId = :userId""")
     fun findAllIdRoomIdsByIdUserId(userId: UUID): List<UUID>
+
+    @Query("""
+        SELECT ur.id.roomId as roomId, u.username as username
+        FROM UserRoomEntity ur
+        JOIN UserEntity u ON u.id = ur.id.userId
+        WHERE ur.id.roomId IN :roomIds
+        AND ur.id.userId <> :userId""")
+    fun findOtherUsersInPrivateRooms(
+        @Param("roomIds") roomIds: List<UUID>,
+        @Param("userId") userId: UUID
+    ): List<PrivateRoomPartner>
 }

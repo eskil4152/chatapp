@@ -1,0 +1,7 @@
+CREATE TABLE banned_users (
+  user_id   UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  banned_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  banned_at TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'UTC'),
+  reason    VARCHAR(256),
+  PRIMARY KEY (user_id)
+);

@@ -45,11 +45,7 @@ class ChatWebSocketHandler(
     // ==========================
     override fun afterConnectionEstablished(session: WebSocketSession) {
         val userId = getUserId(session)
-
         sessionRegistry.registerSession(userId, session)
-        sessionRegistry.sendFriendPresenceSnapshot(userId, session)
-        sessionRegistry.sendPendingInviteSnapshot(userId, session)
-
         lastPing[session.id] = System.currentTimeMillis()
     }
 
@@ -76,6 +72,7 @@ class ChatWebSocketHandler(
                     lastPing[session.id] = System.currentTimeMillis()
                     session.sendMessage(TextMessage("pong"))
                 }
+                MessageType.SYNC -> sessionRegistry.sendSnapshots(getUserId(session), session)
             }
         } catch (e: Exception) {
             sendWsError(session, e)
@@ -83,7 +80,7 @@ class ChatWebSocketHandler(
     }
 
     enum class MessageType {
-        MESSAGE, JOIN, LEAVE, PING
+        MESSAGE, JOIN, LEAVE, PING, SYNC
     }
 
     // ==========================
