@@ -17,6 +17,7 @@ import org.springframework.data.redis.core.Cursor
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.core.ValueOperations
 import java.util.*
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -163,5 +164,54 @@ class PresenceHandlerTests {
         every { valueOps.get(PresenceKeys.userPresence(userId)) } returns null
 
         assertFalse(presenceHandler.isUserOnline(userId))
+    }
+
+    // ==========================
+    // getOnlineUsers
+    // ==========================
+    @Test
+    fun shouldReturnEmptySetForEmptyInput() {
+        val result = presenceHandler.getOnlineUsers(emptyList())
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun shouldReturnOnlineUsersFromBatch() {
+        val online = UUID.randomUUID()
+        val offline = UUID.randomUUID()
+        val keys = listOf(PresenceKeys.userPresence(online), PresenceKeys.userPresence(offline))
+
+        every { redisTemplate.opsForValue() } returns valueOps
+        every { valueOps.multiGet(keys) } returns listOf("1", "0")
+
+        val result = presenceHandler.getOnlineUsers(listOf(online, offline))
+
+        assertEquals(setOf(online), result)
+    }
+
+    @Test
+    fun shouldExcludeUsersWithNullValueFromBatch() {
+        val online = UUID.randomUUID()
+        val missing = UUID.randomUUID()
+        val keys = listOf(PresenceKeys.userPresence(online), PresenceKeys.userPresence(missing))
+
+        every { redisTemplate.opsForValue() } returns valueOps
+        every { valueOps.multiGet(keys) } returns listOf("2", null)
+
+        val result = presenceHandler.getOnlineUsers(listOf(online, missing))
+
+        assertEquals(setOf(online), result)
+    }
+
+    @Test
+    fun shouldReturnEmptySetWhenMultiGetReturnsNull() {
+        val userId = UUID.randomUUID()
+
+        every { redisTemplate.opsForValue() } returns valueOps
+        every { valueOps.multiGet(any()) } returns null
+
+        val result = presenceHandler.getOnlineUsers(listOf(userId))
+
+        assertTrue(result.isEmpty())
     }
 }

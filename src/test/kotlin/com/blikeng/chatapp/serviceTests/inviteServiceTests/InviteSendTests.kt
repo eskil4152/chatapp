@@ -890,4 +890,29 @@ class InviteSendTests {
         assertEquals(null, eventSlot.captured.invite.roomId)
         assertEquals(null, eventSlot.captured.invite.roomName)
     }
+
+    @Test
+    fun shouldReturnCachedPendingInvites() {
+        val cached = listOf(
+            com.blikeng.chatapp.dtos.invites.PendingInviteDTO(
+                id = UUID.randomUUID(),
+                type = InviteType.FRIEND_REQUEST,
+                fromUserId = user2.id,
+                fromUsername = "user2",
+                fromAvatarUrl = null,
+                roomId = null,
+                roomName = null,
+                expiresAt = java.time.Instant.now()
+            )
+        )
+        val ops = mockk<ValueOperations<String, String>>(relaxed = true)
+        every { ops.get("user:${user1.id}:pending_invites") } returns "cached-json"
+        every { redisTemplate.opsForValue() } returns ops
+        every { objectMapper.readValue("cached-json", any<com.fasterxml.jackson.core.type.TypeReference<List<com.blikeng.chatapp.dtos.invites.PendingInviteDTO>>>()) } returns cached
+
+        val result = inviteService.getPendingInvites(user1.id)
+
+        assertEquals(cached, result)
+        verify(exactly = 0) { inviteRepository.findByToUserIdAndStatus(any(), any()) }
+    }
 }

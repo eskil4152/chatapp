@@ -456,4 +456,15 @@ class UserServiceTests {
             users
         )
     }
+
+    @Test
+    fun shouldFailToGetRoleWhenInvalidUser() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userRepository.findById(any()) } returns Optional.empty()
+
+        val exception = assertFailsWith<ApiException> { userService.getRole() }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+    }
 }

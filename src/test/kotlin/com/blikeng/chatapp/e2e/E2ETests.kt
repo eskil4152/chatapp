@@ -56,6 +56,7 @@ class E2ETests : ContainerBase() {
     var user2Id: String? = null
     var roomId: String? = null
     var encryptedRoomId: String? = null
+    var openInviteId: String? = null
 
     @BeforeAll
     fun setup(@Autowired jdbcTemplate: JdbcTemplate) {
@@ -867,6 +868,74 @@ class E2ETests : ContainerBase() {
 
     @Test
     @Order(40)
+    fun shouldReceiveFriendSnapshotOnSync() {
+        val received = CopyOnWriteArrayList<String>()
+        val latch = CountDownLatch(1)
+
+        val handler = object : TextWebSocketHandler() {
+            override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
+                received += message.payload
+                if (message.payload.contains("FRIEND_SNAPSHOT")) latch.countDown()
+            }
+        }
+
+        val headers = WebSocketHttpHeaders().apply {
+            add(HttpHeaders.COOKIE, "AUTH=${user1Cookie!!.value}")
+        }
+
+        val session = StandardWebSocketClient()
+            .execute(handler, headers, URI("ws://localhost:$port/ws"))
+            .get(5, TimeUnit.SECONDS)
+
+        session.sendMessage(TextMessage("""{"type":"SYNC"}"""))
+
+        assertTrue(latch.await(5, TimeUnit.SECONDS), "Did not receive FRIEND_SNAPSHOT. Got: $received")
+        assertTrue(received.any { it.contains("FRIEND_SNAPSHOT") })
+
+        session.close()
+    }
+
+    @Test
+    @Order(41)
+    fun shouldCreateOpenRoomInvite() {
+        mockMvc.post("/api/rooms/make") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"roomName":"Open invite room","encrypted":false}"""
+            user1Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isCreated() } }
+
+        val roomsResult = mockMvc.get("/api/rooms") {
+            user1Cookie?.let { cookie(it) }
+        }.andReturn()
+
+        val openInviteRoomId = objectMapper.readTree(roomsResult.response.contentAsString)
+            .first { it["roomName"].asText() == "Open invite room" }["roomId"].asText()
+
+        val inviteResult = mockMvc.post("/api/invites/open") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"type":"OPEN_ROOM_INVITE","roomId":"$openInviteRoomId","maxUsages":5}"""
+            user1Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+            .andReturn()
+
+        openInviteId = inviteResult.response.contentAsString.trim('"')
+    }
+
+    @Test
+    @Order(42)
+    fun shouldJoinRoomViaOpenInvite() {
+        mockMvc.post("/api/invites/respond") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"inviteId":"$openInviteId","response":"ACCEPTED"}"""
+            user2Cookie?.let { cookie(it) }
+        }
+            .andExpect { status { isOk() } }
+    }
+
+    @Test
+    @Order(43)
     fun shouldLogOut(){
         val result = mockMvc.post("/api/logout") {
             contentType = MediaType.APPLICATION_JSON

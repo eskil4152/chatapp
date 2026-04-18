@@ -3,6 +3,8 @@ package com.blikeng.chatapp.serviceTests
 import com.blikeng.chatapp.dtos.UserIdDTO
 import com.blikeng.chatapp.dtos.administration.BanUserDTO
 import com.blikeng.chatapp.dtos.administration.UserRoleDTO
+import com.blikeng.chatapp.repositories.BanProjection
+import java.time.Instant
 import com.blikeng.chatapp.dtos.room.RoleAction
 import com.blikeng.chatapp.entities.BannedUser
 import com.blikeng.chatapp.entities.UserEntity
@@ -445,6 +447,35 @@ class AdministrationServiceTests {
         val result = administrationService.getAllUserBans(0, 25)
 
         assertEquals(0, result.size)
+    }
+
+    @Test
+    fun shouldReturnMappedBannedUsers() {
+        val bannedId = UUID.randomUUID()
+        val adminId = UUID.randomUUID()
+        val now = Instant.now()
+
+        val projection = mockk<BanProjection>()
+        every { projection.userId } returns bannedId
+        every { projection.username } returns "alice"
+        every { projection.bannedBy } returns adminId
+        every { projection.bannedByUsername } returns "admin"
+        every { projection.bannedByRole } returns UserRole.ADMIN
+        every { projection.bannedAt } returns now
+        every { projection.reason } returns "spam"
+
+        every { userBanRepository.findAllWithUsers(PageRequest.of(0, 25)) } returns PageImpl(listOf(projection))
+
+        val result = administrationService.getAllUserBans(0, 25)
+
+        assertEquals(1, result.size)
+        assertEquals(bannedId, result[0].userId)
+        assertEquals("alice", result[0].username)
+        assertEquals(adminId, result[0].bannedBy)
+        assertEquals("admin", result[0].bannedByUsername)
+        assertEquals(UserRole.ADMIN, result[0].bannedByRole)
+        assertEquals(now, result[0].bannedAt)
+        assertEquals("spam", result[0].reason)
     }
 
     @Test

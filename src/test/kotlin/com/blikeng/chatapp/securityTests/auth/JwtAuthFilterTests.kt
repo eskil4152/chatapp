@@ -147,4 +147,25 @@ class JwtAuthFilterTests {
         assertNull(SecurityContextHolder.getContext().authentication)
         verify { jwtService wasNot Called }
     }
+
+    @Test
+    fun shouldNotAuthenticateRevokedUser() {
+        val userId = UUID.randomUUID()
+        every { jwtService.validateToken("good") } returns JwtService.JwtPrincipal(
+            username = "u",
+            userId = userId,
+            role = "USER"
+        )
+        every { userRevocationService.isRevoked(userId) } returns true
+
+        val req = MockHttpServletRequest()
+        req.setCookies(Cookie("AUTH", "good"))
+
+        val res = MockHttpServletResponse()
+        val chain = MockFilterChain()
+
+        filter.doFilter(req, res, chain)
+
+        assertNull(SecurityContextHolder.getContext().authentication)
+    }
 }

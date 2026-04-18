@@ -371,4 +371,17 @@ class WebsocketMessageTests {
         assertEquals(429, json["code"].asInt())
         assertEquals("Rate limit exceeded", json["message"].asText())
     }
+
+    @Test
+    fun shouldHandleSyncMessage() {
+        val userId = UUID.randomUUID()
+        val payload = TextMessage(objectMapper.createObjectNode().put("type", "SYNC").toString())
+
+        every { session.attributes } returns mutableMapOf("username" to "u", "userId" to userId)
+        every { sessionRegistry.sendSnapshots(userId, session) } just Runs
+
+        handler.handleMessage(session, payload)
+
+        verify(exactly = 1) { sessionRegistry.sendSnapshots(userId, session) }
+    }
 }

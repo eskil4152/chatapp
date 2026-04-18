@@ -223,4 +223,22 @@ class RoomServiceCreationTests {
             rooms
         )
     }
+
+    @Test
+    fun shouldReturnCachedRooms() {
+        val userId = UUID.randomUUID()
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(userId, null, emptyList())
+
+        val cached = listOf(RoomDTO(roomId = UUID.randomUUID().toString(), roomName = "cached", encrypted = false, role = RoomRole.MEMBER, type = RoomType.GROUP))
+        val ops = mockk<ValueOperations<String, String>>(relaxed = true)
+        every { ops.get("user:$userId:rooms") } returns "cached-json"
+        every { redisTemplate.opsForValue() } returns ops
+        every { objectMapper.readValue("cached-json", any<com.fasterxml.jackson.core.type.TypeReference<List<RoomDTO>>>()) } returns cached
+
+        val result = roomService.getAllUserRooms()
+
+        assertEquals(cached, result)
+        verify(exactly = 0) { roomRepository.findRoomsForUser(any()) }
+    }
 }

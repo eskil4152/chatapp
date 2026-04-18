@@ -216,6 +216,33 @@ class SessionRegistryTests {
     }
 
     @Test
+    fun shouldNotThrowWhenSendThrowsIOException() {
+        val userId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>()
+
+        every { friendService.getOnlineFriends(userId) } returns WsFriendSnapshot(friends = emptyList())
+        every { inviteService.getPendingInvites(userId) } returns emptyList()
+        every { objectMapper.writeValueAsString(any()) } returns "{}"
+        every { session.isOpen } returns true
+        every { session.sendMessage(any()) } throws java.io.IOException("disconnected")
+
+        assertDoesNotThrow { sessionRegistry.sendSnapshots(userId, session) }
+    }
+
+    @Test
+    fun shouldNotThrowWhenSnapshotFutureFails() {
+        val userId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>()
+
+        every { friendService.getOnlineFriends(userId) } throws RuntimeException("db pool exhausted")
+        every { inviteService.getPendingInvites(userId) } returns emptyList()
+        every { objectMapper.writeValueAsString(any()) } returns "{}"
+
+        assertDoesNotThrow { sessionRegistry.sendSnapshots(userId, session) }
+        verify(exactly = 0) { session.sendMessage(any()) }
+    }
+
+    @Test
     fun shouldNotifyFriendsAndRoomsOnlineWhenFirstSessionRegistered() {
         val userId = UUID.randomUUID()
         val session = mockk<WebSocketSession>()
