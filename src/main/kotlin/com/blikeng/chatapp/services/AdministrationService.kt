@@ -16,10 +16,13 @@ import com.blikeng.chatapp.errors.InvalidUserException
 import com.blikeng.chatapp.errors.NotBannedException
 import com.blikeng.chatapp.errors.NotPermittedException
 import com.blikeng.chatapp.errors.UserNotFoundException
+import com.blikeng.chatapp.events.UserBannedEvent
+import com.blikeng.chatapp.events.UserRoleChangedEvent
 import com.blikeng.chatapp.repositories.UserBanRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.security.UserRole
 import com.blikeng.chatapp.security.auth.getId
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -28,7 +31,8 @@ import java.util.*
 @Service
 class AdministrationService(
     val userRepository: UserRepository,
-    val userBanRepository: UserBanRepository
+    val userBanRepository: UserBanRepository,
+    val eventPublisher: ApplicationEventPublisher
 ) {
     fun getElevatedUsers(): List<ElevatedUserDTO> {
         return userRepository.findAllByRoleNot(UserRole.USER).map { user ->
@@ -85,9 +89,15 @@ class AdministrationService(
 
         userRepository.save(target)
 
-        // TODO: send notification to target
+        eventPublisher.publishEvent(UserRoleChangedEvent(
+            userId = targetId,
+            byUsername = user.username,
+            newRole = newRole,
+            action = userRoleDTO.action,
+        ))
     }
 
+    @Transactional
     fun banUser(banUserDTO: BanUserDTO) {
         val user = userRepository.findById(getId()).orElseThrow { InvalidUserException() }
         val targetId = try {
@@ -110,6 +120,12 @@ class AdministrationService(
         )
 
         userBanRepository.save(ban)
+
+        eventPublisher.publishEvent(UserBannedEvent(
+            userId = targetId,
+            byUsername = user.username,
+            reason = banUserDTO.reason ?: "No reason provided"
+        ))
     }
 
     fun unbanUser(userIdDTO: UserIdDTO) {

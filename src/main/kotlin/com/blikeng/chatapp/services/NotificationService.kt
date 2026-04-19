@@ -1,6 +1,7 @@
 package com.blikeng.chatapp.services
 
 import com.blikeng.chatapp.dtos.room.RoomAction
+import com.blikeng.chatapp.dtos.websocket.WsBannedEvent
 import com.blikeng.chatapp.dtos.websocket.WsChat
 import com.blikeng.chatapp.dtos.websocket.WsFriendAdded
 import com.blikeng.chatapp.dtos.websocket.WsFriendPresence
@@ -9,12 +10,15 @@ import com.blikeng.chatapp.dtos.websocket.WsInviteReceived
 import com.blikeng.chatapp.dtos.websocket.WsRoomAction
 import com.blikeng.chatapp.dtos.websocket.WsRoomDeleted
 import com.blikeng.chatapp.dtos.websocket.WsRoomPresence
+import com.blikeng.chatapp.dtos.websocket.WsUserRoleChanged
 import com.blikeng.chatapp.entities.InviteType
 import com.blikeng.chatapp.events.InviteAcceptedEvent
 import com.blikeng.chatapp.events.InviteSentEvent
 import com.blikeng.chatapp.events.RoomDeletedEvent
+import com.blikeng.chatapp.events.UserBannedEvent
 import com.blikeng.chatapp.events.UserJoinedRoomEvent
 import com.blikeng.chatapp.events.UserRemovedEvent
+import com.blikeng.chatapp.events.UserRoleChangedEvent
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.messaging.redis.PresenceKeys
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -115,5 +119,27 @@ class NotificationService(
         event.memberIds.forEach { memberId ->
             redisTemplate.convertAndSend(PresenceKeys.userChannel(memberId), payload)
         }
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    fun onUserRoleChanges(event: UserRoleChangedEvent) {
+        val payload = objectMapper.writeValueAsString(WsUserRoleChanged(
+            userId = event.userId,
+            byUsername = event.byUsername,
+            newRole = event.newRole,
+            action = event.action
+        ))
+
+        redisTemplate.convertAndSend(PresenceKeys.userChannel(event.userId), payload)
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    fun onUserBanned(event: UserBannedEvent){
+        val payload = objectMapper.writeValueAsString(WsBannedEvent(
+            byUsername = event.byUsername,
+            reason = event.reason,
+        ))
+
+        redisTemplate.convertAndSend(PresenceKeys.userChannel(event.userId), payload)
     }
 }
