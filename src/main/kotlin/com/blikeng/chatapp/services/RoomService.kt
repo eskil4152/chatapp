@@ -76,7 +76,7 @@ class RoomService(
         val userId = getId()
         val key = "user:$userId:rooms"
 
-        val cached = redisTemplate.opsForValue().get(key)
+        val cached = redisTemplate.opsForValue()[key]
         if (cached != null) return objectMapper.readValue(cached, roomListType)
 
         val joinedRooms = roomRepository.findRoomsForUser(userId)

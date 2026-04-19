@@ -123,8 +123,8 @@ class AdministrationService(
         val ban = userBanRepository.findById(targetId).orElseThrow { NotBannedException() }
         val banner = userRepository.findById(ban.bannedBy).orElse(null)
 
-        if (banner != null) {
-            if (!checkRequiredRole(banner.role, user.role)) throw InvalidUnbanException()
+        if (banner != null && !checkRequiredRole(banner.role, user.role)) {
+            throw InvalidUnbanException()
         }
 
         userBanRepository.delete(ban)

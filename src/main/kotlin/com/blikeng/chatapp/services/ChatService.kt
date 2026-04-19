@@ -111,7 +111,7 @@ class ChatService (
     }
 
     fun notifyRoomPresence(userId: UUID, online: Boolean) {
-        val cached = redisTemplate.opsForValue().get("user:$userId:rooms")
+        val cached = redisTemplate.opsForValue()["user:$userId:rooms"]
         val roomIds = if (cached != null) {
             objectMapper.readValue(cached, roomListType).map { UUID.fromString(it.roomId) }
         } else {
