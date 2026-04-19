@@ -21,6 +21,7 @@ import com.blikeng.chatapp.events.UserRemovedEvent
 import com.blikeng.chatapp.events.UserRoleChangedEvent
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.messaging.redis.PresenceKeys
+import com.blikeng.chatapp.websocket.SessionRegistry
 import com.fasterxml.jackson.databind.ObjectMapper
 import java.time.Instant
 import org.springframework.data.redis.core.RedisTemplate
@@ -34,6 +35,8 @@ class NotificationService(
     private val redisTemplate: RedisTemplate<String, String>,
     private val objectMapper: ObjectMapper,
     private val presenceHandler: PresenceHandler,
+    private val userRevocationService: UserRevocationService,
+    private val sessionRegistry: SessionRegistry,
 ) {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     fun onInviteSent(event: InviteSentEvent) {
@@ -141,5 +144,7 @@ class NotificationService(
         ))
 
         redisTemplate.convertAndSend(PresenceKeys.userChannel(event.userId), payload)
+        userRevocationService.revokeBanned(event.userId)
+        sessionRegistry.closeUserSessions(event.userId)
     }
 }

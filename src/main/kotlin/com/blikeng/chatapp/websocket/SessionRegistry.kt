@@ -99,4 +99,12 @@ class SessionRegistry(
     }
 
     fun getSessionById(sessionId: String): WebSocketSession? = sessionIndex[sessionId]
+
+    fun closeUserSessions(userId: UUID) {
+        users[userId]?.forEach { session ->
+            if (session.isOpen) {
+                try { session.close() } catch (_: IOException) {}
+            }
+        }
+    }
 }

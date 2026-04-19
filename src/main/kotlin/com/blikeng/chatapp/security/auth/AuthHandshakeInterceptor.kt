@@ -34,7 +34,7 @@ class AuthHandshakeInterceptor(
 
         val (username, id) = jwtService.validateToken(token.value) ?: return false
 
-        if (userRevocationService.isRevoked(id)) return false
+        if (userRevocationService.isRevoked(id) || userRevocationService.isBanned(id)) return false
 
         attributes["userId"] = id
         attributes["username"] = username

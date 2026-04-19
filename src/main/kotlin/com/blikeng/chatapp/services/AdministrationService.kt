@@ -32,7 +32,8 @@ import java.util.*
 class AdministrationService(
     val userRepository: UserRepository,
     val userBanRepository: UserBanRepository,
-    val eventPublisher: ApplicationEventPublisher
+    val eventPublisher: ApplicationEventPublisher,
+    val userRevocationService: UserRevocationService,
 ) {
     fun getElevatedUsers(): List<ElevatedUserDTO> {
         return userRepository.findAllByRoleNot(UserRole.USER).map { user ->
@@ -144,6 +145,7 @@ class AdministrationService(
         }
 
         userBanRepository.delete(ban)
+        userRevocationService.unRevokeBanned(targetId)
     }
 
     fun getAllUserBans(page: Int, size: Int): List<BannedUserDTO> {
