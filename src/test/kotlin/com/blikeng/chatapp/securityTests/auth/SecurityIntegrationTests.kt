@@ -9,7 +9,7 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
-import kotlin.test.Test
+import org.junit.jupiter.api.Test
 
 @SpringBootTest
 @AutoConfigureMockMvc

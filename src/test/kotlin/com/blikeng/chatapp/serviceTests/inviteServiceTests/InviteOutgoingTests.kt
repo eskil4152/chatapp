@@ -34,9 +34,9 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder
 import java.time.Instant
 import java.util.*
-import kotlin.test.assertFailsWith
-import kotlin.test.assertEquals
-import kotlin.test.assertIs
+import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 
 @ExtendWith(MockKExtension::class)
 class InviteOutgoingTests {
@@ -96,7 +96,7 @@ class InviteOutgoingTests {
         val result = inviteService.getOutgoingInvites()
 
         assertEquals(1, result.size)
-        assertIs<OutgoingFriendRequestDTO>(result[0])
+        assertInstanceOf(OutgoingFriendRequestDTO::class.java, result[0])
         assertEquals(user2.id, (result[0] as OutgoingFriendRequestDTO).toUserId)
         assertEquals(user2.username, (result[0] as OutgoingFriendRequestDTO).toUsername)
     }
@@ -119,7 +119,7 @@ class InviteOutgoingTests {
         val result = inviteService.getOutgoingInvites()
 
         assertEquals(1, result.size)
-        assertIs<OutgoingRoomInviteDTO>(result[0])
+        assertInstanceOf(OutgoingRoomInviteDTO::class.java, result[0])
         assertEquals(roomId, (result[0] as OutgoingRoomInviteDTO).roomId)
         assertEquals(user2.username, (result[0] as OutgoingRoomInviteDTO).toUsername)
     }
@@ -142,7 +142,7 @@ class InviteOutgoingTests {
         val result = inviteService.getOutgoingInvites()
 
         assertEquals(1, result.size)
-        assertIs<OutgoingOpenRoomInviteDTO>(result[0])
+        assertInstanceOf(OutgoingOpenRoomInviteDTO::class.java, result[0])
         assertEquals(roomId, (result[0] as OutgoingOpenRoomInviteDTO).roomId)
         assertEquals(3, (result[0] as OutgoingOpenRoomInviteDTO).usages)
         assertEquals(10, (result[0] as OutgoingOpenRoomInviteDTO).maxUsages)
@@ -172,7 +172,7 @@ class InviteOutgoingTests {
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findByFromUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns listOf(invite)
 
-        val ex = assertFailsWith<ApiException> { inviteService.getOutgoingInvites() }
+        val ex = assertThrows<ApiException> { inviteService.getOutgoingInvites() }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
 
@@ -190,7 +190,7 @@ class InviteOutgoingTests {
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findByFromUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns listOf(invite)
 
-        val ex = assertFailsWith<ApiException> { inviteService.getOutgoingInvites() }
+        val ex = assertThrows<ApiException> { inviteService.getOutgoingInvites() }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
 
@@ -209,7 +209,7 @@ class InviteOutgoingTests {
         every { inviteRepository.findByFromUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns listOf(invite)
         every { userRepository.findById(user2.id) } returns Optional.of(user2)
 
-        val ex = assertFailsWith<ApiException> { inviteService.getOutgoingInvites() }
+        val ex = assertThrows<ApiException> { inviteService.getOutgoingInvites() }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
 
@@ -228,7 +228,7 @@ class InviteOutgoingTests {
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findByFromUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns listOf(invite)
 
-        val ex = assertFailsWith<ApiException> { inviteService.getOutgoingInvites() }
+        val ex = assertThrows<ApiException> { inviteService.getOutgoingInvites() }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
 
@@ -246,7 +246,7 @@ class InviteOutgoingTests {
         every { inviteRepository.findByFromUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns listOf(invite)
         every { userRepository.findById(user2.id) } returns Optional.empty()
 
-        val ex = assertFailsWith<ApiException> { inviteService.getOutgoingInvites() }
+        val ex = assertThrows<ApiException> { inviteService.getOutgoingInvites() }
         assertEquals(HttpStatus.NOT_FOUND, ex.status)
     }
 
@@ -265,7 +265,7 @@ class InviteOutgoingTests {
         every { inviteRepository.findByFromUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns listOf(invite)
         every { userRepository.findById(user2.id) } returns Optional.empty()
 
-        val ex = assertFailsWith<ApiException> { inviteService.getOutgoingInvites() }
+        val ex = assertThrows<ApiException> { inviteService.getOutgoingInvites() }
         assertEquals(HttpStatus.NOT_FOUND, ex.status)
     }
 
@@ -284,7 +284,7 @@ class InviteOutgoingTests {
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findByFromUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns listOf(invite)
 
-        val ex = assertFailsWith<ApiException> { inviteService.getOutgoingInvites() }
+        val ex = assertThrows<ApiException> { inviteService.getOutgoingInvites() }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
 
@@ -303,7 +303,7 @@ class InviteOutgoingTests {
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findByFromUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns listOf(invite)
 
-        val ex = assertFailsWith<ApiException> { inviteService.getOutgoingInvites() }
+        val ex = assertThrows<ApiException> { inviteService.getOutgoingInvites() }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
 }

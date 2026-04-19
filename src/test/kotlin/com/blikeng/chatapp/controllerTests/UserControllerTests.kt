@@ -20,7 +20,7 @@ import org.springframework.test.web.servlet.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import java.time.Instant
 import java.util.UUID
-import kotlin.test.Test
+import org.junit.jupiter.api.Test
 
 @WebMvcTest(
     controllers = [UserController::class],

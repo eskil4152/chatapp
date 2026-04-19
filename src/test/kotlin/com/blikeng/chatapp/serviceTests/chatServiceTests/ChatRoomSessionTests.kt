@@ -37,7 +37,7 @@ import org.springframework.web.socket.WebSocketSession
 import java.util.*
 import java.util.Collections.emptyList
 import java.util.concurrent.CopyOnWriteArraySet
-import kotlin.test.assertFailsWith
+import org.junit.jupiter.api.assertThrows
 
 @ExtendWith(MockKExtension::class)
 class ChatRoomSessionTests {
@@ -233,7 +233,7 @@ class ChatRoomSessionTests {
         val session = mockk<WebSocketSession>()
         every { session.attributes } returns emptyMap()
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             chatService.joinRoom(UUID.randomUUID(), session)
         }
 
@@ -247,7 +247,7 @@ class ChatRoomSessionTests {
         every { session.attributes } returns hashMapOf("userId" to UUID.randomUUID())
         every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } answers { null }
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             chatService.joinRoom(UUID.randomUUID(), session)
         }
 
@@ -262,7 +262,7 @@ class ChatRoomSessionTests {
         every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
         every { roomRepository.findById(any()) } returns Optional.empty()
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             chatService.joinRoom(UUID.randomUUID(), session)
         }
 

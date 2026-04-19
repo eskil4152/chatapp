@@ -36,8 +36,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder
 import java.time.Instant
 import java.util.*
-import kotlin.test.assertFailsWith
-import kotlin.test.assertEquals
+import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.api.Assertions.assertEquals
 
 @ExtendWith(MockKExtension::class)
 class InviteResponseTests {
@@ -121,7 +121,7 @@ class InviteResponseTests {
         every { userService.getUserById(user2.id) } returns null
         every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
 
-        val ex = assertFailsWith<ApiException> {
+        val ex = assertThrows<ApiException> {
             inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
         }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
@@ -148,7 +148,7 @@ class InviteResponseTests {
         every { userService.getUserById(user2.id) } returns user2
         every { inviteRepository.findById(wrongInvite.id) } returns Optional.of(wrongInvite)
 
-        val ex = assertFailsWith<ApiException> {
+        val ex = assertThrows<ApiException> {
             inviteService.respondToRequest(InviteResponseDTO(inviteId = wrongInvite.id.toString(), response = InviteResponse.ACCEPTED))
         }
         assertEquals(HttpStatus.NOT_FOUND, ex.status)
@@ -181,7 +181,7 @@ class InviteResponseTests {
         every { userService.getUserById(user2.id) } returns null
         every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
 
-        val ex = assertFailsWith<ApiException> {
+        val ex = assertThrows<ApiException> {
             inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
         }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
@@ -239,7 +239,7 @@ class InviteResponseTests {
         every { userService.getUserById(user2.id) } returns user2
         every { inviteRepository.findById(wrongInvite.id) } returns Optional.of(wrongInvite)
 
-        val ex = assertFailsWith<ApiException> {
+        val ex = assertThrows<ApiException> {
             inviteService.respondToRequest(InviteResponseDTO(inviteId = wrongInvite.id.toString(), response = InviteResponse.ACCEPTED))
         }
         assertEquals(HttpStatus.NOT_FOUND, ex.status)
@@ -264,7 +264,7 @@ class InviteResponseTests {
         every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(user1.id, roomId) } returns true
 
-        val ex = assertFailsWith<ApiException> {
+        val ex = assertThrows<ApiException> {
             inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
         }
         assertEquals(HttpStatus.CONFLICT, ex.status)
@@ -287,7 +287,7 @@ class InviteResponseTests {
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(user1.id, roomId) } returns false
         every { bannedUserService.isUserBanned(user1.id, roomId) } returns true
 
-        val ex = assertFailsWith<ApiException> {
+        val ex = assertThrows<ApiException> {
             inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
         }
         assertEquals(HttpStatus.FORBIDDEN, ex.status)
@@ -311,7 +311,7 @@ class InviteResponseTests {
         every { bannedUserService.isUserBanned(user1.id, roomId) } returns false
         every { inviteRepository.incrementUsagesIfAvailable(invite.id) } returns 0
 
-        val ex = assertFailsWith<ApiException> {
+        val ex = assertThrows<ApiException> {
             inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
         }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
@@ -332,7 +332,7 @@ class InviteResponseTests {
         every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
         every { userService.getUserById(user2.id) } returns user2
 
-        val ex = assertFailsWith<ApiException> {
+        val ex = assertThrows<ApiException> {
             inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
         }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
@@ -353,7 +353,7 @@ class InviteResponseTests {
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
 
-        val ex = assertFailsWith<ApiException> {
+        val ex = assertThrows<ApiException> {
             inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
         }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
@@ -379,7 +379,7 @@ class InviteResponseTests {
         every { inviteRepository.deleteByToUserIdAndRoomId(user1.id, roomId) } just Runs
         every { roomService.joinRoom(user1.id, roomId) } just Runs
 
-        val ex = assertFailsWith<ApiException> {
+        val ex = assertThrows<ApiException> {
             inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
         }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
@@ -484,7 +484,7 @@ class InviteResponseTests {
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
 
-        val ex = assertFailsWith<ApiException> {
+        val ex = assertThrows<ApiException> {
             inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
         }
         assertEquals(HttpStatus.NOT_FOUND, ex.status)
@@ -495,7 +495,7 @@ class InviteResponseTests {
         setAuth(user1.id)
         every { userService.getUserById(user1.id) } returns null
 
-        val ex = assertFailsWith<ApiException> {
+        val ex = assertThrows<ApiException> {
             inviteService.respondToRequest(InviteResponseDTO(inviteId = UUID.randomUUID().toString(), response = InviteResponse.ACCEPTED))
         }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
@@ -508,7 +508,7 @@ class InviteResponseTests {
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findById(id) } returns Optional.empty()
 
-        val ex = assertFailsWith<ApiException> {
+        val ex = assertThrows<ApiException> {
             inviteService.respondToRequest(InviteResponseDTO(inviteId = id.toString(), response = InviteResponse.ACCEPTED))
         }
         assertEquals(HttpStatus.NOT_FOUND, ex.status)
@@ -528,7 +528,7 @@ class InviteResponseTests {
         every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
         every { inviteRepository.save(any()) } answers { firstArg() }
 
-        val ex = assertFailsWith<ApiException> {
+        val ex = assertThrows<ApiException> {
             inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
         }
         assertEquals(HttpStatus.NOT_FOUND, ex.status)
@@ -540,7 +540,7 @@ class InviteResponseTests {
         setAuth(user1.id)
         every { userService.getUserById(user1.id) } returns user1
 
-        val ex = assertFailsWith<ApiException> {
+        val ex = assertThrows<ApiException> {
             inviteService.respondToRequest(InviteResponseDTO(inviteId = "not-a-uuid", response = InviteResponse.ACCEPTED))
         }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)

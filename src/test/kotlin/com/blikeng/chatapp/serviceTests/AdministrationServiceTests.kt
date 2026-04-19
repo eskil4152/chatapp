@@ -25,9 +25,9 @@ import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
 import java.util.*
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.assertThrows
 
 @ExtendWith(MockKExtension::class)
 class AdministrationServiceTests {
@@ -91,7 +91,7 @@ class AdministrationServiceTests {
     fun shouldFailToGetUserWhenTargetNotFound() {
         every { userRepository.findByUsername(any()) } returns Optional.empty()
 
-        val exception = assertFailsWith<ApiException> { administrationService.getUser("alice") }
+        val exception = assertThrows<ApiException> { administrationService.getUser("alice") }
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
@@ -146,7 +146,7 @@ class AdministrationServiceTests {
         every { userRepository.findById(callerId) } returns Optional.of(caller)
         every { userRepository.findById(targetId) } returns Optional.of(target)
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             administrationService.changeUserRole(UserRoleDTO(id = targetId.toString(), action = RoleAction.DEMOTE))
         }
         assertEquals(HttpStatus.FORBIDDEN, exception.status)
@@ -164,7 +164,7 @@ class AdministrationServiceTests {
         every { userRepository.findById(callerId) } returns Optional.of(caller)
         every { userRepository.findById(targetId) } returns Optional.of(target)
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             administrationService.changeUserRole(UserRoleDTO(id = targetId.toString(), action = RoleAction.DEMOTE))
         }
         assertEquals(HttpStatus.FORBIDDEN, exception.status)
@@ -179,7 +179,7 @@ class AdministrationServiceTests {
             UserEntity(id = callerId, username = "admin", password = "", role = UserRole.ADMIN)
         )
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             administrationService.changeUserRole(UserRoleDTO(id = "not-a-uuid", action = RoleAction.PROMOTE))
         }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
@@ -196,7 +196,7 @@ class AdministrationServiceTests {
         )
         every { userRepository.findById(targetId) } returns Optional.empty()
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             administrationService.changeUserRole(UserRoleDTO(id = targetId.toString(), action = RoleAction.PROMOTE))
         }
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
@@ -209,7 +209,7 @@ class AdministrationServiceTests {
 
         every { userRepository.findById(callerId) } returns Optional.empty()
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             administrationService.changeUserRole(UserRoleDTO(id = UUID.randomUUID().toString(), action = RoleAction.PROMOTE))
         }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
@@ -252,7 +252,7 @@ class AdministrationServiceTests {
         every { userRepository.findById(targetId) } returns Optional.of(target)
         every { userBanRepository.existsById(targetId) } returns true
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             administrationService.banUser(BanUserDTO(id = targetId.toString()))
         }
         assertEquals(HttpStatus.CONFLICT, exception.status)
@@ -270,7 +270,7 @@ class AdministrationServiceTests {
         every { userRepository.findById(callerId) } returns Optional.of(caller)
         every { userRepository.findById(targetId) } returns Optional.of(target)
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             administrationService.banUser(BanUserDTO(id = targetId.toString()))
         }
         assertEquals(HttpStatus.FORBIDDEN, exception.status)
@@ -285,7 +285,7 @@ class AdministrationServiceTests {
             UserEntity(id = callerId, username = "admin", password = "", role = UserRole.ADMIN)
         )
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             administrationService.banUser(BanUserDTO(id = "not-a-uuid"))
         }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
@@ -302,7 +302,7 @@ class AdministrationServiceTests {
         )
         every { userRepository.findById(targetId) } returns Optional.empty()
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             administrationService.banUser(BanUserDTO(id = targetId.toString()))
         }
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
@@ -315,7 +315,7 @@ class AdministrationServiceTests {
 
         every { userRepository.findById(callerId) } returns Optional.empty()
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             administrationService.banUser(BanUserDTO(id = UUID.randomUUID().toString()))
         }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
@@ -376,7 +376,7 @@ class AdministrationServiceTests {
         )
         every { userBanRepository.findById(targetId) } returns Optional.empty()
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             administrationService.unbanUser(UserIdDTO(userId = targetId.toString()))
         }
         assertEquals(HttpStatus.FORBIDDEN, exception.status)
@@ -397,7 +397,7 @@ class AdministrationServiceTests {
         every { userBanRepository.findById(targetId) } returns Optional.of(ban)
         every { userRepository.findById(bannerId) } returns Optional.of(banner)
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             administrationService.unbanUser(UserIdDTO(userId = targetId.toString()))
         }
         assertEquals(HttpStatus.FORBIDDEN, exception.status)
@@ -412,7 +412,7 @@ class AdministrationServiceTests {
             UserEntity(id = callerId, username = "admin", password = "", role = UserRole.ADMIN)
         )
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             administrationService.unbanUser(UserIdDTO(userId = "not-a-uuid"))
         }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
@@ -425,7 +425,7 @@ class AdministrationServiceTests {
 
         every { userRepository.findById(callerId) } returns Optional.empty()
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             administrationService.unbanUser(UserIdDTO(userId = UUID.randomUUID().toString()))
         }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
@@ -483,7 +483,7 @@ class AdministrationServiceTests {
         val callerId = UUID.randomUUID()
         authenticateAs(callerId)
 
-        val exception = assertFailsWith<ApiException> { administrationService.getAllUserBans(0, 10) }
+        val exception = assertThrows<ApiException> { administrationService.getAllUserBans(0, 10) }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
@@ -492,7 +492,7 @@ class AdministrationServiceTests {
         val callerId = UUID.randomUUID()
         authenticateAs(callerId)
 
-        val exception = assertFailsWith<ApiException> { administrationService.getAllUserBans(-1, 25) }
+        val exception = assertThrows<ApiException> { administrationService.getAllUserBans(-1, 25) }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 

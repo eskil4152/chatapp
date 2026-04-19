@@ -31,7 +31,7 @@ import org.springframework.security.core.context.SecurityContextHolder
 import com.blikeng.chatapp.dtos.UserIdDTO
 import java.util.*
 import java.util.Optional
-import kotlin.test.assertFailsWith
+import org.junit.jupiter.api.assertThrows
 
 @ExtendWith(MockKExtension::class)
 class FriendMutationTests {
@@ -131,7 +131,7 @@ class FriendMutationTests {
     fun shouldFailToAddFriendsWithInvalidUser() {
         every { userService.getUserById(user1.id) } returns null
 
-        val exception = assertFailsWith<ApiException> { friendService.addFriend(user1.id, user2.id) }
+        val exception = assertThrows<ApiException> { friendService.addFriend(user1.id, user2.id) }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
@@ -140,13 +140,13 @@ class FriendMutationTests {
         every { userService.getUserById(user1.id) } returns user1
         every { userService.getUserById(user2.id) } returns null
 
-        val exception = assertFailsWith<ApiException> { friendService.addFriend(user1.id, user2.id) }
+        val exception = assertThrows<ApiException> { friendService.addFriend(user1.id, user2.id) }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
     @Test
     fun shouldFailToAddYourselfAsFriend() {
-        val exception = assertFailsWith<ApiException> { friendService.addFriend(user1.id, user1.id) }
+        val exception = assertThrows<ApiException> { friendService.addFriend(user1.id, user1.id) }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
@@ -202,7 +202,7 @@ class FriendMutationTests {
         every { userService.getUserById(user1.id) } returns user1
         every { userRepository.findById(user2.id) } returns Optional.empty()
 
-        val exception = assertFailsWith<ApiException> { friendService.removeFriend(UserIdDTO(user2.id.toString())) }
+        val exception = assertThrows<ApiException> { friendService.removeFriend(UserIdDTO(user2.id.toString())) }
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
@@ -215,7 +215,7 @@ class FriendMutationTests {
         every { userRepository.findById(user2.id) } returns Optional.of(user2)
         every { friendsRepository.existsById(any()) } returns false
 
-        val exception = assertFailsWith<ApiException> { friendService.removeFriend(UserIdDTO(user2.id.toString())) }
+        val exception = assertThrows<ApiException> { friendService.removeFriend(UserIdDTO(user2.id.toString())) }
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
@@ -226,7 +226,7 @@ class FriendMutationTests {
 
         every { userService.getUserById(user1.id) } returns user1
 
-        val exception = assertFailsWith<ApiException> { friendService.removeFriend(UserIdDTO("not-a-uuid")) }
+        val exception = assertThrows<ApiException> { friendService.removeFriend(UserIdDTO("not-a-uuid")) }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 }

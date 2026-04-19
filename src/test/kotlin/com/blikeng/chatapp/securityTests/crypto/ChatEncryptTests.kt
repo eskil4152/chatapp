@@ -3,10 +3,9 @@ package com.blikeng.chatapp.securityTests.crypto
 import com.blikeng.chatapp.config.configureAad
 import com.blikeng.chatapp.security.crypto.ChatEncrypt
 import java.util.*
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFails
-import kotlin.test.assertFailsWith
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.assertThrows
 
 class ChatEncryptTests {
     // ==========================
@@ -47,7 +46,7 @@ class ChatEncryptTests {
 
         val encrypted = encrypt.encrypt(plaintext, aad)
 
-        assertFails {
+        assertThrows<Exception> {
             encrypt.decrypt(encrypted.ciphertext, byteArrayOf(), aad)
         }
     }
@@ -61,7 +60,7 @@ class ChatEncryptTests {
 
         val encrypted = encrypt.encrypt(plaintext, aad1)
 
-        assertFails {
+        assertThrows<Exception> {
             encrypt.decrypt(encrypted.ciphertext, encrypted.nonce, aad2)
         }
     }
@@ -70,7 +69,7 @@ class ChatEncryptTests {
     fun shouldThrowOnInvalidBase64() {
         val keyB64 = "not base64"
 
-        assertFailsWith<IllegalArgumentException> {
+        assertThrows<IllegalArgumentException> {
             ChatEncrypt(keyB64)
         }
     }
@@ -80,7 +79,7 @@ class ChatEncryptTests {
         val raw16 = ByteArray(16) { 2 }
         val b64 = Base64.getEncoder().encodeToString(raw16)
 
-        assertFailsWith<IllegalArgumentException> {
+        assertThrows<IllegalArgumentException> {
             ChatEncrypt(b64)
         }
     }

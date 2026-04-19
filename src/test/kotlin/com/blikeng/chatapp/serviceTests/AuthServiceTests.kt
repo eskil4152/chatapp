@@ -13,9 +13,9 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.http.HttpStatus
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.assertThrows
 
 @ExtendWith(MockKExtension::class)
 class AuthServiceTests {
@@ -48,7 +48,7 @@ class AuthServiceTests {
     fun shouldNotRegisterUserWithExistingUsername() {
         every { authRepository.existsByUsernameIgnoreCase(any()) } returns true
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             authService.registerUser("existinguser", "password123")
         }
 
@@ -60,7 +60,7 @@ class AuthServiceTests {
     fun shouldNotRegisterUserWithTooShortUsername() {
         every { authRepository.existsByUsernameIgnoreCase(any()) } returns false
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             authService.registerUser("u", "password")
         }
 
@@ -72,7 +72,7 @@ class AuthServiceTests {
     fun shouldNotRegisterUserWithTooShortPassword() {
         every { authRepository.existsByUsernameIgnoreCase(any()) } returns false
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             authService.registerUser("username", "p")
         }
 
@@ -82,7 +82,7 @@ class AuthServiceTests {
 
     @Test
     fun shouldNotRegisterUserWithTooLongUsername() {
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             authService.registerUser("a".repeat(33), "password123")
         }
 
@@ -92,7 +92,7 @@ class AuthServiceTests {
 
     @Test
     fun shouldNotRegisterUserWithTooLongPassword() {
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             authService.registerUser("username", "p".repeat(129))
         }
 
@@ -125,7 +125,7 @@ class AuthServiceTests {
     fun shouldFailLoginOnNonExistingUser(){
         every { authRepository.findByUsernameIgnoreCase(any()) } returns null
 
-       val exception = assertFailsWith<ApiException> {
+       val exception = assertThrows<ApiException> {
            authService.loginUser("u", "p")
        }
 
@@ -138,7 +138,7 @@ class AuthServiceTests {
         every { authRepository.findByUsernameIgnoreCase(any()) } returns UserEntity(username = "u", password = "")
         every { passwordService.checkPassword("p", any()) } returns false
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             authService.loginUser("u", "p")
         }
 

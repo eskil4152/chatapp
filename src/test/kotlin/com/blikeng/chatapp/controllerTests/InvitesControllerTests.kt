@@ -26,7 +26,7 @@ import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import java.time.Instant
 import java.util.*
-import kotlin.test.Test
+import org.junit.jupiter.api.Test
 
 @WebMvcTest(
     controllers = [InvitesController::class],

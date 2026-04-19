@@ -5,7 +5,6 @@ import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.errors.InvalidCredentialsException
 import com.blikeng.chatapp.errors.UsernameAlreadyExistsException
 import com.blikeng.chatapp.security.auth.JwtAuthFilter
-import com.blikeng.chatapp.dtos.user.UserDTO
 import com.blikeng.chatapp.security.ratelimit.RateLimitService
 import com.blikeng.chatapp.services.AuthService
 import com.blikeng.chatapp.services.UserService
@@ -23,7 +22,7 @@ import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie
-import kotlin.test.Test
+import org.junit.jupiter.api.Test
 
 @WebMvcTest(
     controllers = [AuthController::class],

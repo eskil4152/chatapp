@@ -17,8 +17,8 @@ import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.WebSocketSession
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.test.assertFailsWith
-import kotlin.test.assertEquals
+import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.api.Assertions.assertEquals
 
 @ExtendWith(MockKExtension::class)
 class WebsocketLifecycleTests {
@@ -63,7 +63,7 @@ class WebsocketLifecycleTests {
     fun connectionEstablishedShouldFail() {
         every { session.attributes } returns mutableMapOf("username" to "u")
 
-        val exception = assertFailsWith<ResponseStatusException> {
+        val exception = assertThrows<ResponseStatusException> {
             handler.afterConnectionEstablished(session)
         }
 
@@ -96,7 +96,7 @@ class WebsocketLifecycleTests {
     fun connectionClosedShouldFail() {
         every { session.attributes } returns mutableMapOf("username" to "u")
 
-        val ex = assertFailsWith<ResponseStatusException> {
+        val ex = assertThrows<ResponseStatusException> {
             handler.afterConnectionClosed(session, CloseStatus.NORMAL)
         }
 

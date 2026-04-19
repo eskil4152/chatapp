@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.core.ValueOperations
-import kotlin.test.assertEquals
+import org.junit.jupiter.api.Assertions.assertEquals
 
 @ExtendWith(MockKExtension::class)
 class FriendPresenceTests {

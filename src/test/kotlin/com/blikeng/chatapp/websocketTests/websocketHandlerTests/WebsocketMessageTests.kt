@@ -19,7 +19,7 @@ import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import java.util.*
-import kotlin.test.assertEquals
+import org.junit.jupiter.api.Assertions.assertEquals
 
 @ExtendWith(MockKExtension::class)
 class WebsocketMessageTests {

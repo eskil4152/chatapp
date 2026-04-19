@@ -35,7 +35,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.web.socket.WebSocketSession
 import java.util.*
 import java.util.Collections.emptyList
-import kotlin.test.assertFailsWith
+import org.junit.jupiter.api.assertThrows
 
 @ExtendWith(MockKExtension::class)
 class ChatBroadcastTests {
@@ -76,7 +76,7 @@ class ChatBroadcastTests {
     fun shouldFailToSendMessageIfNotAMember() {
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns false
 
-        val ex = assertFailsWith<ApiException> {
+        val ex = assertThrows<ApiException> {
             chatService.broadcast(UUID.randomUUID(), ReceivedMessage(UUID.randomUUID(), UUID.randomUUID(), "hello", "MESSAGE"), "u")
         }
 
@@ -162,7 +162,7 @@ class ChatBroadcastTests {
 
         chatService.joinRoom(room.id, session)
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             chatService.broadcast(room.id, ReceivedMessage(room.id, user.id, "         ", "MESSAGE"), "u")
         }
 
@@ -186,7 +186,7 @@ class ChatBroadcastTests {
 
         chatService.joinRoom(room.id, session)
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             chatService.broadcast(room.id, ReceivedMessage(room.id, user.id, "a".repeat(10000), "MESSAGE"), "u")
         }
 
@@ -204,7 +204,7 @@ class ChatBroadcastTests {
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(userId, roomId) } returns true
         every { roomRepository.findById(roomId) } returns Optional.empty()
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             chatService.broadcast(roomId, ReceivedMessage(roomId, userId, "hello", "MESSAGE"), "u")
         }
 
