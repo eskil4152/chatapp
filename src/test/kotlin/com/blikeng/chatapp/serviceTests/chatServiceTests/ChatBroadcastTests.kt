@@ -226,7 +226,7 @@ class ChatBroadcastTests {
         every { session.attributes } returns hashMapOf("userId" to userId)
 
         chatService.joinRoom(roomId, session)
-        chatService.rooms.remove(roomId)
+        chatService.sessionsInRooms.remove(roomId)
 
         clearMocks(session)
 

@@ -6,7 +6,6 @@ import com.blikeng.chatapp.websocket.SessionRegistry
 import io.mockk.*
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
-import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit5.MockKExtension
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
@@ -50,7 +49,7 @@ class LocalBroadcasterTests {
         every { session2.isOpen } returns true
         every { session1.sendMessage(any()) } just Runs
         every { session2.sendMessage(any()) } just Runs
-        every { chatService.rooms } returns ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
+        every { chatService.sessionsInRooms } returns ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
             put(roomId, CopyOnWriteArraySet(listOf(session1, session2)))
         }
 
@@ -66,7 +65,7 @@ class LocalBroadcasterTests {
         val session = mockk<WebSocketSession>()
 
         every { session.isOpen } returns false
-        every { chatService.rooms } returns ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
+        every { chatService.sessionsInRooms } returns ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
             put(roomId, CopyOnWriteArraySet(listOf(session)))
         }
 
@@ -91,7 +90,7 @@ class LocalBroadcasterTests {
         val rooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
         rooms[roomId] = CopyOnWriteArraySet(listOf(session))
 
-        every { chatService.rooms } returns rooms
+        every { chatService.sessionsInRooms } returns rooms
         every { chatService.leaveRoom(any(), any()) } just Runs
 
         broadcaster.broadcastRaw(roomId, "hello")
@@ -105,7 +104,7 @@ class LocalBroadcasterTests {
 
         val rooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
 
-        every { chatService.rooms } returns rooms
+        every { chatService.sessionsInRooms } returns rooms
 
         assertDoesNotThrow {
             broadcaster.broadcastRaw(roomId, "hello")

@@ -32,7 +32,6 @@ import org.springframework.data.redis.core.ListOperations
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.core.ValueOperations
 import org.springframework.http.HttpStatus
-import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import java.util.*
 import java.util.Collections.emptyList
@@ -98,13 +97,13 @@ class ChatRoomSessionTests {
         chatService.joinRoom(roomId, session)
         chatService.joinRoom(roomId2, session)
 
-        assertEquals(chatService.rooms[roomId]?.first(), session)
-        assertEquals(chatService.rooms[roomId2]?.first(), session)
+        assertEquals(chatService.sessionsInRooms[roomId]?.first(), session)
+        assertEquals(chatService.sessionsInRooms[roomId2]?.first(), session)
 
         chatService.removeSessionFromRooms(session)
 
-        assertNull(chatService.rooms[roomId])
-        assertNull(chatService.rooms[roomId2])
+        assertNull(chatService.sessionsInRooms[roomId])
+        assertNull(chatService.sessionsInRooms[roomId2])
     }
 
     @Test
@@ -135,7 +134,7 @@ class ChatRoomSessionTests {
 
         chatService.removeSessionFromRooms(session)
 
-        assertNotNull(chatService.rooms[roomId])
+        assertNotNull(chatService.sessionsInRooms[roomId])
     }
 
     @Test
@@ -149,12 +148,12 @@ class ChatRoomSessionTests {
         every { session1.attributes } returns hashMapOf("userId" to userId)
         every { session2.attributes } returns hashMapOf("userId" to userId)
 
-        chatService.rooms[roomId] = mutableSetOf(session1, session2)
+        chatService.sessionsInRooms[roomId] = mutableSetOf(session1, session2)
 
         chatService.removeSessionFromRooms(session1)
 
-        assertNotNull(chatService.rooms[roomId])
-        assertTrue(chatService.rooms[roomId]?.contains(session2) == true)
+        assertNotNull(chatService.sessionsInRooms[roomId])
+        assertTrue(chatService.sessionsInRooms[roomId]?.contains(session2) == true)
     }
 
     // ==========================
@@ -177,7 +176,7 @@ class ChatRoomSessionTests {
 
         chatService.joinRoom(roomId, session)
 
-        assertEquals(session, chatService.rooms[roomId]?.first())
+        assertEquals(session, chatService.sessionsInRooms[roomId]?.first())
     }
 
     @Test
@@ -195,7 +194,7 @@ class ChatRoomSessionTests {
 
         chatService.joinRoom(roomId, session)
 
-        assertTrue(chatService.rooms[roomId]?.contains(session) == true)
+        assertTrue(chatService.sessionsInRooms[roomId]?.contains(session) == true)
         verify(exactly = 0) { session.sendMessage(any()) }
     }
 
@@ -291,10 +290,10 @@ class ChatRoomSessionTests {
         every { userService.getAllById(any()) } returns emptyList()
 
         chatService.joinRoom(roomId, session)
-        assertEquals(session, chatService.rooms[roomId]?.first())
+        assertEquals(session, chatService.sessionsInRooms[roomId]?.first())
 
         chatService.leaveRoom(roomId, session)
-        assertNull(chatService.rooms[roomId])
+        assertNull(chatService.sessionsInRooms[roomId])
     }
 
     @Test
@@ -309,7 +308,7 @@ class ChatRoomSessionTests {
         every { remainingSession.isOpen } returns false
         every { presenceHandler.isUserOnline(any()) } returns false
 
-        chatService.rooms[roomId] = CopyOnWriteArraySet(mutableSetOf(leavingSession, remainingSession))
+        chatService.sessionsInRooms[roomId] = CopyOnWriteArraySet(mutableSetOf(leavingSession, remainingSession))
 
         chatService.leaveRoom(roomId, leavingSession)
 
@@ -323,7 +322,7 @@ class ChatRoomSessionTests {
         val session = mockk<WebSocketSession>()
         every { session.attributes } returns hashMapOf("userId" to UUID.randomUUID())
 
-        assertNull(chatService.rooms[UUID.randomUUID()])
+        assertNull(chatService.sessionsInRooms[UUID.randomUUID()])
         chatService.leaveRoom(UUID.randomUUID(), session)
     }
 
@@ -333,7 +332,7 @@ class ChatRoomSessionTests {
         every { session.attributes } returns hashMapOf("userId" to "")
 
         chatService.leaveRoom(UUID.randomUUID(), session)
-        assertNull(chatService.rooms[UUID.randomUUID()])
+        assertNull(chatService.sessionsInRooms[UUID.randomUUID()])
     }
 
     @Test
@@ -361,13 +360,13 @@ class ChatRoomSessionTests {
         chatService.joinRoom(roomId, session1)
         chatService.joinRoom(roomId, session2)
 
-        assertEquals(2, chatService.rooms[roomId]?.size)
+        assertEquals(2, chatService.sessionsInRooms[roomId]?.size)
 
         chatService.leaveRoom(roomId, session1)
 
-        assertEquals(1, chatService.rooms[roomId]?.size)
-        assertFalse(chatService.rooms[roomId]?.contains(session1) == true)
-        assertTrue(chatService.rooms[roomId]?.contains(session2) == true)
+        assertEquals(1, chatService.sessionsInRooms[roomId]?.size)
+        assertFalse(chatService.sessionsInRooms[roomId]?.contains(session1) == true)
+        assertTrue(chatService.sessionsInRooms[roomId]?.contains(session2) == true)
     }
 
     @Test
@@ -384,13 +383,13 @@ class ChatRoomSessionTests {
         every { invalidSession.isOpen } returns true
         every { invalidSession.sendMessage(any()) } just Runs
 
-        chatService.rooms[roomId] = CopyOnWriteArraySet(mutableSetOf(leavingSession, invalidSession))
+        chatService.sessionsInRooms[roomId] = CopyOnWriteArraySet(mutableSetOf(leavingSession, invalidSession))
 
         chatService.leaveRoom(roomId, leavingSession)
 
-        assertNotNull(chatService.rooms[roomId])
-        assertEquals(1, chatService.rooms[roomId]?.size)
-        assertTrue(chatService.rooms[roomId]?.contains(invalidSession) == true)
+        assertNotNull(chatService.sessionsInRooms[roomId])
+        assertEquals(1, chatService.sessionsInRooms[roomId]?.size)
+        assertTrue(chatService.sessionsInRooms[roomId]?.contains(invalidSession) == true)
     }
 
     // ==========================

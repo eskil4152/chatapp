@@ -91,7 +91,7 @@ class NotificationService(
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     fun onUserJoinedRoom(event: UserJoinedRoomEvent) {
         val payload = objectMapper.writeValueAsString(
-            WsChat(type = "JOIN", username = event.username, content = "", timestamp = Instant.now())
+            WsChat(type = "JOIN", username = event.username, content = "", userId = event.userId, timestamp = Instant.now())
         )
         redisTemplate.convertAndSend(PresenceKeys.roomChannel(event.roomId), payload)
 

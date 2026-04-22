@@ -15,6 +15,7 @@ import com.blikeng.chatapp.events.RoomDeletedEvent
 import com.blikeng.chatapp.events.UserJoinedRoomEvent
 import com.blikeng.chatapp.events.UserRemovedEvent
 
+import com.blikeng.chatapp.messaging.redis.PresenceKeys
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.auth.getId
@@ -49,6 +50,9 @@ class RoomService(
 
     private fun bustRoomsCache(vararg userIds: UUID) =
         userIds.forEach { redisTemplate.delete("user:$it:rooms") }
+
+    private fun bustRoomMembersCache(roomId: UUID) =
+        redisTemplate.delete(PresenceKeys.roomMembersKey(roomId))
     // ==========================
     // Room creation and retrieval
     // ==========================
@@ -138,6 +142,7 @@ class RoomService(
         val userRoom = UserRoomEntity(UserRoomId(id, roomId), RoomRole.MEMBER, RoomType.GROUP)
         userRoomRepository.save(userRoom)
         bustRoomsCache(id)
+        bustRoomMembersCache(roomId)
         eventPublisher.publishEvent(UserJoinedRoomEvent(userId = id, username = user.username, roomId = roomId))
     }
 
@@ -158,6 +163,7 @@ class RoomService(
 
         userRoomRepository.deleteByIdUserIdAndIdRoomId(userId, roomUUID)
         bustRoomsCache(userId)
+        bustRoomMembersCache(roomUUID)
     }
 
     // ==========================
@@ -211,6 +217,7 @@ class RoomService(
         val room = roomRepository.findById(roomUUID).orElseThrow { RoomNotFoundException() }
         roomRepository.delete(room)
         bustRoomsCache(*memberIds.toTypedArray())
+        bustRoomMembersCache(roomUUID)
 
         eventPublisher.publishEvent(RoomDeletedEvent(roomUUID, room.name, memberIds))
     }
@@ -268,6 +275,7 @@ class RoomService(
 
         userRoomRepository.deleteByIdUserIdAndIdRoomId(targetId, roomId)
         bustRoomsCache(targetId)
+        bustRoomMembersCache(roomId)
 
         if (action == RoomAction.BAN) bannedUserService.banUser(targetId, roomId)
 

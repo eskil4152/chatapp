@@ -9,4 +9,5 @@ object PresenceKeys {
     fun userPresence(userId: UUID): String = "presence:user:$userId"
     fun userChannel(userId: UUID): String = "user:$userId"
     fun roomChannel(roomId: UUID): String = "room:$roomId"
+    fun roomMembersKey(roomId: UUID): String = "room:$roomId:members"
 }
