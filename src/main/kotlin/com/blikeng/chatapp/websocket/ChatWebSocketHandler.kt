@@ -73,6 +73,9 @@ class ChatWebSocketHandler(
                     session.sendMessage(TextMessage("pong"))
                 }
                 MessageType.SYNC -> sessionRegistry.sendSnapshots(getUserId(session), session)
+                MessageType.TYPING -> {
+                    handleTyping(session, json)
+                }
             }
         } catch (e: Exception) {
             sendWsError(session, e)
@@ -80,7 +83,7 @@ class ChatWebSocketHandler(
     }
 
     enum class MessageType {
-        MESSAGE, JOIN, LEAVE, PING, SYNC
+        MESSAGE, JOIN, LEAVE, PING, SYNC, TYPING
     }
 
     // ==========================
@@ -129,7 +132,7 @@ class ChatWebSocketHandler(
         chatService.joinRoom(roomId, session)
 
         val message = ReceivedMessage(roomId, userId, "$username joined the room", "JOIN")
-        chatService.broadcast(roomId, message, username)
+        chatService.broadcast(roomId, userId, message, username)
     }
 
     private fun handleChatMessage(session: WebSocketSession, json: JsonNode) {
@@ -150,7 +153,7 @@ class ChatWebSocketHandler(
         )
 
         if (!checkRateLimit(userId, session)) return
-        chatService.broadcast(roomId, message, username)
+        chatService.broadcast(roomId, userId, message, username)
     }
 
     private fun handleLeave(session: WebSocketSession, json: JsonNode) {
@@ -161,7 +164,15 @@ class ChatWebSocketHandler(
         lastPing.remove(session.id)
         chatService.leaveRoom(roomId, session)
         val message = ReceivedMessage(roomId, userId, "$username left the room", "LEAVE")
-        chatService.broadcast(roomId, message, username)
+        chatService.broadcast(roomId, userId, message, username)
+    }
+
+    private fun handleTyping(session: WebSocketSession, json: JsonNode) {
+        val roomId = getRoomId(json)
+        val userId = getUserId(session)
+        val username = getUsername(session)
+
+        chatService.notifyTyping(roomId, userId, username)
     }
 
     private fun parseMessageType(json: JsonNode): MessageType {

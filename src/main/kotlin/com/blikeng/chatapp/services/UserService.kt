@@ -1,5 +1,6 @@
 package com.blikeng.chatapp.services
 
+import com.blikeng.chatapp.dtos.auth.AuthDTO
 import com.blikeng.chatapp.dtos.user.ChangeUserDTO
 import com.blikeng.chatapp.dtos.user.EditPasswordDTO
 import com.blikeng.chatapp.dtos.user.UserDTO
@@ -15,6 +16,7 @@ import com.blikeng.chatapp.security.auth.PasswordService
 import com.blikeng.chatapp.security.auth.getId
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import tools.jackson.databind.ObjectMapper
 import java.util.*
 
 
@@ -28,6 +30,7 @@ class UserService(
     private val passwordService: PasswordService,
     private val roomRepository: RoomRepository,
     private val userRevocationService: UserRevocationService,
+    private val objectMapper: ObjectMapper,
 ) {
     fun getUserById(id: UUID): UserEntity? {
         return userRepository.findById(id).orElse(null)
@@ -50,11 +53,15 @@ class UserService(
         )
     }
 
-    fun getRole(): UserRole {
+    fun authenticate(): AuthDTO {
         val id = getId()
         val user = getUserById(id) ?: throw InvalidUserException()
 
-        return user.role
+        return AuthDTO(
+            userId = id,
+            username = user.username,
+            userRole = user.role,
+        )
     }
 
     @Transactional

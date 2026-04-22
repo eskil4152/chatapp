@@ -20,6 +20,7 @@ import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.crypto.ChatEncrypt
 import com.blikeng.chatapp.dtos.room.RoomDTO
+import com.blikeng.chatapp.dtos.websocket.WsTyping
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.micrometer.core.instrument.Gauge
@@ -130,7 +131,7 @@ class ChatService (
     // ==========================
     // Message publishing and fetching
     // ==========================
-    fun broadcast(roomId: UUID, message: ReceivedMessage, username: String) {
+    fun broadcast(roomId: UUID, userId: UUID, message: ReceivedMessage, username: String) {
         val timestamp = Instant.now()
         if (!userRoomRepository.existsByIdUserIdAndIdRoomId(message.userId, roomId)) throw RoomNotFoundException()
 
@@ -139,9 +140,9 @@ class ChatService (
         if (message.type == "MESSAGE") addMessage(message, username)
 
         val sendMessage = if (message.type == "MESSAGE") {
-            WsChat(content = message.content, username = username, type = message.type, timestamp = timestamp)
+            WsChat(content = message.content, userId = userId, username = username, type = message.type, timestamp = timestamp)
         } else {
-            WsChat(content = message.content, username = "Server", type = message.type, timestamp = timestamp)
+            WsChat(content = message.content, userId = null, username = "Server", type = message.type, timestamp = timestamp)
         }
 
         val json = objectMapper.writeValueAsString(sendMessage)
@@ -232,6 +233,18 @@ class ChatService (
             .distinctBy { it.id }
             .sortedBy { it.timestamp }
             .takeLast(size)
+    }
+
+    fun notifyTyping(roomId: UUID, userId: UUID, username: String) {
+        val payload = objectMapper.writeValueAsString(
+            WsTyping(
+                userId = userId,
+                roomId = roomId,
+                username = username
+            )
+        )
+
+        redisTemplate.convertAndSend("room:$roomId", payload)
     }
 
     private fun toSendMessageDTO(message: ChatEntity, encrypted: Boolean): SendMessageDTO {
