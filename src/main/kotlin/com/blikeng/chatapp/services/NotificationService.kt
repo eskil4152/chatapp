@@ -93,50 +93,26 @@ class NotificationService(
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    fun onUserJoinedRoom(event: UserJoinedRoomEvent) {
-        val payload = objectMapper.writeValueAsString(
-            WsChat(type = "JOIN", username = "Server", content = "${event.username} joined the room!", userId = event.userId, timestamp = Instant.now())
-        )
-        redisTemplate.convertAndSend(PresenceKeys.roomChannel(event.roomId), payload)
-
-        val presencePayload = objectMapper.writeValueAsString(
-            WsRoomPresence(roomId = event.roomId, userId = event.userId, online = presenceHandler.isUserOnline(event.userId))
-        )
-        redisTemplate.convertAndSend(PresenceKeys.roomChannel(event.roomId), presencePayload)
-
-        val rabbitMessage = RabbitMessageDTO(
-            id = UUID.randomUUID(),
-            username = "Server",
-            roomId = event.roomId,
-            userId = event.userId,
-            message = "${event.username} joined the room!"
-        )
-        val rabbitJson = objectMapper.writeValueAsString(rabbitMessage)
-        redisTemplate.opsForList().rightPush("chat.peek.${event.roomId}", rabbitJson)
-        rabbitTemplate.convertAndSend("chat.buffer", rabbitMessage)
-    }
+    fun onUserJoinedRoom(event: UserJoinedRoomEvent) =
+        broadcastMembershipChange(event.roomId, event.userId, event.username, "JOIN", "${event.username} joined the room!")
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    fun onUserLeftRoom(event: UserLeftRoomEvent) {
-        val payload = objectMapper.writeValueAsString(
-            WsChat(type = "LEAVE", username = "Server", content = "${event.username} left the room.", userId = event.userId, timestamp = Instant.now())
+    fun onUserLeftRoom(event: UserLeftRoomEvent) =
+        broadcastMembershipChange(event.roomId, event.userId, event.username, "LEAVE", "${event.username} left the room.")
+
+    private fun broadcastMembershipChange(roomId: UUID, userId: UUID, username: String, type: String, message: String) {
+        val chatPayload = objectMapper.writeValueAsString(
+            WsChat(type = type, username = "Server", content = message, userId = userId, timestamp = Instant.now())
         )
-        redisTemplate.convertAndSend(PresenceKeys.roomChannel(event.roomId), payload)
+        redisTemplate.convertAndSend(PresenceKeys.roomChannel(roomId), chatPayload)
 
         val presencePayload = objectMapper.writeValueAsString(
-            WsRoomPresence(roomId = event.roomId, userId = event.userId, online = presenceHandler.isUserOnline(event.userId))
+            WsRoomPresence(roomId = roomId, userId = userId, online = presenceHandler.isUserOnline(userId))
         )
-        redisTemplate.convertAndSend(PresenceKeys.roomChannel(event.roomId), presencePayload)
+        redisTemplate.convertAndSend(PresenceKeys.roomChannel(roomId), presencePayload)
 
-        val rabbitMessage = RabbitMessageDTO(
-            id = UUID.randomUUID(),
-            username = "Server",
-            roomId = event.roomId,
-            userId = event.userId,
-            message = "${event.username} left the room."
-        )
-        val rabbitJson = objectMapper.writeValueAsString(rabbitMessage)
-        redisTemplate.opsForList().rightPush("chat.peek.${event.roomId}", rabbitJson)
+        val rabbitMessage = RabbitMessageDTO(id = UUID.randomUUID(), username = "Server", roomId = roomId, userId = userId, message = message)
+        redisTemplate.opsForList().rightPush("chat.peek.$roomId", objectMapper.writeValueAsString(rabbitMessage))
         rabbitTemplate.convertAndSend("chat.buffer", rabbitMessage)
     }
 
