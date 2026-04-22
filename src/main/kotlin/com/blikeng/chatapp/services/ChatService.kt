@@ -146,11 +146,13 @@ class ChatService (
 
         if (message.type == "MESSAGE") addMessage(message, username)
 
-        val sendMessage = if (message.type == "MESSAGE") {
-            WsChat(content = message.content, userId = userId, username = username, type = message.type, timestamp = timestamp)
-        } else {
-            WsChat(content = message.content, userId = null, username = "Server", type = message.type, timestamp = timestamp)
-        }
+        val sendMessage = WsChat(
+            content = message.content,
+            userId = userId,
+            username = username,
+            type = message.type,
+            timestamp = timestamp
+        )
 
         val json = objectMapper.writeValueAsString(sendMessage)
 
@@ -172,6 +174,7 @@ class ChatService (
 
     fun addMessage(message: ReceivedMessage, username: String){
         val room = roomRepository.findById(message.roomId).orElseThrow { RoomNotFoundException() }
+        roomNameMap[room.id] = room.name
 
         val messageId = UUID.randomUUID()
 
@@ -225,16 +228,27 @@ class ChatService (
 
         val buffered = if (room.encrypted) {
             getPendingMessages(roomId).map { message ->
-                if (message.ciphertext == null || message.nonce == null) throw InvalidMessageException()
-
-                SendMessageDTO(
-                    id = message.id,
-                    roomId = message.roomId,
-                    userId = message.userId,
-                    username = message.username,
-                    message = encrypt.decrypt(message.ciphertext, message.nonce, aad = configureAad(roomId, message.id, message.userId)),
-                    timestamp = message.timestamp,
-                )
+                if (message.ciphertext != null && message.nonce != null) {
+                    SendMessageDTO(
+                        id = message.id,
+                        roomId = message.roomId,
+                        userId = message.userId,
+                        username = message.username,
+                        message = encrypt.decrypt(message.ciphertext, message.nonce, aad = configureAad(roomId, message.id, message.userId)),
+                        timestamp = message.timestamp,
+                    )
+                } else if (message.message != null) {
+                    SendMessageDTO(
+                        id = message.id,
+                        roomId = message.roomId,
+                        userId = message.userId,
+                        username = message.username,
+                        message = message.message,
+                        timestamp = message.timestamp,
+                    )
+                } else {
+                    throw InvalidMessageException()
+                }
             }
         } else {
             getPendingMessages(roomId).map { message ->

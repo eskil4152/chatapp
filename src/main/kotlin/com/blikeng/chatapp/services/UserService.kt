@@ -11,12 +11,10 @@ import com.blikeng.chatapp.errors.ShortPasswordException
 import com.blikeng.chatapp.errors.WrongPasswordException
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
-import com.blikeng.chatapp.security.UserRole
 import com.blikeng.chatapp.security.auth.PasswordService
 import com.blikeng.chatapp.security.auth.getId
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import tools.jackson.databind.ObjectMapper
 import java.util.*
 
 
@@ -30,7 +28,6 @@ class UserService(
     private val passwordService: PasswordService,
     private val roomRepository: RoomRepository,
     private val userRevocationService: UserRevocationService,
-    private val objectMapper: ObjectMapper,
 ) {
     fun getUserById(id: UUID): UserEntity? {
         return userRepository.findById(id).orElse(null)

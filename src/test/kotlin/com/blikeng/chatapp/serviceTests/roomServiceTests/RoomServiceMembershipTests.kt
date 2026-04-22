@@ -116,6 +116,17 @@ class RoomServiceMembershipTests {
     }
 
     @Test
+    fun shouldFailToLeaveRoomWhenUserNotFound() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns null
+
+        val exception = assertThrows<ApiException> { roomService.leaveRoom(UUID.randomUUID().toString()) }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+    }
+
+    @Test
     fun shouldFailToLeaveRoomWithoutBeingAMember() {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())

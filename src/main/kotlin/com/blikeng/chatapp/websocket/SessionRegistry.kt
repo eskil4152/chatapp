@@ -103,7 +103,9 @@ class SessionRegistry(
     fun closeUserSessions(userId: UUID) {
         users[userId]?.forEach { session ->
             if (session.isOpen) {
-                try { session.close() } catch (_: IOException) {}
+                try { session.close() } catch (_: IOException) {
+                    // Session closed before we could close it. Ignore.
+                }
             }
         }
     }

@@ -1,5 +1,6 @@
 package com.blikeng.chatapp.services
 
+import com.blikeng.chatapp.events.UserLeftRoomEvent
 import com.blikeng.chatapp.dtos.UserIdDTO
 import com.blikeng.chatapp.dtos.room.AdministrationDTO
 import com.blikeng.chatapp.dtos.room.ChangeRoleDTO
@@ -140,15 +141,17 @@ class RoomService(
     fun joinRoom(id: UUID, roomId: UUID) {
         val user = userService.getUserById(id) ?: throw InvalidUserException()
         val userRoom = UserRoomEntity(UserRoomId(id, roomId), RoomRole.MEMBER, RoomType.GROUP)
+
         userRoomRepository.save(userRoom)
         bustRoomsCache(id)
         bustRoomMembersCache(roomId)
+
         eventPublisher.publishEvent(UserJoinedRoomEvent(userId = id, username = user.username, roomId = roomId))
     }
 
     @Transactional
     fun leaveRoom(roomId: String?){
-        val userId = getId()
+        val user = userService.getUserById(getId()) ?: throw InvalidUserException()
 
         val roomUUID = try {
             UUID.fromString(roomId)
@@ -156,14 +159,16 @@ class RoomService(
             throw InvalidUUIDException()
         }
 
-        val existed = userRoomRepository.existsByIdUserIdAndIdRoomId(userId, roomUUID)
+        val existed = userRoomRepository.existsByIdUserIdAndIdRoomId(user.id, roomUUID)
         if (!existed) {
             throw RoomNotFoundException()
         }
 
-        userRoomRepository.deleteByIdUserIdAndIdRoomId(userId, roomUUID)
-        bustRoomsCache(userId)
+        userRoomRepository.deleteByIdUserIdAndIdRoomId(user.id, roomUUID)
+        bustRoomsCache(user.id)
         bustRoomMembersCache(roomUUID)
+
+        eventPublisher.publishEvent(UserLeftRoomEvent(userId = user.id, username = user.username, roomId = roomUUID))
     }
 
     // ==========================

@@ -126,13 +126,15 @@ class ChatWebSocketHandler(
 
     private fun handleJoin(session: WebSocketSession, json: JsonNode) {
         val roomId = getRoomId(json)
-        val userId = getUserId(session)
-        val username = getUsername(session)
 
         chatService.joinRoom(roomId, session)
+    }
 
-        val message = ReceivedMessage(roomId, userId, "$username joined the room", "JOIN")
-        chatService.broadcast(roomId, userId, message, username)
+    private fun handleLeave(session: WebSocketSession, json: JsonNode) {
+        val roomId = getRoomId(json)
+
+        lastPing.remove(session.id)
+        chatService.leaveRoom(roomId, session)
     }
 
     private fun handleChatMessage(session: WebSocketSession, json: JsonNode) {
@@ -153,17 +155,6 @@ class ChatWebSocketHandler(
         )
 
         if (!checkRateLimit(userId, session)) return
-        chatService.broadcast(roomId, userId, message, username)
-    }
-
-    private fun handleLeave(session: WebSocketSession, json: JsonNode) {
-        val roomId = getRoomId(json)
-        val userId = getUserId(session)
-        val username = getUsername(session)
-
-        lastPing.remove(session.id)
-        chatService.leaveRoom(roomId, session)
-        val message = ReceivedMessage(roomId, userId, "$username left the room", "LEAVE")
         chatService.broadcast(roomId, userId, message, username)
     }
 

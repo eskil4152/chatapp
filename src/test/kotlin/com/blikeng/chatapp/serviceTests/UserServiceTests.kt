@@ -464,7 +464,7 @@ class UserServiceTests {
 
         every { userRepository.findById(any()) } returns Optional.empty()
 
-        val exception = assertThrows<ApiException> { userService.getRole() }
+        val exception = assertThrows<ApiException> { userService.authenticate() }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 }

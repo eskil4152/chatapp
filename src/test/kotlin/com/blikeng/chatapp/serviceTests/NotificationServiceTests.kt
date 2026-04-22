@@ -26,7 +26,10 @@ import io.mockk.junit5.MockKExtension
 import io.mockk.verify
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.amqp.rabbit.core.RabbitTemplate
+import org.springframework.data.redis.core.ListOperations
 import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.data.redis.core.ValueOperations
 import java.time.Instant
 import java.util.*
 
@@ -47,6 +50,9 @@ class NotificationServiceTests {
     @MockK lateinit var presenceHandler: PresenceHandler
     @MockK lateinit var userRevocationService: UserRevocationService
     @MockK lateinit var sessionRegistry: SessionRegistry
+    @MockK lateinit var rabbitTemplate: RabbitTemplate
+
+    @MockK lateinit var listOps: ListOperations<String, String>
 
     @InjectMockKs lateinit var notificationService: NotificationService
 
@@ -102,9 +108,7 @@ class NotificationServiceTests {
 
         notificationService.onInviteAccepted(event)
 
-        // INVITE_ACCEPTED + FRIEND_PRESENCE(toUserId) both go to fromUserId
         verify(exactly = 2) { redisTemplate.convertAndSend(PresenceKeys.userChannel(fromUserId), any<String>()) }
-        // FRIEND_PRESENCE(fromUserId) goes to toUserId
         verify(exactly = 1) { redisTemplate.convertAndSend(PresenceKeys.userChannel(toUserId), any<String>()) }
     }
 
@@ -117,6 +121,9 @@ class NotificationServiceTests {
         every { objectMapper.writeValueAsString(any()) } returns """{"type":"JOIN"}"""
         every { redisTemplate.convertAndSend(any(), any<String>()) } returns 1L
         every { presenceHandler.isUserOnline(userId) } returns true
+        every { redisTemplate.opsForList() } returns listOps
+        every { listOps.rightPush(any<String>(), any<String>()) } returns 1L
+        every { rabbitTemplate.convertAndSend(any<String>(), any<Any>()) } returns Unit
 
         notificationService.onUserJoinedRoom(event)
 

@@ -1,9 +1,11 @@
 package com.blikeng.chatapp.controllerTests
 
 import com.blikeng.chatapp.controllers.AuthController
+import com.blikeng.chatapp.dtos.auth.AuthDTO
 import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.errors.InvalidCredentialsException
 import com.blikeng.chatapp.errors.UsernameAlreadyExistsException
+import com.blikeng.chatapp.security.UserRole
 import com.blikeng.chatapp.security.auth.JwtAuthFilter
 import com.blikeng.chatapp.security.ratelimit.RateLimitService
 import com.blikeng.chatapp.services.AuthService
@@ -23,6 +25,7 @@ import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie
 import org.junit.jupiter.api.Test
+import java.util.UUID
 
 @WebMvcTest(
     controllers = [AuthController::class],
@@ -138,7 +141,7 @@ class AuthControllerTests {
     // ==========================
     @Test
     fun shouldReturnOkForAuthEndpoint() {
-        every { userService.getRole() } returns com.blikeng.chatapp.security.UserRole.USER
+        every { userService.authenticate() } returns AuthDTO(UUID.randomUUID(), "", UserRole.USER)
 
         mockMvc.get("/api/auth") {
         }
