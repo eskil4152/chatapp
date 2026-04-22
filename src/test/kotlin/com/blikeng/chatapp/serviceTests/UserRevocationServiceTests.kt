@@ -66,4 +66,54 @@ class UserRevocationServiceTests {
 
         assertFalse(userRevocationService.isRevoked(userId))
     }
+
+    @Test
+    fun shouldBanUser() {
+        val userId = UUID.randomUUID()
+
+        every { redisTemplate.opsForValue() } returns valueOps
+        every { valueOps.set("banned_user:$userId", "1", Duration.ofHours(24)) } returns Unit
+
+        userRevocationService.revokeBanned(userId)
+
+        verify(exactly = 1) { valueOps.set("banned_user:$userId", "1", Duration.ofHours(24)) }
+    }
+
+    @Test
+    fun shouldReturnTrueWhenUserIsBanned() {
+        val userId = UUID.randomUUID()
+
+        every { redisTemplate.hasKey("banned_user:$userId") } returns true
+
+        assertTrue(userRevocationService.isBanned(userId))
+    }
+
+    @Test
+    fun shouldReturnFalseWhenUserIsNotInBannedList() {
+        val userId = UUID.randomUUID()
+
+        every { redisTemplate.hasKey("banned_user:$userId") } returns false
+
+        assertFalse(userRevocationService.isBanned(userId))
+    }
+
+    @Test
+    fun shouldReturnFalseWhenRedisReturnsNullForBannedUser() {
+        val userId = UUID.randomUUID()
+
+        every { redisTemplate.hasKey("banned_user:$userId") } returns null
+
+        assertFalse(userRevocationService.isBanned(userId))
+    }
+
+    @Test
+    fun shouldDeleteBannedUserKeyOnUnRevoke() {
+        val userId = UUID.randomUUID()
+
+        every { redisTemplate.delete("banned_user:$userId") } returns true
+
+        userRevocationService.unRevokeBanned(userId)
+
+        verify(exactly = 1) { redisTemplate.delete("banned_user:$userId") }
+    }
 }

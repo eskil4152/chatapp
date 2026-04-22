@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNull
 import org.springframework.test.util.ReflectionTestUtils
 import org.springframework.web.socket.WebSocketSession
+import java.io.IOException
 import java.util.*
 import java.util.concurrent.Executors
 
@@ -333,5 +334,84 @@ class SessionRegistryTests {
         val result = sessionRegistry.getSessionById("missing")
 
         assertNull(result)
+    }
+
+    @Test
+    fun shouldCloseAllSessionsForBannedUser(){
+        val userId = UUID.randomUUID()
+        val session1 = mockk<WebSocketSession>()
+        val session2 = mockk<WebSocketSession>()
+
+        every { session1.id } returns "s1"
+        every { session2.id } returns "s2"
+        every { session1.isOpen } returns true
+        every { session2.isOpen } returns true
+        every { session1.close() } just Runs
+        every { session2.close() } just Runs
+        every { friendService.notifyFriends(any(), any()) } just Runs
+        every { chatService.notifyRoomPresence(any(), any()) } just Runs
+
+        sessionRegistry.registerSession(userId, session1)
+        sessionRegistry.registerSession(userId, session2)
+
+        sessionRegistry.closeUserSessions(userId)
+
+        verify(exactly = 1) { session1.close() }
+        verify(exactly = 1) { session2.close() }
+    }
+
+    @Test
+    fun shouldDoNothingIfBannedUserHasNoSessions() {
+        val userId = UUID.randomUUID()
+
+        sessionRegistry.closeUserSessions(userId)
+
+        assertNull(sessionRegistry.users[userId])
+    }
+
+    @Test
+    fun shouldIgnoreIfSessionCloseFails() {
+        val userId = UUID.randomUUID()
+        val session = mockk<WebSocketSession>()
+
+        every { session.id } returns "s1"
+        every { session.isOpen } returns true
+        every { session.close() } throws IOException("boom")
+        every { friendService.notifyFriends(any(), any()) } just Runs
+        every { chatService.notifyRoomPresence(any(), any()) } just Runs
+
+        sessionRegistry.registerSession(userId, session)
+
+        assertDoesNotThrow {
+            sessionRegistry.closeUserSessions(userId)
+        }
+
+        verify(exactly = 1) { session.close() }
+    }
+
+    @Test
+    fun shouldOnlyCloseOpenSessions() {
+        val userId = UUID.randomUUID()
+        val openSession = mockk<WebSocketSession>()
+        val closedSession = mockk<WebSocketSession>()
+
+        every { openSession.id } returns "s1"
+        every { closedSession.id } returns "s2"
+
+        every { openSession.isOpen } returns true
+        every { closedSession.isOpen } returns false
+
+        every { openSession.close() } just Runs
+
+        every { friendService.notifyFriends(any(), any()) } just Runs
+        every { chatService.notifyRoomPresence(any(), any()) } just Runs
+
+        sessionRegistry.registerSession(userId, openSession)
+        sessionRegistry.registerSession(userId, closedSession)
+
+        sessionRegistry.closeUserSessions(userId)
+
+        verify(exactly = 1) { openSession.close() }
+        verify(exactly = 0) { closedSession.close() }
     }
 }

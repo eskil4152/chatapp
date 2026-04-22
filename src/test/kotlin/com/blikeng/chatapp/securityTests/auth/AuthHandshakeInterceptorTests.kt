@@ -59,6 +59,7 @@ class AuthHandshakeInterceptorTests {
             role = "USER"
         )
         every { userRevocationService.isRevoked(userId) } returns false
+        every { userRevocationService.isBanned(userId) } returns false
 
         val servletRequest = mockk<HttpServletRequest> {
             every { cookies } returns cookiesList
@@ -184,6 +185,32 @@ class AuthHandshakeInterceptorTests {
             role = "USER"
         )
         every { userRevocationService.isRevoked(userId) } returns true
+
+        val servletRequest = mockk<HttpServletRequest> {
+            every { cookies } returns cookiesList
+        }
+
+        val request = ServletServerHttpRequest(servletRequest)
+        val attributes = mutableMapOf<String, Any>()
+
+        val result = interceptor.beforeHandshake(request, mockk(relaxed = true), mockk(relaxed = true), attributes)
+
+        assertFalse(result)
+        assertTrue(attributes.isEmpty())
+    }
+
+    @Test
+    fun shouldFailWhenUserIsBanned() {
+        val cookiesList: Array<Cookie> = arrayOf(Cookie("AUTH", "token"))
+        val userId = UUID.randomUUID()
+
+        every { jwtService.validateToken("token") } returns JwtService.JwtPrincipal(
+            username = "user",
+            userId = userId,
+            role = "USER"
+        )
+        every { userRevocationService.isRevoked(userId) } returns false
+        every { userRevocationService.isBanned(userId) } returns true
 
         val servletRequest = mockk<HttpServletRequest> {
             every { cookies } returns cookiesList

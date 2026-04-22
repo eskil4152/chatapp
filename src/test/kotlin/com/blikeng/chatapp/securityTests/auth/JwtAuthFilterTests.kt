@@ -3,6 +3,7 @@ package com.blikeng.chatapp.securityTests.auth
 import com.blikeng.chatapp.security.auth.JwtAuthFilter
 import com.blikeng.chatapp.security.auth.JwtService
 import com.blikeng.chatapp.services.UserRevocationService
+import org.springframework.core.env.Environment
 import io.mockk.Called
 import io.mockk.every
 import io.mockk.mockk
@@ -32,7 +33,8 @@ class JwtAuthFilterTests {
     // ==========================
     private val jwtService = mockk<JwtService>()
     private val userRevocationService = mockk<UserRevocationService>()
-    private val filter = JwtAuthFilter(jwtService, userRevocationService)
+    private val environment = mockk<Environment>()
+    private val filter = JwtAuthFilter(jwtService, userRevocationService, environment)
 
     @BeforeEach
     fun setup() {
@@ -87,6 +89,7 @@ class JwtAuthFilterTests {
             role = "ADMIN"
         )
         every { userRevocationService.isRevoked(userId) } returns false
+        every { userRevocationService.isBanned(userId) } returns false
 
         val req = MockHttpServletRequest()
         req.setCookies(Cookie("AUTH", "good"))
@@ -96,7 +99,9 @@ class JwtAuthFilterTests {
 
         filter.doFilter(req, res, chain)
 
-        val auth = SecurityContextHolder.getContext().authentication
+        val authTemp = SecurityContextHolder.getContext().authentication
+        val auth = requireNotNull(authTemp)
+
         assertNotNull(auth)
         assertEquals(userId, auth.principal)
         assertEquals("u", auth.credentials)
@@ -157,6 +162,29 @@ class JwtAuthFilterTests {
             role = "USER"
         )
         every { userRevocationService.isRevoked(userId) } returns true
+
+        val req = MockHttpServletRequest()
+        req.setCookies(Cookie("AUTH", "good"))
+
+        val res = MockHttpServletResponse()
+        val chain = MockFilterChain()
+
+        filter.doFilter(req, res, chain)
+
+        assertNull(SecurityContextHolder.getContext().authentication)
+    }
+
+    @Test
+    fun shouldNotAuthenticateBannedUser() {
+        val userId = UUID.randomUUID()
+        every { jwtService.validateToken("good") } returns JwtService.JwtPrincipal(
+            username = "u",
+            userId = userId,
+            role = "USER"
+        )
+        every { userRevocationService.isRevoked(userId) } returns false
+        every { userRevocationService.isBanned(userId) } returns true
+        every { environment.activeProfiles } returns arrayOf("test")
 
         val req = MockHttpServletRequest()
         req.setCookies(Cookie("AUTH", "good"))

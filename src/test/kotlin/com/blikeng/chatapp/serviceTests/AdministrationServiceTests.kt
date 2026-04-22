@@ -13,9 +13,11 @@ import com.blikeng.chatapp.repositories.UserBanRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.security.UserRole
 import com.blikeng.chatapp.services.AdministrationService
+import com.blikeng.chatapp.services.UserRevocationService
 import io.mockk.*
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
+import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit5.MockKExtension
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.extension.ExtendWith
@@ -28,6 +30,7 @@ import java.util.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.assertThrows
+import org.springframework.context.ApplicationEventPublisher
 
 @ExtendWith(MockKExtension::class)
 class AdministrationServiceTests {
@@ -43,6 +46,8 @@ class AdministrationServiceTests {
 
     @MockK private lateinit var userRepository: UserRepository
     @MockK private lateinit var userBanRepository: UserBanRepository
+    @RelaxedMockK private lateinit var eventPublisher: ApplicationEventPublisher
+    @MockK private lateinit var userRevocationService: UserRevocationService
 
     @InjectMockKs private lateinit var administrationService: AdministrationService
 
@@ -110,6 +115,7 @@ class AdministrationServiceTests {
         every { userRepository.findById(callerId) } returns Optional.of(caller)
         every { userRepository.findById(targetId) } returns Optional.of(target)
         every { userRepository.save(any()) } answers { firstArg() }
+        every { eventPublisher.publishEvent(any()) } just Runs
 
         administrationService.changeUserRole(UserRoleDTO(id = targetId.toString(), action = RoleAction.PROMOTE))
 
@@ -128,6 +134,7 @@ class AdministrationServiceTests {
         every { userRepository.findById(callerId) } returns Optional.of(caller)
         every { userRepository.findById(targetId) } returns Optional.of(target)
         every { userRepository.save(any()) } answers { firstArg() }
+        every { eventPublisher.publishEvent(any()) } just Runs
 
         administrationService.changeUserRole(UserRoleDTO(id = targetId.toString(), action = RoleAction.DEMOTE))
 
@@ -231,11 +238,34 @@ class AdministrationServiceTests {
         every { userRepository.findById(targetId) } returns Optional.of(target)
         every { userBanRepository.existsById(targetId) } returns false
         every { userBanRepository.save(any()) } answers { firstArg() }
+        every { eventPublisher.publishEvent(any()) } just Runs
 
         administrationService.banUser(BanUserDTO(id = targetId.toString(), reason = "rule violation"))
 
         verify(exactly = 1) {
             userBanRepository.save(match { it.userId == targetId && it.bannedBy == callerId && it.reason == "rule violation" })
+        }
+    }
+
+    @Test
+    fun shouldBanUserWithoutReason() {
+        val callerId = UUID.randomUUID()
+        val targetId = UUID.randomUUID()
+        authenticateAs(callerId)
+
+        val caller = UserEntity(id = callerId, username = "admin", password = "", role = UserRole.ADMIN)
+        val target = UserEntity(id = targetId, username = "alice", password = "", role = UserRole.USER)
+
+        every { userRepository.findById(callerId) } returns Optional.of(caller)
+        every { userRepository.findById(targetId) } returns Optional.of(target)
+        every { userBanRepository.existsById(targetId) } returns false
+        every { userBanRepository.save(any()) } answers { firstArg() }
+        every { eventPublisher.publishEvent(any()) } just Runs
+
+        administrationService.banUser(BanUserDTO(id = targetId.toString(), reason = null))
+
+        verify(exactly = 1) {
+            userBanRepository.save(match { it.userId == targetId && it.bannedBy == callerId && it.reason == null })
         }
     }
 
@@ -339,6 +369,7 @@ class AdministrationServiceTests {
         every { userBanRepository.findById(targetId) } returns Optional.of(ban)
         every { userRepository.findById(bannerId) } returns Optional.of(banner)
         every { userBanRepository.delete(ban) } just Runs
+        every { userRevocationService.unRevokeBanned(targetId) } just Runs
 
         administrationService.unbanUser(UserIdDTO(userId = targetId.toString()))
 
@@ -359,6 +390,7 @@ class AdministrationServiceTests {
         every { userBanRepository.findById(targetId) } returns Optional.of(ban)
         every { userRepository.findById(bannerId) } returns Optional.empty()
         every { userBanRepository.delete(ban) } just Runs
+        every { userRevocationService.unRevokeBanned(targetId) } just Runs
 
         administrationService.unbanUser(UserIdDTO(userId = targetId.toString()))
 
