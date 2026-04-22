@@ -168,7 +168,7 @@ class FriendService(
 
     private fun getCachedFriendIds(userId: UUID): List<UUID> {
         val key = "user:$userId:friends"
-        val cached = redisTemplate.opsForValue().get(key)
+        val cached = redisTemplate.opsForValue()[key]
         if (cached != null) return objectMapper.readValue(cached, friendIdListType)
 
         val friendIds = friendsRepository.findFriendsForUser(userId).map { friendship ->

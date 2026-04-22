@@ -24,7 +24,7 @@ class LocalBroadcaster(
 
     fun broadcastRaw(roomId: UUID, payload: String) {
         val message = TextMessage(payload)
-        chatService.rooms[roomId]?.forEach { session ->
+        chatService.sessionsInRooms[roomId]?.forEach { session ->
             broadcastExecutor.execute {
                 synchronized(session) {
                     if (session.isOpen) {

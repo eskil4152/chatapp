@@ -31,11 +31,12 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.data.redis.core.ListOperations
 import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.data.redis.core.ValueOperations
 import org.springframework.http.HttpStatus
 import org.springframework.web.socket.WebSocketSession
 import java.util.*
 import java.util.Collections.emptyList
-import kotlin.test.assertFailsWith
+import org.junit.jupiter.api.assertThrows
 
 @ExtendWith(MockKExtension::class)
 class ChatBroadcastTests {
@@ -56,6 +57,7 @@ class ChatBroadcastTests {
     @MockK lateinit var redisTemplate: RedisTemplate<String, String>
     @MockK lateinit var rabbitTemplate: RabbitTemplate
     @MockK lateinit var listOps: ListOperations<String, String>
+    @MockK lateinit var valueOps: ValueOperations<String, String>
     @MockK lateinit var presenceHandler: PresenceHandler
     @MockK lateinit var userService: UserService
     @MockK(relaxed = true) lateinit var meterRegistry: MeterRegistry
@@ -68,16 +70,20 @@ class ChatBroadcastTests {
         every { rabbitTemplate.convertAndSend(any<String>(), any<Any>()) } just Runs
         every { redisTemplate.convertAndSend(any<String>(), any<String>()) } returns 1L
         every { redisTemplate.opsForList() } returns listOps
+        every { redisTemplate.opsForValue() } returns valueOps
         every { listOps.rightPush(any<String>(), any<String>()) } returns 1L
         every { listOps.range(any<String>(), any<Long>(), any<Long>()) } returns emptyList()
+        every { valueOps.get(any<String>()) } returns null
+        every { valueOps.set(any<String>(), any<String>(), any<java.time.Duration>()) } just Runs
+        every { userRoomRepository.findAllIdUserIdsByIdRoomId(any()) } returns emptyList()
     }
 
     @Test
     fun shouldFailToSendMessageIfNotAMember() {
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns false
 
-        val ex = assertFailsWith<ApiException> {
-            chatService.broadcast(UUID.randomUUID(), ReceivedMessage(UUID.randomUUID(), UUID.randomUUID(), "hello", "MESSAGE"), "u")
+        val ex = assertThrows<ApiException> {
+            chatService.broadcast(UUID.randomUUID(), UUID.randomUUID(), ReceivedMessage(UUID.randomUUID(), UUID.randomUUID(), "hello", "MESSAGE"), "u")
         }
 
         assertEquals(HttpStatus.NOT_FOUND, ex.status)
@@ -101,7 +107,7 @@ class ChatBroadcastTests {
         chatService.joinRoom(roomId, session1)
         chatService.joinRoom(roomId, session2)
 
-        chatService.broadcast(roomId, ReceivedMessage(roomId, userId, "hello", "MESSAGE"), "u")
+        chatService.broadcast(roomId, userId, ReceivedMessage(roomId, userId, "hello", "MESSAGE"), "u")
 
         verify(exactly = 1) { rabbitTemplate.convertAndSend("chat.buffer", any<Any>()) }
         verify(exactly = 1) { listOps.rightPush("chat.peek.${roomId}", any<String>()) }
@@ -115,11 +121,12 @@ class ChatBroadcastTests {
         every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
 
         val roomId = UUID.randomUUID()
+        val userId = UUID.randomUUID()
         val session = mockk<WebSocketSession>(relaxed = true)
-        every { session.attributes } returns hashMapOf("userId" to UUID.randomUUID())
+        every { session.attributes } returns hashMapOf("userId" to userId)
 
         chatService.joinRoom(roomId, session)
-        chatService.broadcast(roomId, ReceivedMessage(roomId, UUID.randomUUID(), "join", "JOIN"), "u")
+        chatService.broadcast(roomId, userId, ReceivedMessage(roomId, UUID.randomUUID(), "join", "JOIN"), "u")
 
         verify(exactly = 0) { session.sendMessage(any()) }
     }
@@ -140,7 +147,7 @@ class ChatBroadcastTests {
         every { session.attributes } returns hashMapOf("userId" to user.id)
 
         chatService.joinRoom(room.id, session)
-        chatService.broadcast(room.id, ReceivedMessage(room.id, user.id, "secret", "MESSAGE"), "u")
+        chatService.broadcast(room.id, user.id, ReceivedMessage(room.id, user.id, "secret", "MESSAGE"), "u")
 
         verify(exactly = 1) { rabbitTemplate.convertAndSend("chat.buffer", any<Any>()) }
         verify(exactly = 1) { listOps.rightPush("chat.peek.${room.id}", any<String>()) }
@@ -162,8 +169,8 @@ class ChatBroadcastTests {
 
         chatService.joinRoom(room.id, session)
 
-        val exception = assertFailsWith<ApiException> {
-            chatService.broadcast(room.id, ReceivedMessage(room.id, user.id, "         ", "MESSAGE"), "u")
+        val exception = assertThrows<ApiException> {
+            chatService.broadcast(room.id, user.id, ReceivedMessage(room.id, user.id, "         ", "MESSAGE"), "u")
         }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
@@ -186,8 +193,8 @@ class ChatBroadcastTests {
 
         chatService.joinRoom(room.id, session)
 
-        val exception = assertFailsWith<ApiException> {
-            chatService.broadcast(room.id, ReceivedMessage(room.id, user.id, "a".repeat(10000), "MESSAGE"), "u")
+        val exception = assertThrows<ApiException> {
+            chatService.broadcast(room.id, user.id, ReceivedMessage(room.id, user.id, "a".repeat(10000), "MESSAGE"), "u")
         }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
@@ -204,13 +211,80 @@ class ChatBroadcastTests {
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(userId, roomId) } returns true
         every { roomRepository.findById(roomId) } returns Optional.empty()
 
-        val exception = assertFailsWith<ApiException> {
-            chatService.broadcast(roomId, ReceivedMessage(roomId, userId, "hello", "MESSAGE"), "u")
+        val exception = assertThrows<ApiException> {
+            chatService.broadcast(roomId, userId, ReceivedMessage(roomId, userId, "hello", "MESSAGE"), "u")
         }
 
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
         assertEquals(ErrorMessages.ROOM_NOT_FOUND, exception.message)
         verify(exactly = 0) { rabbitTemplate.convertAndSend("chat.buffer", any<Any>()) }
+    }
+
+    @Test
+    fun shouldDefaultRoomNameWhenNotCached() {
+        val roomId = UUID.randomUUID()
+        val userId = UUID.randomUUID()
+        val memberId = UUID.randomUUID()
+
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
+        every { userRoomRepository.findAllIdUserIdsByIdRoomId(roomId) } returns listOf(memberId)
+        every { presenceHandler.isUserOnline(memberId) } returns true
+
+        val channels = mutableListOf<String>()
+        val payloads = mutableListOf<String>()
+        every { redisTemplate.convertAndSend(capture(channels), capture(payloads)) } returns 1L
+
+        chatService.broadcast(roomId, userId, ReceivedMessage(roomId, userId, "u joined", "JOIN"), "u")
+
+        val idx = channels.indexOfFirst { it == "user:$memberId" }
+        val json = objectMapper.readTree(payloads[idx])
+        assertEquals("MESSAGE_NOTIFICATION", json["type"].asText())
+        assertEquals("Unknown room", json["roomName"].asText())
+    }
+
+    @Test
+    fun shouldPublishTypingToRoomChannel() {
+        val roomId = UUID.randomUUID()
+        val userId = UUID.randomUUID()
+
+        val payloadSlot = slot<String>()
+        every { redisTemplate.convertAndSend(eq("room:$roomId"), capture(payloadSlot)) } returns 1L
+
+        chatService.notifyTyping(roomId, userId, "alice")
+
+        val json = objectMapper.readTree(payloadSlot.captured)
+        assertEquals("TYPING", json["type"].asText())
+        assertEquals(userId.toString(), json["userId"].asText())
+        assertEquals(roomId.toString(), json["roomId"].asText())
+        assertEquals("alice", json["username"].asText())
+    }
+
+    @Test
+    fun shouldReturnCachedRoomMemberIds() {
+        val roomId = UUID.randomUUID()
+        val memberId = UUID.randomUUID()
+
+        every { valueOps.get("room:$roomId:members") } returns objectMapper.writeValueAsString(listOf(memberId))
+
+        val result = chatService.getRoomMemberIds(roomId)
+
+        assertEquals(listOf(memberId), result)
+        verify(exactly = 0) { userRoomRepository.findAllIdUserIdsByIdRoomId(any()) }
+    }
+
+    @Test
+    fun shouldNotSendNotificationToOfflineMember() {
+        val roomId = UUID.randomUUID()
+        val userId = UUID.randomUUID()
+        val memberId = UUID.randomUUID()
+
+        every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns true
+        every { userRoomRepository.findAllIdUserIdsByIdRoomId(roomId) } returns listOf(memberId)
+        every { presenceHandler.isUserOnline(memberId) } returns false
+
+        chatService.broadcast(roomId, userId, ReceivedMessage(roomId, userId, "hi", "JOIN"), "u")
+
+        verify(exactly = 0) { redisTemplate.convertAndSend(eq("user:$memberId"), any<String>()) }
     }
 
     @Test
@@ -226,11 +300,11 @@ class ChatBroadcastTests {
         every { session.attributes } returns hashMapOf("userId" to userId)
 
         chatService.joinRoom(roomId, session)
-        chatService.rooms.remove(roomId)
+        chatService.sessionsInRooms.remove(roomId)
 
         clearMocks(session)
 
-        chatService.broadcast(roomId, ReceivedMessage(roomId, userId, "hello", "MESSAGE"), "u")
+        chatService.broadcast(roomId, userId, ReceivedMessage(roomId, userId, "hello", "MESSAGE"), "u")
 
         verify(exactly = 0) { session.sendMessage(any()) }
     }

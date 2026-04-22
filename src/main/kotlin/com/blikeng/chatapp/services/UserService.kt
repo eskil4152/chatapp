@@ -1,5 +1,6 @@
 package com.blikeng.chatapp.services
 
+import com.blikeng.chatapp.dtos.auth.AuthDTO
 import com.blikeng.chatapp.dtos.user.ChangeUserDTO
 import com.blikeng.chatapp.dtos.user.EditPasswordDTO
 import com.blikeng.chatapp.dtos.user.UserDTO
@@ -10,7 +11,6 @@ import com.blikeng.chatapp.errors.ShortPasswordException
 import com.blikeng.chatapp.errors.WrongPasswordException
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRepository
-import com.blikeng.chatapp.security.UserRole
 import com.blikeng.chatapp.security.auth.PasswordService
 import com.blikeng.chatapp.security.auth.getId
 import org.springframework.stereotype.Service
@@ -50,11 +50,15 @@ class UserService(
         )
     }
 
-    fun getRole(): UserRole {
+    fun authenticate(): AuthDTO {
         val id = getId()
         val user = getUserById(id) ?: throw InvalidUserException()
 
-        return user.role
+        return AuthDTO(
+            userId = id,
+            username = user.username,
+            userRole = user.role,
+        )
     }
 
     @Transactional

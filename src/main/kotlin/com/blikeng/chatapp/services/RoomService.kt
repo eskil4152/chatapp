@@ -1,5 +1,6 @@
 package com.blikeng.chatapp.services
 
+import com.blikeng.chatapp.events.UserLeftRoomEvent
 import com.blikeng.chatapp.dtos.UserIdDTO
 import com.blikeng.chatapp.dtos.room.AdministrationDTO
 import com.blikeng.chatapp.dtos.room.ChangeRoleDTO
@@ -15,6 +16,7 @@ import com.blikeng.chatapp.events.RoomDeletedEvent
 import com.blikeng.chatapp.events.UserJoinedRoomEvent
 import com.blikeng.chatapp.events.UserRemovedEvent
 
+import com.blikeng.chatapp.messaging.redis.PresenceKeys
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.auth.getId
@@ -49,6 +51,9 @@ class RoomService(
 
     private fun bustRoomsCache(vararg userIds: UUID) =
         userIds.forEach { redisTemplate.delete("user:$it:rooms") }
+
+    private fun bustRoomMembersCache(roomId: UUID) =
+        redisTemplate.delete(PresenceKeys.roomMembersKey(roomId))
     // ==========================
     // Room creation and retrieval
     // ==========================
@@ -76,7 +81,7 @@ class RoomService(
         val userId = getId()
         val key = "user:$userId:rooms"
 
-        val cached = redisTemplate.opsForValue().get(key)
+        val cached = redisTemplate.opsForValue()[key]
         if (cached != null) return objectMapper.readValue(cached, roomListType)
 
         val joinedRooms = roomRepository.findRoomsForUser(userId)
@@ -136,14 +141,17 @@ class RoomService(
     fun joinRoom(id: UUID, roomId: UUID) {
         val user = userService.getUserById(id) ?: throw InvalidUserException()
         val userRoom = UserRoomEntity(UserRoomId(id, roomId), RoomRole.MEMBER, RoomType.GROUP)
+
         userRoomRepository.save(userRoom)
         bustRoomsCache(id)
+        bustRoomMembersCache(roomId)
+
         eventPublisher.publishEvent(UserJoinedRoomEvent(userId = id, username = user.username, roomId = roomId))
     }
 
     @Transactional
     fun leaveRoom(roomId: String?){
-        val userId = getId()
+        val user = userService.getUserById(getId()) ?: throw InvalidUserException()
 
         val roomUUID = try {
             UUID.fromString(roomId)
@@ -151,13 +159,16 @@ class RoomService(
             throw InvalidUUIDException()
         }
 
-        val existed = userRoomRepository.existsByIdUserIdAndIdRoomId(userId, roomUUID)
+        val existed = userRoomRepository.existsByIdUserIdAndIdRoomId(user.id, roomUUID)
         if (!existed) {
             throw RoomNotFoundException()
         }
 
-        userRoomRepository.deleteByIdUserIdAndIdRoomId(userId, roomUUID)
-        bustRoomsCache(userId)
+        userRoomRepository.deleteByIdUserIdAndIdRoomId(user.id, roomUUID)
+        bustRoomsCache(user.id)
+        bustRoomMembersCache(roomUUID)
+
+        eventPublisher.publishEvent(UserLeftRoomEvent(userId = user.id, username = user.username, roomId = roomUUID))
     }
 
     // ==========================
@@ -211,6 +222,7 @@ class RoomService(
         val room = roomRepository.findById(roomUUID).orElseThrow { RoomNotFoundException() }
         roomRepository.delete(room)
         bustRoomsCache(*memberIds.toTypedArray())
+        bustRoomMembersCache(roomUUID)
 
         eventPublisher.publishEvent(RoomDeletedEvent(roomUUID, room.name, memberIds))
     }
@@ -268,6 +280,7 @@ class RoomService(
 
         userRoomRepository.deleteByIdUserIdAndIdRoomId(targetId, roomId)
         bustRoomsCache(targetId)
+        bustRoomMembersCache(roomId)
 
         if (action == RoomAction.BAN) bannedUserService.banUser(targetId, roomId)
 

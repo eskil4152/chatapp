@@ -60,6 +60,8 @@ and horizontally scalable WebSocket messaging using Redis Pub/Sub and RabbitMQ.
 | CI/CD             | GitHub Actions                            |
 | Rate Limiting     | Bucket4j                                  |
 | Code Quality      | SonarCloud                                |
+| Testing           | JUnit 6, MockK                            |
+| Load Testing      | k6                                        |
 
 ---
 
@@ -132,23 +134,29 @@ Exceeded requests return `429 Too Many Requests`.
 
 **WebSocket Events**
 
-| Direction       | Type              | Description                                              |
-|-----------------|-------------------|----------------------------------------------------------|
-| Client → Server | `MESSAGE`         | Send a chat message to a room                            |
-| Client → Server | `JOIN`            | Join a room WebSocket session                            |
-| Client → Server | `LEAVE`           | Leave a room WebSocket session                           |
-| Client → Server | `PING`            | Keep-alive heartbeat; resets session TTL                 |
-| Server → Client | `MESSAGE`         | Chat message broadcast                                   |
-| Server → Client | `JOIN` / `LEAVE`  | User join/leave announcement broadcast to room           |
-| Server → Client | `ROOM_MEMBERS`    | Full member snapshot sent once to the joining session    |
-| Server → Client | `ROOM_PRESENCE`   | Lightweight online/offline update for a room member      |
-| Server → Client | `FRIEND_PRESENCE` | Friend online/offline status update                      |
-| Server → Client | `FRIEND_ADDED`    | Notifies both sides when a friend request is accepted    |
-| Server → Client | `FRIEND_REMOVED`  | Notifies both sides when a friendship is removed         |
-| Server → Client | `ROOM_ACTION`     | Kick or ban notification sent to the target user         |
-| Server → Client | `ROOM_DELETED`    | Room deletion notification sent to all members           |
-| Server → Client | `pong`            | Response to client `PING`                                |
-| Server → Client | `ERROR`           | Structured error with HTTP status code and message       |
+| Direction       | Type                | Description                                                        |
+|-----------------|---------------------|--------------------------------------------------------------------|
+| Client → Server | `MESSAGE`           | Send a chat message to a room                                      |
+| Client → Server | `JOIN`              | Join a room WebSocket session                                      |
+| Client → Server | `LEAVE`             | Leave a room WebSocket session                                     |
+| Client → Server | `PING`              | Keep-alive heartbeat; resets session TTL                           |
+| Server → Client | `MESSAGE`           | Chat message broadcast                                             |
+| Server → Client | `JOIN` / `LEAVE`    | User join/leave announcement broadcast to room                     |
+| Server → Client | `ROOM_JOINED`       | Full room snapshot (members, role, encryption) sent on room join   |
+| Server → Client | `ROOM_PRESENCE`     | Lightweight online/offline update for a room member                |
+| Server → Client | `ROOM_ACTION`       | Kick or ban notification sent to the target user                   |
+| Server → Client | `ROOM_DELETED`      | Room deletion notification sent to all members                     |
+| Server → Client | `FRIEND_PRESENCE`   | Friend online/offline status update                                |
+| Server → Client | `FRIEND_SNAPSHOT`   | Full friend list with online status, sent on connect               |
+| Server → Client | `FRIEND_ADDED`      | Notifies both sides when a friend request is accepted              |
+| Server → Client | `FRIEND_REMOVED`    | Notifies both sides when a friendship is removed                   |
+| Server → Client | `INVITE_RECEIVED`   | New invite notification with type, sender, and room details        |
+| Server → Client | `INVITE_ACCEPTED`   | Notifies sender when their invite is accepted                      |
+| Server → Client | `PENDING_INVITES`   | Full pending invite list snapshot sent on connect                  |
+| Server → Client | `USER_ROLE_CHANGED` | Notifies user of a role promotion or demotion in a room            |
+| Server → Client | `BANNED`            | Notifies user they have been banned from the application           |
+| Server → Client | `pong`              | Response to client `PING`                                          |
+| Server → Client | `ERROR`             | Structured error with HTTP status code and message                 |
 
 ---
 
@@ -236,6 +244,8 @@ Encryption is **optional** and configured per room.
 - Login with an unknown username or incorrect password returns `401 Unauthorized`.
 - Users can retrieve and update their own profile fields (bio, avatar, etc.) and change their password.
 - Account deletion preserves chat history — messages are reassigned to a sentinel `[deleted]` user rather than removed.
+- Global role promotions and demotions send the affected user a `USER_ROLE_CHANGED` notification.
+- Global bans send the affected user a `BANNED` notification.
 
 ---
 
@@ -261,7 +271,7 @@ User presence is tracked using Redis.
 - Stale presence keys from previous server runs are cleared on startup.
 
 Room presence events are broadcast to all members of a room when a user connects or disconnects.
-On room join, a full `ROOM_MEMBERS` snapshot is sent to the joining session. Subsequent presence updates use a lightweight `ROOM_PRESENCE` event containing only the user ID and online status.
+On room join, a full `ROOM_JOINED` snapshot is sent to the joining session. Subsequent presence updates use a lightweight `ROOM_PRESENCE` event containing only the user ID and online status.
 
 On WebSocket connect, a `FRIEND_PRESENCE` snapshot is sent to the session with the current online status of all friends, so clients have accurate presence state immediately without waiting for a change event.
 

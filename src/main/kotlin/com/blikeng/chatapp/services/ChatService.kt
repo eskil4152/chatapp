@@ -20,9 +20,11 @@ import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.crypto.ChatEncrypt
 import com.blikeng.chatapp.dtos.room.RoomDTO
+import com.blikeng.chatapp.dtos.websocket.WsMessageNotification
+import com.blikeng.chatapp.dtos.websocket.WsTyping
+import com.blikeng.chatapp.messaging.redis.PresenceKeys
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
-import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.data.domain.PageRequest
@@ -30,6 +32,7 @@ import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
+import java.time.Duration
 import java.time.Instant
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
@@ -53,11 +56,15 @@ class ChatService (
     private val userService: UserService,
     meterRegistry: MeterRegistry,
 ) {
-    val rooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
-    private val roomListType = object : TypeReference<List<RoomDTO>>() {}
+    val sessionsInRooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
+    private val roomNameMap = ConcurrentHashMap<UUID, String>()
+
+    private val userRoomListType = object : TypeReference<List<RoomDTO>>() {}
+    private val roomMemberListType = object : TypeReference<List<UUID>>() {}
+    private val roomMembersCacheTTL = Duration.ofMinutes(10)
 
     init {
-        meterRegistry.gauge("chat.rooms", rooms) { it.size.toDouble() }
+        meterRegistry.gauge("chat.rooms", sessionsInRooms) { it.size.toDouble() }
     }
 
     // ==========================
@@ -71,7 +78,8 @@ class ChatService (
 
         val room = roomRepository.findById(roomId).orElseThrow { RoomNotFoundException() }
 
-        rooms.computeIfAbsent(roomId) { CopyOnWriteArraySet() }.add(session)
+        sessionsInRooms.computeIfAbsent(roomId) { CopyOnWriteArraySet() }.add(session)
+        roomNameMap[roomId] = room.name
 
         synchronized(session) {
             if (session.isOpen) {
@@ -96,24 +104,24 @@ class ChatService (
     }
 
     fun leaveRoom(roomId: UUID, session: WebSocketSession) {
-        rooms[roomId]?.remove(session)
+        sessionsInRooms[roomId]?.remove(session)
 
-        if (rooms[roomId]?.isEmpty() == true) {
-            rooms.remove(roomId)
+        if (sessionsInRooms[roomId]?.isEmpty() == true) {
+            sessionsInRooms.remove(roomId)
         }
     }
 
     fun removeSessionFromRooms(session: WebSocketSession) {
-        rooms.entries.removeIf { (_, sessions) ->
+        sessionsInRooms.entries.removeIf { (_, sessions) ->
             sessions.remove(session)
             sessions.isEmpty()
         }
     }
 
     fun notifyRoomPresence(userId: UUID, online: Boolean) {
-        val cached = redisTemplate.opsForValue().get("user:$userId:rooms")
+        val cached = redisTemplate.opsForValue()["user:$userId:rooms"]
         val roomIds = if (cached != null) {
-            objectMapper.readValue(cached, roomListType).map { UUID.fromString(it.roomId) }
+            objectMapper.readValue(cached, userRoomListType).map { UUID.fromString(it.roomId) }
         } else {
             userRoomRepository.findAllIdRoomIdsByIdUserId(userId)
         }
@@ -130,7 +138,7 @@ class ChatService (
     // ==========================
     // Message publishing and fetching
     // ==========================
-    fun broadcast(roomId: UUID, message: ReceivedMessage, username: String) {
+    fun broadcast(roomId: UUID, userId: UUID, message: ReceivedMessage, username: String) {
         val timestamp = Instant.now()
         if (!userRoomRepository.existsByIdUserIdAndIdRoomId(message.userId, roomId)) throw RoomNotFoundException()
 
@@ -138,19 +146,35 @@ class ChatService (
 
         if (message.type == "MESSAGE") addMessage(message, username)
 
-        val sendMessage = if (message.type == "MESSAGE") {
-            WsChat(content = message.content, username = username, type = message.type, timestamp = timestamp)
-        } else {
-            WsChat(content = message.content, username = "Server", type = message.type, timestamp = timestamp)
-        }
+        val sendMessage = WsChat(
+            content = message.content,
+            userId = userId,
+            username = username,
+            type = message.type,
+            timestamp = timestamp
+        )
 
         val json = objectMapper.writeValueAsString(sendMessage)
 
         redisTemplate.convertAndSend("room:${roomId}", json)
+
+        val roomMembers = getRoomMemberIds(roomId)
+        val roomWideJson = objectMapper.writeValueAsString(
+            WsMessageNotification(
+                roomId = roomId,
+                roomName = roomNameMap[roomId] ?: "Unknown room",
+                username = username,
+                message = message.content,
+            )
+        )
+        for (memberId in roomMembers) {
+            if (presenceHandler.isUserOnline(memberId)) redisTemplate.convertAndSend("user:$memberId", roomWideJson)
+        }
     }
 
     fun addMessage(message: ReceivedMessage, username: String){
         val room = roomRepository.findById(message.roomId).orElseThrow { RoomNotFoundException() }
+        roomNameMap[room.id] = room.name
 
         val messageId = UUID.randomUUID()
 
@@ -204,16 +228,27 @@ class ChatService (
 
         val buffered = if (room.encrypted) {
             getPendingMessages(roomId).map { message ->
-                if (message.ciphertext == null || message.nonce == null) throw InvalidMessageException()
-
-                SendMessageDTO(
-                    id = message.id,
-                    roomId = message.roomId,
-                    userId = message.userId,
-                    username = message.username,
-                    message = encrypt.decrypt(message.ciphertext, message.nonce, aad = configureAad(roomId, message.id, message.userId)),
-                    timestamp = message.timestamp,
-                )
+                if (message.ciphertext != null && message.nonce != null) {
+                    SendMessageDTO(
+                        id = message.id,
+                        roomId = message.roomId,
+                        userId = message.userId,
+                        username = message.username,
+                        message = encrypt.decrypt(message.ciphertext, message.nonce, aad = configureAad(roomId, message.id, message.userId)),
+                        timestamp = message.timestamp,
+                    )
+                } else if (message.message != null) {
+                    SendMessageDTO(
+                        id = message.id,
+                        roomId = message.roomId,
+                        userId = message.userId,
+                        username = message.username,
+                        message = message.message,
+                        timestamp = message.timestamp,
+                    )
+                } else {
+                    throw InvalidMessageException()
+                }
             }
         } else {
             getPendingMessages(roomId).map { message ->
@@ -232,6 +267,18 @@ class ChatService (
             .distinctBy { it.id }
             .sortedBy { it.timestamp }
             .takeLast(size)
+    }
+
+    fun notifyTyping(roomId: UUID, userId: UUID, username: String) {
+        val payload = objectMapper.writeValueAsString(
+            WsTyping(
+                userId = userId,
+                roomId = roomId,
+                username = username
+            )
+        )
+
+        redisTemplate.convertAndSend("room:$roomId", payload)
     }
 
     private fun toSendMessageDTO(message: ChatEntity, encrypted: Boolean): SendMessageDTO {
@@ -262,6 +309,15 @@ class ChatService (
     // ==========================
     // Helper methods
     // ==========================
+    fun getRoomMemberIds(roomId: UUID): List<UUID> {
+        val key = PresenceKeys.roomMembersKey(roomId)
+        val cached = redisTemplate.opsForValue()[key]
+        if (cached != null) return objectMapper.readValue(cached, roomMemberListType)
+        val ids = userRoomRepository.findAllIdUserIdsByIdRoomId(roomId)
+        redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(ids), roomMembersCacheTTL)
+        return ids
+    }
+
     private fun getPendingMessages(roomId: UUID): List<RabbitMessageDTO> {
         return redisTemplate.opsForList()
             .range("chat.peek.$roomId", 0, -1)

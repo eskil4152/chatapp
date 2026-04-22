@@ -1,16 +1,23 @@
 package com.blikeng.chatapp.serviceTests
 
 import com.blikeng.chatapp.dtos.invites.PendingInviteDTO
+import com.blikeng.chatapp.dtos.room.RoleAction
 import com.blikeng.chatapp.dtos.room.RoomAction
+import com.blikeng.chatapp.dtos.websocket.WsUserRoleChanged
 import com.blikeng.chatapp.entities.InviteType
 import com.blikeng.chatapp.events.InviteAcceptedEvent
 import com.blikeng.chatapp.events.InviteSentEvent
 import com.blikeng.chatapp.events.RoomDeletedEvent
+import com.blikeng.chatapp.events.UserBannedEvent
 import com.blikeng.chatapp.events.UserJoinedRoomEvent
 import com.blikeng.chatapp.events.UserRemovedEvent
+import com.blikeng.chatapp.events.UserRoleChangedEvent
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.messaging.redis.PresenceKeys
+import com.blikeng.chatapp.security.UserRole
 import com.blikeng.chatapp.services.NotificationService
+import com.blikeng.chatapp.services.UserRevocationService
+import com.blikeng.chatapp.websocket.SessionRegistry
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
@@ -19,7 +26,10 @@ import io.mockk.junit5.MockKExtension
 import io.mockk.verify
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.amqp.rabbit.core.RabbitTemplate
+import org.springframework.data.redis.core.ListOperations
 import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.data.redis.core.ValueOperations
 import java.time.Instant
 import java.util.*
 
@@ -38,6 +48,11 @@ class NotificationServiceTests {
     @MockK lateinit var redisTemplate: RedisTemplate<String, String>
     @MockK lateinit var objectMapper: ObjectMapper
     @MockK lateinit var presenceHandler: PresenceHandler
+    @MockK lateinit var userRevocationService: UserRevocationService
+    @MockK lateinit var sessionRegistry: SessionRegistry
+    @MockK lateinit var rabbitTemplate: RabbitTemplate
+
+    @MockK lateinit var listOps: ListOperations<String, String>
 
     @InjectMockKs lateinit var notificationService: NotificationService
 
@@ -93,9 +108,7 @@ class NotificationServiceTests {
 
         notificationService.onInviteAccepted(event)
 
-        // INVITE_ACCEPTED + FRIEND_PRESENCE(toUserId) both go to fromUserId
         verify(exactly = 2) { redisTemplate.convertAndSend(PresenceKeys.userChannel(fromUserId), any<String>()) }
-        // FRIEND_PRESENCE(fromUserId) goes to toUserId
         verify(exactly = 1) { redisTemplate.convertAndSend(PresenceKeys.userChannel(toUserId), any<String>()) }
     }
 
@@ -108,6 +121,9 @@ class NotificationServiceTests {
         every { objectMapper.writeValueAsString(any()) } returns """{"type":"JOIN"}"""
         every { redisTemplate.convertAndSend(any(), any<String>()) } returns 1L
         every { presenceHandler.isUserOnline(userId) } returns true
+        every { redisTemplate.opsForList() } returns listOps
+        every { listOps.rightPush(any<String>(), any<String>()) } returns 1L
+        every { rabbitTemplate.convertAndSend(any<String>(), any<Any>()) } returns Unit
 
         notificationService.onUserJoinedRoom(event)
 
@@ -168,5 +184,52 @@ class NotificationServiceTests {
         notificationService.onRoomDeleted(event)
 
         verify(exactly = 0) { redisTemplate.convertAndSend(any(), any<String>()) }
+    }
+
+    @Test
+    fun shouldSendBannedNotificationOnUserBanned() {
+        val targetId = UUID.randomUUID()
+        val event = UserBannedEvent(targetId, "Superuser", "spamming")
+
+        every { objectMapper.writeValueAsString(any()) } returns """{"type":"BANNED"}"""
+        every { redisTemplate.convertAndSend(any(), any<String>()) } returns 1L
+        every { userRevocationService.revokeBanned(targetId) } returns Unit
+        every { sessionRegistry.closeUserSessions(targetId) } returns Unit
+
+        notificationService.onUserBanned(event)
+
+        verify(exactly = 1) { redisTemplate.convertAndSend(PresenceKeys.userChannel(targetId), any<String>()) }
+    }
+
+    @Test
+    fun shouldSendUserRoleChangedNotification() {
+        val userId = UUID.randomUUID()
+        val event = UserRoleChangedEvent(
+            userId = userId,
+            byUsername = "admin",
+            newRole = UserRole.TRUSTED,
+            action = RoleAction.PROMOTE
+        )
+
+        every { objectMapper.writeValueAsString(any()) } returns """{"type":"USER_ROLE_CHANGED"}"""
+        every { redisTemplate.convertAndSend(any(), any<String>()) } returns 1L
+
+        notificationService.onUserRoleChanges(event)
+
+        verify(exactly = 1) {
+            objectMapper.writeValueAsString(match<WsUserRoleChanged> {
+                it.userId == userId &&
+                        it.byUsername == "admin" &&
+                        it.newRole == UserRole.TRUSTED &&
+                        it.action == RoleAction.PROMOTE
+            })
+        }
+
+        verify(exactly = 1) {
+            redisTemplate.convertAndSend(
+                PresenceKeys.userChannel(userId),
+                any<String>()
+            )
+        }
     }
 }

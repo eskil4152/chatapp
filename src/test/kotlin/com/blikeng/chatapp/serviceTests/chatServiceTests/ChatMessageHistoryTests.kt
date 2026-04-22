@@ -36,7 +36,7 @@ import java.time.Instant
 import java.util.*
 import java.util.Collections.emptyList
 import java.util.concurrent.CopyOnWriteArraySet
-import kotlin.test.assertFailsWith
+import org.junit.jupiter.api.assertThrows
 
 @ExtendWith(MockKExtension::class)
 class ChatMessageHistoryTests {
@@ -159,13 +159,13 @@ class ChatMessageHistoryTests {
 
     @Test
     fun shouldFailToGetMessagesWhenUsingInvalidParameters() {
-        val pageNumberException = assertFailsWith<ApiException> {
+        val pageNumberException = assertThrows<ApiException> {
             chatService.getRoomMessages(UUID.randomUUID(), -1, 25)
         }
         assertEquals(HttpStatus.BAD_REQUEST, pageNumberException.status)
         assertEquals(ErrorMessages.INVALID_PARAMETERS, pageNumberException.message)
 
-        val pageSizeException = assertFailsWith<ApiException> {
+        val pageSizeException = assertThrows<ApiException> {
             chatService.getRoomMessages(UUID.randomUUID(), 0, 250)
         }
         assertEquals(HttpStatus.BAD_REQUEST, pageSizeException.status)
@@ -177,7 +177,7 @@ class ChatMessageHistoryTests {
         val roomId = UUID.randomUUID()
         every { roomRepository.findById(roomId) } returns Optional.empty()
 
-        val ex = assertFailsWith<ApiException> { chatService.getRoomMessages(roomId, 0, 25) }
+        val ex = assertThrows<ApiException> { chatService.getRoomMessages(roomId, 0, 25) }
         assertEquals(HttpStatus.NOT_FOUND, ex.status)
     }
 
@@ -224,7 +224,7 @@ class ChatMessageHistoryTests {
         val pending = RabbitMessageDTO(roomId = room.id, userId = user.id, username = user.username)
         every { listOps.range("chat.peek.${room.id}", 0L, -1L) } returns listOf(objectMapper.writeValueAsString(pending))
 
-        val ex = assertFailsWith<ApiException> { chatService.getRoomMessages(room.id, 0, 25) }
+        val ex = assertThrows<ApiException> { chatService.getRoomMessages(room.id, 0, 25) }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
 
@@ -239,7 +239,7 @@ class ChatMessageHistoryTests {
         val pending = RabbitMessageDTO(roomId = room.id, userId = user.id, username = user.username, ciphertext = "cipher".toByteArray(), nonce = null)
         every { listOps.range("chat.peek.${room.id}", 0L, -1L) } returns listOf(objectMapper.writeValueAsString(pending))
 
-        val ex = assertFailsWith<ApiException> { chatService.getRoomMessages(room.id, 0, 25) }
+        val ex = assertThrows<ApiException> { chatService.getRoomMessages(room.id, 0, 25) }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
 
@@ -253,7 +253,7 @@ class ChatMessageHistoryTests {
         every { roomRepository.findById(room.id) } returns Optional.of(room)
         every { chatRepository.findByRoomIdOrderByTimestampDesc(eq(room.id), any()) } returns PageImpl(listOf(chat))
 
-        val ex = assertFailsWith<ApiException> { chatService.getRoomMessages(room.id, 0, 25) }
+        val ex = assertThrows<ApiException> { chatService.getRoomMessages(room.id, 0, 25) }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
 
@@ -267,7 +267,7 @@ class ChatMessageHistoryTests {
         every { roomRepository.findById(room.id) } returns Optional.of(room)
         every { chatRepository.findByRoomIdOrderByTimestampDesc(eq(room.id), any()) } returns PageImpl(listOf(chat))
 
-        val ex = assertFailsWith<ApiException> { chatService.getRoomMessages(room.id, 0, 25) }
+        val ex = assertThrows<ApiException> { chatService.getRoomMessages(room.id, 0, 25) }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
 
@@ -294,8 +294,8 @@ class ChatMessageHistoryTests {
         val roomsGauge = meterRegistry.get("chat.rooms").gauge()
         assertEquals(0.0, roomsGauge.value())
 
-        chatService.rooms[UUID.randomUUID()] = CopyOnWriteArraySet(mutableSetOf(mockk()))
-        chatService.rooms[UUID.randomUUID()] = CopyOnWriteArraySet(mutableSetOf(mockk()))
+        chatService.sessionsInRooms[UUID.randomUUID()] = CopyOnWriteArraySet(mutableSetOf(mockk()))
+        chatService.sessionsInRooms[UUID.randomUUID()] = CopyOnWriteArraySet(mutableSetOf(mockk()))
 
         assertEquals(2.0, roomsGauge.value())
     }

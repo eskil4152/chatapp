@@ -72,7 +72,7 @@ class InviteService(
 
     fun getPendingInvites(userId: UUID): List<PendingInviteDTO> {
         val key = "user:$userId:pending_invites"
-        val cached = redisTemplate.opsForValue().get(key)
+        val cached = redisTemplate.opsForValue()[key]
         if (cached != null) return objectMapper.readValue(cached, pendingInviteListType)
 
         val invites = inviteRepository.findByToUserIdAndStatus(userId, InviteStatus.PENDING).map {

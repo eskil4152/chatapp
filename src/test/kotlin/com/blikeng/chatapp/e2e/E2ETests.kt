@@ -720,7 +720,8 @@ class E2ETests : ContainerBase() {
         }
             .andExpect { status { isOk() } }
             .andExpect {
-                jsonPath("$[0].message") { value("encrypted hello from user1") }
+                jsonPath("$[0].message") { value("username joined the room!") }
+                jsonPath("$[1].message") { value("encrypted hello from user1") }
             }
     }
 

@@ -24,9 +24,9 @@ import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
 import java.util.*
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.assertThrows
 
 @ExtendWith(MockKExtension::class)
 class RoomServiceMembershipTests {
@@ -85,7 +85,7 @@ class RoomServiceMembershipTests {
 
         every { userService.getUserById(userId) } returns null
 
-        val exception = assertFailsWith<ApiException> { roomService.joinRoom(userId, roomId) }
+        val exception = assertThrows<ApiException> { roomService.joinRoom(userId, roomId) }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
@@ -111,7 +111,18 @@ class RoomServiceMembershipTests {
 
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
 
-        val exception = assertFailsWith<ApiException> { roomService.leaveRoom("") }
+        val exception = assertThrows<ApiException> { roomService.leaveRoom("") }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.status)
+    }
+
+    @Test
+    fun shouldFailToLeaveRoomWhenUserNotFound() {
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
+
+        every { userService.getUserById(any()) } returns null
+
+        val exception = assertThrows<ApiException> { roomService.leaveRoom(UUID.randomUUID().toString()) }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
@@ -123,7 +134,7 @@ class RoomServiceMembershipTests {
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(any(), any()) } returns false
 
-        val exception = assertFailsWith<ApiException> { roomService.leaveRoom(UUID.randomUUID().toString()) }
+        val exception = assertThrows<ApiException> { roomService.leaveRoom(UUID.randomUUID().toString()) }
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 }

@@ -1,5 +1,6 @@
 package com.blikeng.chatapp.controllers
 
+import com.blikeng.chatapp.dtos.auth.AuthDTO
 import com.blikeng.chatapp.dtos.auth.LoginDto
 import com.blikeng.chatapp.security.UserRole
 import com.blikeng.chatapp.services.AuthService
@@ -64,8 +65,8 @@ class AuthController(
     }
 
     @GetMapping("/auth")
-    fun auth(): ResponseEntity<UserRole> {
-        return ResponseEntity.ok(userService.getRole())
+    fun auth(): ResponseEntity<AuthDTO> {
+        return ResponseEntity.ok(userService.authenticate())
     }
 
     private fun makeCookie(token: String, maxAge: Long): ResponseCookie {

@@ -22,7 +22,7 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.*
 import java.time.Instant
 import java.util.*
-import kotlin.test.Test
+import org.junit.jupiter.api.Test
 
 @WebMvcTest(
     controllers = [AdministrationController::class],

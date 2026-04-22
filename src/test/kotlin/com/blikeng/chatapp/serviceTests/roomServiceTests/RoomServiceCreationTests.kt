@@ -30,9 +30,9 @@ import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
 import java.util.*
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.assertThrows
 
 @ExtendWith(MockKExtension::class)
 class RoomServiceCreationTests {
@@ -115,7 +115,7 @@ class RoomServiceCreationTests {
 
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
 
-        val exception = assertFailsWith<ApiException> { roomService.makeNewRoom("", false) }
+        val exception = assertThrows<ApiException> { roomService.makeNewRoom("", false) }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         assertEquals(ErrorMessages.INVALID_ROOM_NAME, exception.message)
     }
@@ -127,7 +127,7 @@ class RoomServiceCreationTests {
 
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
 
-        val exception = assertFailsWith<ApiException> { roomService.makeNewRoom(null, false) }
+        val exception = assertThrows<ApiException> { roomService.makeNewRoom(null, false) }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         assertEquals(ErrorMessages.INVALID_ROOM_NAME, exception.message)
     }
@@ -139,7 +139,7 @@ class RoomServiceCreationTests {
 
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
 
-        val exception = assertFailsWith<ApiException> { roomService.makeNewRoom("a".repeat(101), false) }
+        val exception = assertThrows<ApiException> { roomService.makeNewRoom("a".repeat(101), false) }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         assertEquals(ErrorMessages.INVALID_ROOM_NAME, exception.message)
     }
@@ -164,7 +164,7 @@ class RoomServiceCreationTests {
 
     @Test
     fun shouldFailToMakeRoomWhenNoAuthentication() {
-        val exception = assertFailsWith<ApiException> { roomService.makeNewRoom("roomName", false) }
+        val exception = assertThrows<ApiException> { roomService.makeNewRoom("roomName", false) }
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
         assertEquals(ErrorMessages.INVALID_TOKEN, exception.message)
     }
@@ -202,7 +202,7 @@ class RoomServiceCreationTests {
 
     @Test
     fun shouldFailToGetRoomsWhenNoAuthentication() {
-        val exception = assertFailsWith<ApiException> { roomService.getAllUserRooms() }
+        val exception = assertThrows<ApiException> { roomService.getAllUserRooms() }
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
         assertEquals(ErrorMessages.INVALID_TOKEN, exception.message)
     }

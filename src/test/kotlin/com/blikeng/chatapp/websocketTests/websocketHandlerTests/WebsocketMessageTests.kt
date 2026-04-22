@@ -19,7 +19,7 @@ import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import java.util.*
-import kotlin.test.assertEquals
+import org.junit.jupiter.api.Assertions.assertEquals
 
 @ExtendWith(MockKExtension::class)
 class WebsocketMessageTests {
@@ -54,12 +54,11 @@ class WebsocketMessageTests {
 
         every { session.attributes } returns mutableMapOf("username" to "u", "userId" to UUID.randomUUID())
         every { chatService.joinRoom(any(), any()) } returns Unit
-        every { chatService.broadcast(any(), any(), any()) } returns Unit
 
         handler.handleMessage(session, payload)
 
         verify(exactly = 1) { chatService.joinRoom(any(), any()) }
-        verify(exactly = 1) { chatService.broadcast(any(), any(), any()) }
+        verify(exactly = 0) { chatService.broadcast(any(), any(), any(), any()) }
         verify(exactly = 0) { chatService.leaveRoom(any(), any()) }
     }
 
@@ -70,15 +69,12 @@ class WebsocketMessageTests {
 
         every { session.attributes } returns mutableMapOf("username" to "u", "userId" to UUID.randomUUID())
         every { chatService.leaveRoom(any(), any()) } returns Unit
-        every { chatService.broadcast(any(), any(), any()) } just Runs
         every { session.id } returns "test-session-id"
-        every { session.isOpen } returns true
-        every { session.sendMessage(any()) } just Runs
 
         handler.handleMessage(session, payload)
 
         verify(exactly = 0) { chatService.joinRoom(any(), any()) }
-        verify(exactly = 1) { chatService.broadcast(any(), any(), any()) }
+        verify(exactly = 0) { chatService.broadcast(any(), any(), any(), any()) }
         verify(exactly = 1) { chatService.leaveRoom(any(), any()) }
     }
 
@@ -88,14 +84,14 @@ class WebsocketMessageTests {
             .put("type", "MESSAGE").put("message", "m").put("roomId", UUID.randomUUID().toString()).toString())
 
         every { session.attributes } returns mutableMapOf("username" to "u", "userId" to UUID.randomUUID())
-        every { chatService.broadcast(any(), any(), any()) } returns Unit
+        every { chatService.broadcast(any(), any(), any(), any()) } just Runs
         every { session.isOpen } returns true
         every { session.sendMessage(any()) } just Runs
 
         handler.handleMessage(session, payload)
 
         verify(exactly = 0) { chatService.joinRoom(any(), any()) }
-        verify(exactly = 1) { chatService.broadcast(any(), any(), any()) }
+        verify(exactly = 1) { chatService.broadcast(any(), any(), any(), any()) }
         verify(exactly = 0) { chatService.leaveRoom(any(), any()) }
     }
 
@@ -111,8 +107,78 @@ class WebsocketMessageTests {
         handler.handleMessage(session, payload)
 
         verify(exactly = 0) { chatService.joinRoom(any(), any()) }
-        verify(exactly = 0) { chatService.broadcast(any(), any(), any()) }
+        verify(exactly = 0) { chatService.broadcast(any(), any(), any(), any()) }
         verify(exactly = 0) { chatService.leaveRoom(any(), any()) }
+    }
+
+    @Test
+    fun shouldRouteTypingMessage() {
+        val roomId = UUID.randomUUID()
+        val userId = UUID.randomUUID()
+        val payload = TextMessage(objectMapper.createObjectNode()
+            .put("type", "TYPING").put("roomId", roomId.toString()).toString())
+
+        every { session.attributes } returns mutableMapOf("username" to "alice", "userId" to userId)
+        every { chatService.notifyTyping(any(), any(), any()) } just Runs
+
+        handler.handleMessage(session, payload)
+
+        verify(exactly = 1) { chatService.notifyTyping(eq(roomId), eq(userId), eq("alice")) }
+        verify(exactly = 0) { chatService.broadcast(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun shouldSendErrorOnTypingWithInvalidRoomId() {
+        val payload = TextMessage(objectMapper.createObjectNode()
+            .put("type", "TYPING").put("roomId", "not-a-uuid").toString())
+
+        every { session.attributes } returns mutableMapOf("username" to "u", "userId" to UUID.randomUUID())
+        every { session.isOpen } returns true
+        val msgSlot = slot<TextMessage>()
+        every { session.sendMessage(capture(msgSlot)) } just Runs
+
+        handler.handleMessage(session, payload)
+
+        val json = objectMapper.readTree(msgSlot.captured.payload)
+        assertEquals("ERROR", json["type"].asText())
+        assertEquals(400, json["code"].asInt())
+        verify(exactly = 0) { chatService.notifyTyping(any(), any(), any()) }
+    }
+
+    @Test
+    fun shouldSendErrorOnTypingWithoutUserId() {
+        val payload = TextMessage(objectMapper.createObjectNode()
+            .put("type", "TYPING").put("roomId", UUID.randomUUID().toString()).toString())
+
+        every { session.attributes } returns mutableMapOf("username" to "u")
+        every { session.isOpen } returns true
+        val msgSlot = slot<TextMessage>()
+        every { session.sendMessage(capture(msgSlot)) } just Runs
+
+        handler.handleMessage(session, payload)
+
+        val json = objectMapper.readTree(msgSlot.captured.payload)
+        assertEquals("ERROR", json["type"].asText())
+        assertEquals(401, json["code"].asInt())
+        verify(exactly = 0) { chatService.notifyTyping(any(), any(), any()) }
+    }
+
+    @Test
+    fun shouldSendErrorOnTypingWithoutUsername() {
+        val payload = TextMessage(objectMapper.createObjectNode()
+            .put("type", "TYPING").put("roomId", UUID.randomUUID().toString()).toString())
+
+        every { session.attributes } returns mutableMapOf("userId" to UUID.randomUUID())
+        every { session.isOpen } returns true
+        val msgSlot = slot<TextMessage>()
+        every { session.sendMessage(capture(msgSlot)) } just Runs
+
+        handler.handleMessage(session, payload)
+
+        val json = objectMapper.readTree(msgSlot.captured.payload)
+        assertEquals("ERROR", json["type"].asText())
+        assertEquals(401, json["code"].asInt())
+        verify(exactly = 0) { chatService.notifyTyping(any(), any(), any()) }
     }
 
     // ==========================
@@ -121,7 +187,7 @@ class WebsocketMessageTests {
     @Test
     fun shouldSendErrorWithoutUsername() {
         val payload = TextMessage(objectMapper.createObjectNode()
-            .put("type", "JOIN").put("roomId", UUID.randomUUID().toString()).toString())
+            .put("type", "TYPING").put("roomId", UUID.randomUUID().toString()).toString())
 
         every { session.attributes } returns mutableMapOf("userId" to UUID.randomUUID())
         every { session.isOpen } returns true
@@ -132,18 +198,19 @@ class WebsocketMessageTests {
         handler.handleMessage(session, payload)
 
         val json = objectMapper.readTree(msgSlot.captured.payload)
+
         assertEquals("ERROR", json["type"].asText())
         assertEquals(401, json["code"].asInt())
         assertEquals("No username found", json["message"].asText())
-        verify(exactly = 0) { chatService.joinRoom(any(), any()) }
+        verify(exactly = 0) { chatService.notifyTyping(any(), any(), any()) }
     }
 
     @Test
     fun shouldFailToSendMessageWithoutUserId() {
         val payload = TextMessage(objectMapper.createObjectNode()
-            .put("type", "JOIN").put("message", "m").put("roomId", UUID.randomUUID().toString()).toString())
+            .put("type", "TYPING").put("roomId", UUID.randomUUID().toString()).toString())
 
-        every { session.attributes } returns mutableMapOf("username" to "u")
+        every { session.attributes } returns mutableMapOf("username" to "user")
         every { session.isOpen } returns true
 
         val msgSlot = slot<TextMessage>()
@@ -249,7 +316,7 @@ class WebsocketMessageTests {
         assertEquals("ERROR", json["type"].asText())
         assertEquals(403, json["code"].asInt())
         assertEquals("Not permitted", json["message"].asText())
-        verify(exactly = 0) { chatService.broadcast(any(), any(), any()) }
+        verify(exactly = 0) { chatService.broadcast(any(), any(), any(), any()) }
     }
 
     @Test
@@ -259,7 +326,7 @@ class WebsocketMessageTests {
 
         every { session.attributes } returns mutableMapOf("username" to "u", "userId" to UUID.randomUUID())
         every { session.isOpen } returns true
-        every { chatService.broadcast(any(), any(), any()) } throws IllegalArgumentException("Bad request X")
+        every { chatService.broadcast(any(), any(), any(), any()) } throws IllegalArgumentException("Bad request X")
 
         val msgSlot = slot<TextMessage>()
         every { session.sendMessage(capture(msgSlot)) } just Runs
@@ -279,7 +346,7 @@ class WebsocketMessageTests {
 
         every { session.attributes } returns mutableMapOf("username" to "u", "userId" to UUID.randomUUID())
         every { session.isOpen } returns true
-        every { chatService.broadcast(any(), any(), any()) } throws RuntimeException("exception")
+        every { chatService.broadcast(any(), any(), any(), any()) } throws RuntimeException("exception")
 
         val msgSlot = slot<TextMessage>()
         every { session.sendMessage(capture(msgSlot)) } just Runs
@@ -299,7 +366,7 @@ class WebsocketMessageTests {
 
         every { session.attributes } returns mutableMapOf("username" to "u", "userId" to UUID.randomUUID())
         every { session.isOpen } returns false
-        every { chatService.broadcast(any(), any(), any()) } throws RuntimeException("exception")
+        every { chatService.broadcast(any(), any(), any(), any()) } throws RuntimeException("exception")
         every { session.sendMessage(any()) } just Runs
 
         handler.handleMessage(session, payload)
@@ -334,7 +401,7 @@ class WebsocketMessageTests {
 
         every { session.attributes } returns mutableMapOf("username" to "u", "userId" to UUID.randomUUID())
         every { session.isOpen } returns true
-        every { chatService.broadcast(any(), any(), any()) } throws IllegalArgumentException()
+        every { chatService.broadcast(any(), any(), any(), any()) } throws IllegalArgumentException()
 
         val msgSlot = slot<TextMessage>()
         every { session.sendMessage(capture(msgSlot)) } just Runs
@@ -364,7 +431,7 @@ class WebsocketMessageTests {
 
         handler.handleMessage(session, payload)
 
-        verify(exactly = 0) { chatService.broadcast(any(), any(), any()) }
+        verify(exactly = 0) { chatService.broadcast(any(), any(), any(), any()) }
 
         val json = objectMapper.readTree(msgSlot.captured.payload)
         assertEquals("ERROR", json["type"].asText())

@@ -18,10 +18,10 @@ import org.springframework.http.server.ServerHttpResponse
 import org.springframework.http.server.ServletServerHttpRequest
 import org.springframework.web.socket.WebSocketHandler
 import java.util.*
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 
 @ExtendWith(MockKExtension::class)
 class AuthHandshakeInterceptorTests {
@@ -59,6 +59,7 @@ class AuthHandshakeInterceptorTests {
             role = "USER"
         )
         every { userRevocationService.isRevoked(userId) } returns false
+        every { userRevocationService.isBanned(userId) } returns false
 
         val servletRequest = mockk<HttpServletRequest> {
             every { cookies } returns cookiesList
@@ -184,6 +185,32 @@ class AuthHandshakeInterceptorTests {
             role = "USER"
         )
         every { userRevocationService.isRevoked(userId) } returns true
+
+        val servletRequest = mockk<HttpServletRequest> {
+            every { cookies } returns cookiesList
+        }
+
+        val request = ServletServerHttpRequest(servletRequest)
+        val attributes = mutableMapOf<String, Any>()
+
+        val result = interceptor.beforeHandshake(request, mockk(relaxed = true), mockk(relaxed = true), attributes)
+
+        assertFalse(result)
+        assertTrue(attributes.isEmpty())
+    }
+
+    @Test
+    fun shouldFailWhenUserIsBanned() {
+        val cookiesList: Array<Cookie> = arrayOf(Cookie("AUTH", "token"))
+        val userId = UUID.randomUUID()
+
+        every { jwtService.validateToken("token") } returns JwtService.JwtPrincipal(
+            username = "user",
+            userId = userId,
+            role = "USER"
+        )
+        every { userRevocationService.isRevoked(userId) } returns false
+        every { userRevocationService.isBanned(userId) } returns true
 
         val servletRequest = mockk<HttpServletRequest> {
             every { cookies } returns cookiesList

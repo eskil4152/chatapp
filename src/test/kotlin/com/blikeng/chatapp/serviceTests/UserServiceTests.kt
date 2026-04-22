@@ -26,9 +26,9 @@ import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
 import java.util.*
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.assertThrows
 
 @ExtendWith(MockKExtension::class)
 class UserServiceTests {
@@ -92,7 +92,7 @@ class UserServiceTests {
 
         every { userRepository.findById(any()) } returns Optional.empty()
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             userService.getSelf()
         }
 
@@ -107,7 +107,7 @@ class UserServiceTests {
 
         every { userRepository.findById(any()) } returns Optional.empty()
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             userService.editProfile(ChangeUserDTO("","","",""))
         }
 
@@ -180,7 +180,7 @@ class UserServiceTests {
 
         every { userRepository.findById(userId) } returns Optional.of(UserEntity(id = userId, username = "username", password = ""))
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             userService.editProfile(ChangeUserDTO(bio = "a".repeat(501), email = "", fullName = "", avatarUrl = ""))
         }
 
@@ -196,7 +196,7 @@ class UserServiceTests {
 
         every { userRepository.findById(userId) } returns Optional.of(UserEntity(id = userId, username = "username", password = ""))
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             userService.editProfile(ChangeUserDTO(bio = "", email = "a".repeat(250) + "@b.com", fullName = "", avatarUrl = ""))
         }
 
@@ -212,7 +212,7 @@ class UserServiceTests {
 
         every { userRepository.findById(userId) } returns Optional.of(UserEntity(id = userId, username = "username", password = ""))
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             userService.editProfile(ChangeUserDTO(bio = "", email = "notanemail", fullName = "", avatarUrl = ""))
         }
 
@@ -242,7 +242,7 @@ class UserServiceTests {
 
         every { userRepository.findById(userId) } returns Optional.of(UserEntity(id = userId, username = "username", password = ""))
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             userService.editProfile(ChangeUserDTO(bio = "", email = "", fullName = "a".repeat(101), avatarUrl = ""))
         }
 
@@ -258,7 +258,7 @@ class UserServiceTests {
 
         every { userRepository.findById(userId) } returns Optional.of(UserEntity(id = userId, username = "username", password = ""))
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             userService.editProfile(ChangeUserDTO(bio = "", email = "", fullName = "", avatarUrl = "a".repeat(501)))
         }
 
@@ -299,7 +299,7 @@ class UserServiceTests {
 
         every { userRepository.findById(any()) } returns Optional.empty()
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             userService.editPassword(
                 EditPasswordDTO(
                     oldPassword = "old password",
@@ -329,7 +329,7 @@ class UserServiceTests {
         every { userRepository.findById(userId) } returns Optional.of(user)
         every { passwordService.checkPassword(any(), any()) } returns false
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             userService.editPassword(
                 EditPasswordDTO(
                     oldPassword = "old passworded",
@@ -359,7 +359,7 @@ class UserServiceTests {
         every { userRepository.findById(userId) } returns Optional.of(user)
         every { passwordService.checkPassword(any(), any()) } returns true
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             userService.editPassword(
                 EditPasswordDTO(
                     oldPassword = "oldPassword",
@@ -376,7 +376,7 @@ class UserServiceTests {
 
     @Test
     fun shouldFailToGetUserWithoutAuthentication() {
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             userService.getSelf()
         }
 
@@ -386,7 +386,7 @@ class UserServiceTests {
 
     @Test
     fun shouldFailToEditUserWithoutAuthentication() {
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             userService.editProfile(ChangeUserDTO("", "", "", ""))
         }
 
@@ -396,7 +396,7 @@ class UserServiceTests {
 
     @Test
     fun shouldFailToEditPasswordWithoutAuthentication() {
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             userService.editPassword(EditPasswordDTO("oldPassword", "newPassword"))
         }
 
@@ -431,7 +431,7 @@ class UserServiceTests {
 
         every { userRepository.findById(any()) } returns Optional.empty()
 
-        val exception = assertFailsWith<ApiException> {
+        val exception = assertThrows<ApiException> {
             userService.deleteUser()
         }
 
@@ -464,7 +464,7 @@ class UserServiceTests {
 
         every { userRepository.findById(any()) } returns Optional.empty()
 
-        val exception = assertFailsWith<ApiException> { userService.getRole() }
+        val exception = assertThrows<ApiException> { userService.authenticate() }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 }

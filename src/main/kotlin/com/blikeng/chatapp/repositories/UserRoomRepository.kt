@@ -48,6 +48,12 @@ interface UserRoomRepository: JpaRepository<UserRoomEntity, UserRoomId> {
     fun findAllIdRoomIdsByIdUserId(userId: UUID): List<UUID>
 
     @Query("""
+        SELECT ur.id.userId
+        FROM UserRoomEntity ur
+        WHERE ur.id.roomId = :roomId""")
+    fun findAllIdUserIdsByIdRoomId(roomId: UUID): List<UUID>
+
+    @Query("""
         SELECT ur.id.roomId as roomId, u.username as username
         FROM UserRoomEntity ur
         JOIN UserEntity u ON u.id = ur.id.userId

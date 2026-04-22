@@ -20,4 +20,16 @@ class UserRevocationService(
     fun isRevoked(userId: UUID): Boolean {
         return redisTemplate.hasKey("revoked_user:$userId") == true
     }
+
+    fun revokeBanned(userId: UUID) {
+        redisTemplate.opsForValue().set("banned_user:$userId", "1", Duration.ofHours(24))
+    }
+
+    fun isBanned(userId: UUID): Boolean {
+        return redisTemplate.hasKey("banned_user:$userId") == true
+    }
+
+    fun unRevokeBanned(userId: UUID) {
+        redisTemplate.delete("banned_user:$userId")
+    }
 }

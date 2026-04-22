@@ -5,8 +5,8 @@ import com.blikeng.chatapp.security.auth.JwtService
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.assertNull
 import java.util.*
-import kotlin.test.Test
-import kotlin.test.assertFailsWith
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 class JwtServiceTests {
     // ==========================
@@ -53,7 +53,7 @@ class JwtServiceTests {
     fun shouldThrowWhenSecretIsTooShort() {
         val secret = "short-secret"
 
-        val exception = assertFailsWith<IllegalArgumentException> {
+        val exception = assertThrows<IllegalArgumentException> {
             JwtService(secret)
         }
 

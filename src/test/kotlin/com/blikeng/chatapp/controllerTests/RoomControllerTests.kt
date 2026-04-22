@@ -9,7 +9,6 @@ import com.blikeng.chatapp.entities.RoomType
 import com.blikeng.chatapp.errors.InvalidRoomNameException
 import com.blikeng.chatapp.errors.InvalidTokenException
 import com.blikeng.chatapp.errors.NotPermittedException
-import com.blikeng.chatapp.errors.RoomNotFoundException
 import com.blikeng.chatapp.security.auth.JwtAuthFilter
 import com.blikeng.chatapp.security.ratelimit.RateLimitService
 import com.blikeng.chatapp.services.RoomService
@@ -25,7 +24,7 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import java.util.*
-import kotlin.test.Test
+import org.junit.jupiter.api.Test
 
 @WebMvcTest(
     controllers = [RoomController::class],

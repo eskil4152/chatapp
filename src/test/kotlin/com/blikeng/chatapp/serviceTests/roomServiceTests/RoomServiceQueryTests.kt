@@ -16,7 +16,10 @@ import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.redis.core.RedisTemplate
@@ -25,10 +28,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
 import java.util.*
-import kotlin.test.Test
-import kotlin.test.assertNull
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
+import org.junit.jupiter.api.assertThrows
 
 @ExtendWith(MockKExtension::class)
 class RoomServiceQueryTests {
@@ -121,7 +121,7 @@ class RoomServiceQueryTests {
 
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
 
-        val exception = assertFailsWith<ApiException> { roomService.getAllUsersInRoom("not-a-uuid") }
+        val exception = assertThrows<ApiException> { roomService.getAllUsersInRoom("not-a-uuid") }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
@@ -136,7 +136,7 @@ class RoomServiceQueryTests {
         every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
         every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns null
 
-        val exception = assertFailsWith<ApiException> { roomService.getAllUsersInRoom(roomId.toString()) }
+        val exception = assertThrows<ApiException> { roomService.getAllUsersInRoom(roomId.toString()) }
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
@@ -152,7 +152,7 @@ class RoomServiceQueryTests {
         every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns
                 UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.MEMBER, type = RoomType.GROUP)
 
-        val exception = assertFailsWith<ApiException> { roomService.getAllUsersInRoom(roomId.toString()) }
+        val exception = assertThrows<ApiException> { roomService.getAllUsersInRoom(roomId.toString()) }
         assertEquals(HttpStatus.FORBIDDEN, exception.status)
     }
 }
