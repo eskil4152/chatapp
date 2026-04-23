@@ -1,5 +1,7 @@
-# ChatApp
+<img src="./docs/Name.png" width="149"  alt="Missing image"/>
 
+
+A real-time chat application built with Spring Boot and Kotlin.
 It supports chat rooms, private DMs, role-based access control, invite-based room membership, friend requests, optional AES-256-GCM message encryption, 
 and horizontally scalable WebSocket messaging using Redis Pub/Sub and RabbitMQ.
 ## [Access](https://chatapp.blikeng.com)
