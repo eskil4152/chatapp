@@ -15,9 +15,9 @@ class RateLimitService(
 ) {
     private val buckets = Caffeine.newBuilder()
         .expireAfterAccess(Duration.ofMinutes(10))
-        .recordStats { CaffeineStatsCounter(meterRegistry, "rate.limit.buckets") }
+        .recordStats { CaffeineStatsCounter(meterRegistry, "app.ratelimit.http.buckets") }
         .build<String, Bucket>()
-        .also { cache -> Gauge.builder("rate.limit.buckets", cache) { it.asMap().size.toDouble() }.register(meterRegistry) }
+        .also { cache -> Gauge.builder("app.ratelimit.http.buckets", cache) { it.asMap().size.toDouble() }.register(meterRegistry) }
 
     fun tryConsume(key: String, maxTokens: Long, window: Duration): Boolean {
         val bucket = buckets.get(key) {

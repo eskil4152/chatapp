@@ -33,8 +33,8 @@ class SessionRegistry(
     private val sessionIndex = ConcurrentHashMap<String, WebSocketSession>()
 
     init {
-        meterRegistry.gauge("users", users) { it.size.toDouble() }
-        meterRegistry.gauge("user.sessions", users) {
+        meterRegistry.gauge("app.users.connected", users) { it.size.toDouble() }
+        meterRegistry.gauge("app.users.sessions", users) {
             it.values.sumOf { sessions -> sessions.size.toDouble() }
         }
     }

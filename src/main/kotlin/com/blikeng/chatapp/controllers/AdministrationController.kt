@@ -4,6 +4,8 @@ import com.blikeng.chatapp.dtos.UserIdDTO
 import com.blikeng.chatapp.dtos.administration.BanUserDTO
 import com.blikeng.chatapp.dtos.administration.BannedUserDTO
 import com.blikeng.chatapp.dtos.administration.ElevatedUserDTO
+import com.blikeng.chatapp.dtos.administration.AdvancedSiteInfoDTO
+import com.blikeng.chatapp.dtos.administration.SiteInfoDTO
 import com.blikeng.chatapp.dtos.administration.UserDetailDTO
 import com.blikeng.chatapp.dtos.administration.UserRoleDTO
 import com.blikeng.chatapp.services.AdministrationService;
@@ -60,5 +62,15 @@ class AdministrationController(
         @RequestParam(defaultValue = "25") size: Int
     ) : ResponseEntity<List<BannedUserDTO>> {
         return ResponseEntity.ok(administrationService.getAllUserBans(page, size))
+    }
+
+    @GetMapping("/site-info")
+    fun getSiteInfo() : ResponseEntity<SiteInfoDTO> {
+        return ResponseEntity.ok(administrationService.getSiteInfo())
+    }
+
+    @GetMapping("/advanced-site-info")
+    fun getAdvancedSiteInfo() : ResponseEntity<AdvancedSiteInfoDTO> {
+        return ResponseEntity.ok(administrationService.getAdvancedSiteInfo())
     }
 }

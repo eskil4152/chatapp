@@ -1,0 +1,23 @@
+package com.blikeng.chatapp.dtos.administration
+
+data class HttpEndpointMetric(
+    val uri: String,
+    val method: String,
+    val status: Int,
+    val count: Long,
+    val meanMs: Double,
+    val maxMs: Double
+)
+
+data class AdvancedSiteInfoDTO(
+    val jvmMemoryUsedMb: Double,
+    val jvmMemoryMaxMb: Double,
+    val jvmMemoryCommittedMb: Double,
+    val jvmThreadsLive: Int,
+    val jvmThreadsPeak: Int,
+    val cpuUsagePercent: Double,
+    val gcPauseMeanMs: Double,
+    val gcPauseMaxMs: Double,
+    val uptimeSeconds: Long,
+    val httpRequests: List<HttpEndpointMetric>
+)

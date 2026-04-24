@@ -4,6 +4,11 @@ import com.blikeng.chatapp.dtos.UserIdDTO
 import com.blikeng.chatapp.dtos.administration.BanUserDTO
 import com.blikeng.chatapp.dtos.administration.BannedUserDTO
 import com.blikeng.chatapp.dtos.administration.ElevatedUserDTO
+import com.blikeng.chatapp.dtos.administration.AdvancedSiteInfoDTO
+import com.blikeng.chatapp.dtos.administration.HttpEndpointMetric
+import com.blikeng.chatapp.dtos.administration.SiteInfoDTO
+import io.micrometer.core.instrument.Timer
+import java.util.concurrent.TimeUnit
 import com.blikeng.chatapp.dtos.administration.UserDetailDTO
 import com.blikeng.chatapp.dtos.administration.UserRoleDTO
 import com.blikeng.chatapp.dtos.room.RoleAction
@@ -22,6 +27,7 @@ import com.blikeng.chatapp.repositories.UserBanRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.security.UserRole
 import com.blikeng.chatapp.security.auth.getId
+import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
@@ -34,6 +40,7 @@ class AdministrationService(
     val userBanRepository: UserBanRepository,
     val eventPublisher: ApplicationEventPublisher,
     val userRevocationService: UserRevocationService,
+    val meterRegistry: MeterRegistry
 ) {
     fun getElevatedUsers(): List<ElevatedUserDTO> {
         return userRepository.findAllByRoleNot(UserRole.USER).map { user ->
@@ -162,6 +169,49 @@ class AdministrationService(
                 reason = ban.reason
             )
         }.content
+    }
+
+    fun getSiteInfo(): SiteInfoDTO {
+        fun gauge(name: String) = meterRegistry.find(name).gauge()?.value() ?: 0.0
+        return SiteInfoDTO(
+            connectedUsers = gauge("app.users.connected"),
+            totalSessions = gauge("app.users.sessions"),
+            activeRooms = gauge("app.rooms.active"),
+            totalUsers = 0,
+            totalRooms = 0,
+            bannedUsers = 0
+        )
+    }
+
+    fun getAdvancedSiteInfo(): AdvancedSiteInfoDTO {
+        fun gauge(name: String) = meterRegistry.find(name).gauge()?.value() ?: 0.0
+
+        val httpRequests = meterRegistry.find("http.server.requests").timers().map { timer ->
+            val tags = timer.id.tags.associate { it.key to it.value }
+            HttpEndpointMetric(
+                uri = tags["uri"] ?: "unknown",
+                method = tags["method"] ?: "unknown",
+                status = tags["status"]?.toIntOrNull() ?: 0,
+                count = timer.count(),
+                meanMs = timer.mean(TimeUnit.MILLISECONDS),
+                maxMs = timer.max(TimeUnit.MILLISECONDS)
+            )
+        }
+
+        val gcPause = meterRegistry.find("jvm.gc.pause").timer()
+
+        return AdvancedSiteInfoDTO(
+            jvmMemoryUsedMb = gauge("jvm.memory.used") / (1024 * 1024),
+            jvmMemoryMaxMb = gauge("jvm.memory.max") / (1024 * 1024),
+            jvmMemoryCommittedMb = gauge("jvm.memory.committed") / (1024 * 1024),
+            jvmThreadsLive = gauge("jvm.threads.live").toInt(),
+            jvmThreadsPeak = gauge("jvm.threads.peak").toInt(),
+            cpuUsagePercent = gauge("system.cpu.usage") * 100,
+            gcPauseMeanMs = gcPause?.mean(TimeUnit.MILLISECONDS) ?: 0.0,
+            gcPauseMaxMs = gcPause?.max(TimeUnit.MILLISECONDS) ?: 0.0,
+            uptimeSeconds = gauge("process.uptime").toLong(),
+            httpRequests = httpRequests
+        )
     }
 
     private fun checkRequiredRole(targetRole: UserRole, userRole: UserRole) : Boolean {
