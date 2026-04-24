@@ -1,10 +1,14 @@
 package com.blikeng.chatapp.dtos.administration
 
+data class HttpStatusCount(
+    val status: Int,
+    val count: Long
+)
+
 data class HttpEndpointMetric(
     val uri: String,
     val method: String,
-    val status: Int,
-    val count: Long,
+    val statuses: List<HttpStatusCount>,
     val meanMs: Double,
     val maxMs: Double
 )

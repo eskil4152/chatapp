@@ -4,7 +4,7 @@ data class SiteInfoDTO (
     val connectedUsers: Double,
     val totalSessions: Double,
     val activeRooms: Double,
-    val totalUsers: Int,
-    val totalRooms: Int,
-    val bannedUsers: Int,
+    val totalUsers: Long,
+    val totalRooms: Long,
+    val bannedUsers: Long,
 )

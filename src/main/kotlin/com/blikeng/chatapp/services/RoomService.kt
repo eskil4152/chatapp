@@ -47,7 +47,7 @@ class RoomService(
     private val objectMapper: ObjectMapper,
 ) {
     private val roomListType = object : TypeReference<List<RoomDTO>>() {}
-    private val ROOMS_CACHE_TTL = Duration.ofMinutes(5)
+    private val roomCacheTTL = Duration.ofMinutes(5)
 
     private fun bustRoomsCache(vararg userIds: UUID) =
         userIds.forEach { redisTemplate.delete("user:$it:rooms") }
@@ -99,7 +99,7 @@ class RoomService(
                        else room.room.name
             RoomDTO(roomId = room.room.id.toString(), roomName = name, encrypted = room.room.encrypted, role = room.role, type = room.type)
         }
-        redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(rooms), ROOMS_CACHE_TTL)
+        redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(rooms), roomCacheTTL)
         return rooms
     }
 

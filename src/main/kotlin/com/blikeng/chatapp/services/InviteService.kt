@@ -65,7 +65,7 @@ class InviteService(
     private val objectMapper: ObjectMapper,
 ) {
     private val pendingInviteListType = object : TypeReference<List<PendingInviteDTO>>() {}
-    private val PENDING_INVITES_TTL = Duration.ofMinutes(5)
+    private val pendingInvitesTTL = Duration.ofMinutes(5)
     fun getPendingInvites(): List<PendingInviteDTO> {
         return getPendingInvites(getId())
     }
@@ -90,7 +90,7 @@ class InviteService(
                 expiresAt = it.expiresAt,
             )
         }
-        redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(invites), PENDING_INVITES_TTL)
+        redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(invites), pendingInvitesTTL)
         return invites
     }
 
