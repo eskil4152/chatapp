@@ -291,7 +291,7 @@ class ChatMessageHistoryTests {
             userService = userService
         )
 
-        val roomsGauge = meterRegistry.get("chat.rooms").gauge()
+        val roomsGauge = meterRegistry.get("app.rooms.active").gauge()
         assertEquals(0.0, roomsGauge.value())
 
         chatService.sessionsInRooms[UUID.randomUUID()] = CopyOnWriteArraySet(mutableSetOf(mockk()))

@@ -156,8 +156,8 @@ class SessionRegistryTests {
 
     @Test
     fun shouldRegisterAndEvaluateGauges() {
-        val usersGauge = meterRegistry.get("users").gauge()
-        val sessionsGauge = meterRegistry.get("user.sessions").gauge()
+        val usersGauge = meterRegistry.get("app.users.connected").gauge()
+        val sessionsGauge = meterRegistry.get("app.users.sessions").gauge()
 
         assertEquals(0.0, usersGauge.value())
         assertEquals(0.0, sessionsGauge.value())

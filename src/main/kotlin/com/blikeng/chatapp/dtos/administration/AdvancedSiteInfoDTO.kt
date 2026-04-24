@@ -9,8 +9,10 @@ data class HttpEndpointMetric(
     val uri: String,
     val method: String,
     val statuses: List<HttpStatusCount>,
+    val totalCount: Long,
+    val errorRate: Double,
     val meanMs: Double,
-    val maxMs: Double
+    val maxMs: Double,
 )
 
 data class AdvancedSiteInfoDTO(

@@ -1,29 +1,10 @@
 package com.blikeng.chatapp.services
 
 import com.blikeng.chatapp.dtos.UserIdDTO
-import com.blikeng.chatapp.dtos.administration.BanUserDTO
-import com.blikeng.chatapp.dtos.administration.BannedUserDTO
-import com.blikeng.chatapp.dtos.administration.ElevatedUserDTO
-import com.blikeng.chatapp.dtos.administration.AdvancedSiteInfoDTO
-import com.blikeng.chatapp.dtos.administration.HttpEndpointMetric
-import com.blikeng.chatapp.dtos.administration.HttpStatusCount
-import com.blikeng.chatapp.dtos.administration.SiteInfoDTO
-import io.micrometer.core.instrument.Timer
-import java.util.concurrent.TimeUnit
-import com.blikeng.chatapp.dtos.administration.UserDetailDTO
-import com.blikeng.chatapp.dtos.administration.UserRoleDTO
+import com.blikeng.chatapp.dtos.administration.*
 import com.blikeng.chatapp.dtos.room.RoleAction
-import com.blikeng.chatapp.dtos.room.RoomDTO
 import com.blikeng.chatapp.entities.BannedUser
-import com.blikeng.chatapp.entities.RoomType
-import com.blikeng.chatapp.errors.AlreadyBannedException
-import com.blikeng.chatapp.errors.InvalidParametersException
-import com.blikeng.chatapp.errors.InvalidUUIDException
-import com.blikeng.chatapp.errors.InvalidUnbanException
-import com.blikeng.chatapp.errors.InvalidUserException
-import com.blikeng.chatapp.errors.NotBannedException
-import com.blikeng.chatapp.errors.NotPermittedException
-import com.blikeng.chatapp.errors.UserNotFoundException
+import com.blikeng.chatapp.errors.*
 import com.blikeng.chatapp.events.UserBannedEvent
 import com.blikeng.chatapp.events.UserRoleChangedEvent
 import com.blikeng.chatapp.repositories.RoomRepository
@@ -41,6 +22,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 @Service
 class AdministrationService(
@@ -209,19 +191,47 @@ class AdministrationService(
             }
             .map { (key, timers) ->
                 val (uri, method) = key
-                val statuses = timers.map { timer ->
-                    val tags = timer.id.tags.associate { it.key to it.value }
-                    HttpStatusCount(
-                        status = tags["status"]?.toIntOrNull() ?: 0,
-                        count = timer.count()
-                    )
+
+                val statuses = timers
+                    .groupBy { timer ->
+                        val tags = timer.id.tags.associate { it.key to it.value }
+                        tags["status"]?.toIntOrNull() ?: 0
+                    }
+                    .map { (status, groupedTimers) ->
+                        HttpStatusCount(
+                            status = status,
+                            count = groupedTimers.sumOf { it.count() }
+                        )
+                    }
+
+                val totalCount = timers.sumOf { it.count() }
+
+                val meanMs = if (totalCount > 0) {
+                    timers.sumOf {
+                        it.mean(TimeUnit.MILLISECONDS) * it.count()
+                    } / totalCount
+                } else 0.0
+
+                val maxMs = timers.fold(0.0) { acc, timer ->
+                    maxOf(acc, timer.max(TimeUnit.MILLISECONDS))
                 }
+
+                val errorCount = statuses
+                    .filter { it.status >= 500 }
+                    .sumOf { it.count }
+
+                val errorRate = if (totalCount > 0) {
+                    errorCount.toDouble() / totalCount
+                } else 0.0
+
                 HttpEndpointMetric(
                     uri = uri,
                     method = method,
                     statuses = statuses,
-                    meanMs = timers.sumOf { it.mean(TimeUnit.MILLISECONDS) } / timers.size,
-                    maxMs = timers.maxOf { it.max(TimeUnit.MILLISECONDS) }
+                    totalCount = totalCount,
+                    errorRate = errorRate,
+                    meanMs = meanMs,
+                    maxMs = maxMs
                 )
             }
 

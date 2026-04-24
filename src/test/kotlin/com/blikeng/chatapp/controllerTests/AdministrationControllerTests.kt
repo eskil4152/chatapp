@@ -1,7 +1,11 @@
 package com.blikeng.chatapp.controllerTests
 
 import com.blikeng.chatapp.controllers.AdministrationController
+import com.blikeng.chatapp.dtos.administration.AdvancedSiteInfoDTO
 import com.blikeng.chatapp.dtos.administration.ElevatedUserDTO
+import com.blikeng.chatapp.dtos.administration.HttpEndpointMetric
+import com.blikeng.chatapp.dtos.administration.HttpStatusCount
+import com.blikeng.chatapp.dtos.administration.SiteInfoDTO
 import com.blikeng.chatapp.dtos.administration.UserDetailDTO
 import com.blikeng.chatapp.errors.InvalidTokenException
 import com.blikeng.chatapp.errors.NotPermittedException
@@ -201,5 +205,77 @@ class AdministrationControllerTests {
             content = """{"userId":"${UUID.randomUUID()}"}"""
         }
             .andExpect { status { isForbidden() } }
+    }
+
+    // ==========================
+    // getSiteInfo
+    // ==========================
+    @Test
+    fun shouldGetSiteInfo() {
+        val dto = SiteInfoDTO(
+            connectedUsers = 5.0, totalSessions = 8.0, activeRooms = 3.0,
+            totalUsers = 100L, totalRooms = 20L, bannedUsers = 2L
+        )
+        every { administrationService.getSiteInfo() } returns dto
+
+        mockMvc.get("/api/admin/site-info")
+            .andExpect { status { isOk() } }
+            .andExpect { jsonPath("$.connectedUsers") { value(5.0) } }
+            .andExpect { jsonPath("$.totalSessions") { value(8.0) } }
+            .andExpect { jsonPath("$.activeRooms") { value(3.0) } }
+            .andExpect { jsonPath("$.totalUsers") { value(100) } }
+            .andExpect { jsonPath("$.totalRooms") { value(20) } }
+            .andExpect { jsonPath("$.bannedUsers") { value(2) } }
+    }
+
+    @Test
+    fun shouldGetUnauthorizedOnSiteInfoWhenTokenInvalid() {
+        every { administrationService.getSiteInfo() } throws InvalidTokenException()
+
+        mockMvc.get("/api/admin/site-info")
+            .andExpect { status { isUnauthorized() } }
+    }
+
+    // ==========================
+    // getAdvancedSiteInfo
+    // ==========================
+    @Test
+    fun shouldGetAdvancedSiteInfo() {
+        val dto = AdvancedSiteInfoDTO(
+            jvmMemoryUsedMb = 256.0, jvmMemoryMaxMb = 512.0, jvmMemoryCommittedMb = 384.0,
+            jvmThreadsLive = 20, jvmThreadsPeak = 25,
+            cpuUsagePercent = 42.0,
+            gcPauseMeanMs = 1.5, gcPauseMaxMs = 10.0,
+            uptimeSeconds = 3600L,
+            httpRequests = listOf(
+                HttpEndpointMetric(
+                    uri = "/api/rooms", method = "GET",
+                    statuses = listOf(HttpStatusCount(200, 50L)),
+                    totalCount = 50L, errorRate = 0.0,
+                    meanMs = 12.0, maxMs = 100.0
+                )
+            )
+        )
+        every { administrationService.getAdvancedSiteInfo() } returns dto
+
+        mockMvc.get("/api/admin/advanced-site-info")
+            .andExpect { status { isOk() } }
+            .andExpect { jsonPath("$.cpuUsagePercent") { value(42.0) } }
+            .andExpect { jsonPath("$.jvmThreadsLive") { value(20) } }
+            .andExpect { jsonPath("$.uptimeSeconds") { value(3600) } }
+            .andExpect { jsonPath("$.httpRequests[0].uri") { value("/api/rooms") } }
+            .andExpect { jsonPath("$.httpRequests[0].method") { value("GET") } }
+            .andExpect { jsonPath("$.httpRequests[0].totalCount") { value(50) } }
+            .andExpect { jsonPath("$.httpRequests[0].errorRate") { value(0.0) } }
+            .andExpect { jsonPath("$.httpRequests[0].statuses[0].status") { value(200) } }
+            .andExpect { jsonPath("$.httpRequests[0].statuses[0].count") { value(50) } }
+    }
+
+    @Test
+    fun shouldGetUnauthorizedOnAdvancedSiteInfoWhenTokenInvalid() {
+        every { administrationService.getAdvancedSiteInfo() } throws InvalidTokenException()
+
+        mockMvc.get("/api/admin/advanced-site-info")
+            .andExpect { status { isUnauthorized() } }
     }
 }
