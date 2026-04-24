@@ -9,11 +9,16 @@ import com.blikeng.chatapp.dtos.room.RoleAction
 import com.blikeng.chatapp.entities.BannedUser
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.errors.ApiException
+import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserBanRepository
 import com.blikeng.chatapp.repositories.UserRepository
+import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.UserRole
 import com.blikeng.chatapp.services.AdministrationService
 import com.blikeng.chatapp.services.UserRevocationService
+import com.fasterxml.jackson.databind.ObjectMapper
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.*
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
@@ -31,6 +36,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.assertThrows
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.data.redis.core.RedisTemplate
 
 @ExtendWith(MockKExtension::class)
 class AdministrationServiceTests {
@@ -43,11 +49,14 @@ class AdministrationServiceTests {
     // - unbanUser: removes a ban and guards banner-rank check, invalid input
     // - getAllUserBans: returns paginated list and validates page/size parameters
     // ==========================
-
     @MockK private lateinit var userRepository: UserRepository
     @MockK private lateinit var userBanRepository: UserBanRepository
-    @RelaxedMockK private lateinit var eventPublisher: ApplicationEventPublisher
     @MockK private lateinit var userRevocationService: UserRevocationService
+    @MockK private lateinit var roomRepository: RoomRepository
+    @MockK private lateinit var redisTemplate: RedisTemplate<String, String>
+    @MockK private lateinit var objectMapper: ObjectMapper
+    @RelaxedMockK private lateinit var eventPublisher: ApplicationEventPublisher
+    @MockK(relaxed = true) lateinit var meterRegistry: MeterRegistry
 
     @InjectMockKs private lateinit var administrationService: AdministrationService
 
