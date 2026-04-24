@@ -45,7 +45,7 @@ class WsRateLimitServiceTests {
         val registry = SimpleMeterRegistry()
         val service = WsRateLimitService(registry)
 
-        val gauge = registry.get("ws.rate.limit.buckets").gauge()
+        val gauge = registry.get("app.ratelimit.ws.buckets").gauge()
 
         assertEquals(0.0, gauge.value())
 

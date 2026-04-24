@@ -64,7 +64,7 @@ class ChatService (
     private val roomMembersCacheTTL = Duration.ofMinutes(10)
 
     init {
-        meterRegistry.gauge("chat.rooms", sessionsInRooms) { it.size.toDouble() }
+        meterRegistry.gauge("app.rooms.active", sessionsInRooms) { it.size.toDouble() }
     }
 
     // ==========================

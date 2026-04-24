@@ -21,7 +21,7 @@ class RateLimitServiceTests {
         val registry = SimpleMeterRegistry()
         val service = RateLimitService(registry)
 
-        val gauge = registry.get("rate.limit.buckets").gauge()
+        val gauge = registry.get("app.ratelimit.http.buckets").gauge()
 
         assertEquals(0.0, gauge.value())
 

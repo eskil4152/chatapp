@@ -20,9 +20,9 @@ class WsRateLimitService(
 ) {
     private val buckets = Caffeine.newBuilder()
         .expireAfterAccess(Duration.ofMinutes(10))
-        .recordStats { CaffeineStatsCounter(meterRegistry, "ws.rate.limit.buckets") }
+        .recordStats { CaffeineStatsCounter(meterRegistry, "app.ratelimit.ws.buckets") }
         .build<UUID, Bucket>()
-        .also { cache -> Gauge.builder("ws.rate.limit.buckets", cache) { it.asMap().size.toDouble() }.register(meterRegistry) }
+        .also { cache -> Gauge.builder("app.ratelimit.ws.buckets", cache) { it.asMap().size.toDouble() }.register(meterRegistry) }
 
     fun tryConsumeMessage(userId: UUID): Boolean {
         val bucket = buckets.get(userId) {
