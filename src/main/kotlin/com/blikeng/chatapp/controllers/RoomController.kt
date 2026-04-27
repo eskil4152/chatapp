@@ -27,8 +27,8 @@ class RoomController(
 
     @PostMapping("/make")
     fun makeRoom(
-        @RequestBody roomDTO: RoomDTO): ResponseEntity<String>
-    {
+        @RequestBody roomDTO: RoomDTO
+    ): ResponseEntity<String> {
         roomService.makeNewRoom(roomDTO.roomName, roomDTO.encrypted)
 
         return ResponseEntity.status(201).body("Room created successfully")

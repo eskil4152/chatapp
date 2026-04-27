@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: chatapp
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - chatapp:8081
+    relabel_configs:
+      - target_label: application
+        replacement: chatapp
+
+  - job_name: node
+    static_configs:
+      - targets:
+          - node-exporter:9100
