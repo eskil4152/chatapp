@@ -2,7 +2,6 @@ package com.blikeng.chatapp.controllers
 
 import com.blikeng.chatapp.dtos.auth.AuthDTO
 import com.blikeng.chatapp.dtos.auth.LoginDto
-import com.blikeng.chatapp.security.UserRole
 import com.blikeng.chatapp.services.AuthService
 import com.blikeng.chatapp.services.UserService
 import org.springframework.core.env.Environment
