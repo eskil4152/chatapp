@@ -10,6 +10,8 @@ import com.blikeng.chatapp.errors.UsernameAlreadyExistsException
 import com.blikeng.chatapp.repositories.AuthRepository
 import com.blikeng.chatapp.security.auth.JwtService
 import com.blikeng.chatapp.security.auth.PasswordService
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 // ==========================
@@ -23,6 +25,8 @@ class AuthService(
     private val jwtService: JwtService,
     private val authRepository: AuthRepository,
 ) {
+    private val logger: Logger = LoggerFactory.getLogger(this::class.java)
+
     fun registerUser(
         username: String,
         password: String,
@@ -46,7 +50,10 @@ class AuthService(
         password: String,
     ): String {
         val user = authRepository.findByUsernameIgnoreCase(username) ?: throw InvalidCredentialsException()
-        if (!passwordService.checkPassword(password, user.password)) throw InvalidCredentialsException()
+        if (!passwordService.checkPassword(password, user.password)) {
+            logger.warn("Invalid credentials for user: $username")
+            throw InvalidCredentialsException()
+        }
 
         return jwtService.generateToken(user)
     }

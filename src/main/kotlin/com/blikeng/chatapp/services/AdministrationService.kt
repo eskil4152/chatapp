@@ -38,6 +38,8 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 @Service
 class AdministrationService(
@@ -50,6 +52,7 @@ class AdministrationService(
     val redisTemplate: RedisTemplate<String, String>,
     val objectMapper: ObjectMapper,
 ) {
+    private val logger: Logger = LoggerFactory.getLogger(AdministrationService::class.java)
     private val siteInfoType = object : TypeReference<SiteInfo>() {}
     private val siteInfoTTL = Duration.ofHours(6)
 
@@ -112,6 +115,8 @@ class AdministrationService(
 
         userRepository.save(target)
 
+        logger.info("User {} changed role to {}. Performed by {}", target.username, newRole, user.username)
+
         eventPublisher.publishEvent(
             UserRoleChangedEvent(
                 userId = targetId,
@@ -147,6 +152,8 @@ class AdministrationService(
             )
 
         userBanRepository.save(ban)
+
+        logger.info("User {} banned. Performed by {}. Reason: {}", target.username, user.username, banUserDTO.reason)
 
         eventPublisher.publishEvent(
             UserBannedEvent(

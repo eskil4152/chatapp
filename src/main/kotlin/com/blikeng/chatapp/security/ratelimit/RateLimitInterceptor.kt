@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import org.springframework.web.servlet.HandlerInterceptor
 import java.time.Duration
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 // ==========================
 // File for API rate limiting. Sets max limits per minute for login, register, user edit, and password edit.
@@ -20,6 +22,8 @@ class RateLimitInterceptor(
     @Value("\${rate-limit.edit-password.max-tokens:3}") private val editPasswordMaxTokens: Long,
     @Value("\${rate-limit.others.max-tokens:60}") private val othersMaxTokens: Long,
 ) : HandlerInterceptor {
+    private val logger: Logger = LoggerFactory.getLogger(this::class.java)
+
     override fun preHandle(
         request: HttpServletRequest,
         response: HttpServletResponse,
@@ -76,6 +80,9 @@ class RateLimitInterceptor(
             }
 
         if (!allowed) {
+
+            logger.warn("Rate limit exceeded for $ip at $path")
+
             response.status = 429
             response.contentType = "text/plain"
             response.writer.write("Too many requests")
