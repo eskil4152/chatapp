@@ -9,6 +9,7 @@ import com.blikeng.chatapp.entities.UserRoomId
 import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
+import com.blikeng.chatapp.notifications.events.RoomPresenceEvent
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
@@ -37,6 +38,7 @@ import org.junit.jupiter.api.assertNull
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.amqp.rabbit.core.RabbitTemplate
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.redis.core.ListOperations
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.core.ValueOperations
@@ -74,6 +76,8 @@ class ChatRoomSessionTests {
     @MockK lateinit var presenceHandler: PresenceHandler
 
     @MockK lateinit var userService: UserService
+
+    @MockK lateinit var eventPublisher: ApplicationEventPublisher
 
     @MockK(relaxed = true)
     lateinit var meterRegistry: MeterRegistry
@@ -474,10 +478,11 @@ class ChatRoomSessionTests {
         val userId = UUID.randomUUID()
 
         every { userRoomRepository.findAllIdRoomIdsByIdUserId(userId) } returns listOf(roomId)
+        every { eventPublisher.publishEvent(any<RoomPresenceEvent>()) } just Runs
 
         chatService.notifyRoomPresence(userId, true)
 
-        verify(exactly = 1) { redisTemplate.convertAndSend("room:$roomId", any<String>()) }
+        verify(exactly = 1) { eventPublisher.publishEvent(any<RoomPresenceEvent>()) }
     }
 
     @Test
@@ -487,10 +492,10 @@ class ChatRoomSessionTests {
         val userId = UUID.randomUUID()
 
         every { userRoomRepository.findAllIdRoomIdsByIdUserId(userId) } returns listOf(roomId1, roomId2)
+        every { eventPublisher.publishEvent(any<RoomPresenceEvent>()) } just Runs
 
         chatService.notifyRoomPresence(userId, false)
 
-        verify(exactly = 1) { redisTemplate.convertAndSend("room:$roomId1", any<String>()) }
-        verify(exactly = 1) { redisTemplate.convertAndSend("room:$roomId2", any<String>()) }
+        verify(exactly = 2) { eventPublisher.publishEvent(any<RoomPresenceEvent>()) }
     }
 }

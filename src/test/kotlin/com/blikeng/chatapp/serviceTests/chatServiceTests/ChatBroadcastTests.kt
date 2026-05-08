@@ -36,6 +36,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.amqp.rabbit.core.RabbitTemplate
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.redis.core.ListOperations
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.core.ValueOperations
@@ -76,6 +77,8 @@ class ChatBroadcastTests {
     @MockK lateinit var presenceHandler: PresenceHandler
 
     @MockK lateinit var userService: UserService
+
+    @MockK lateinit var eventPublisher: ApplicationEventPublisher
 
     @MockK(relaxed = true)
     lateinit var meterRegistry: MeterRegistry

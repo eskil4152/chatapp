@@ -34,6 +34,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.amqp.rabbit.core.RabbitTemplate
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.redis.core.ListOperations
 import org.springframework.data.redis.core.RedisTemplate
@@ -73,6 +74,8 @@ class ChatMessageHistoryTests {
     @MockK lateinit var listOps: ListOperations<String, String>
 
     @MockK lateinit var presenceHandler: PresenceHandler
+
+    @MockK lateinit var eventPublisher: ApplicationEventPublisher
 
     @MockK(relaxed = true)
     lateinit var meterRegistry: MeterRegistry
@@ -316,8 +319,9 @@ class ChatMessageHistoryTests {
                 rabbitTemplate = rabbitTemplate,
                 objectMapper = objectMapper,
                 presenceHandler = presenceHandler,
-                meterRegistry = meterRegistry,
                 userService = userService,
+                meterRegistry = meterRegistry,
+                eventPublisher = eventPublisher,
             )
 
         val roomsGauge = meterRegistry.get("app.rooms.active").gauge()

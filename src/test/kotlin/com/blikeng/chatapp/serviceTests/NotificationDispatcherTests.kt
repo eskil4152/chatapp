@@ -4,14 +4,16 @@ import com.blikeng.chatapp.dtos.invites.PendingInviteDTO
 import com.blikeng.chatapp.dtos.room.RoleAction
 import com.blikeng.chatapp.dtos.room.RoomAction
 import com.blikeng.chatapp.dtos.websocket.WsUserRoleChanged
+import com.blikeng.chatapp.dtos.websocket.rooms.WsRoomPresence
 import com.blikeng.chatapp.entities.InviteType
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.messaging.redis.PresenceKeys
-import com.blikeng.chatapp.notifications.NotificationService
+import com.blikeng.chatapp.notifications.NotificationDispatcher
 import com.blikeng.chatapp.notifications.events.FriendRemovedEvent
 import com.blikeng.chatapp.notifications.events.InviteAcceptedEvent
 import com.blikeng.chatapp.notifications.events.InviteSentEvent
 import com.blikeng.chatapp.notifications.events.RoomDeletedEvent
+import com.blikeng.chatapp.notifications.events.RoomPresenceEvent
 import com.blikeng.chatapp.notifications.events.UserBannedEvent
 import com.blikeng.chatapp.notifications.events.UserJoinedRoomEvent
 import com.blikeng.chatapp.notifications.events.UserRemovedEvent
@@ -34,7 +36,7 @@ import java.time.Instant
 import java.util.UUID
 
 @ExtendWith(MockKExtension::class)
-class NotificationServiceTests {
+class NotificationDispatcherTests {
     // ==========================
     // Tests for NotificationService. Verifies:
     // - Invite sent notifies recipient
@@ -59,7 +61,7 @@ class NotificationServiceTests {
 
     @MockK lateinit var listOps: ListOperations<String, String>
 
-    @InjectMockKs lateinit var notificationService: NotificationService
+    @InjectMockKs lateinit var notificationDispatcher: NotificationDispatcher
 
     @Test
     fun shouldSendInviteReceivedNotificationOnInviteSent() {
@@ -80,7 +82,7 @@ class NotificationServiceTests {
         every { objectMapper.writeValueAsString(any()) } returns """{"type":"INVITE_RECEIVED"}"""
         every { redisTemplate.convertAndSend(any(), any<String>()) } returns 1L
 
-        notificationService.onInviteSent(event)
+        notificationDispatcher.onInviteSent(event)
 
         verify(exactly = 1) { redisTemplate.convertAndSend(PresenceKeys.userChannel(toUserId), any<String>()) }
     }
@@ -105,7 +107,7 @@ class NotificationServiceTests {
         every { objectMapper.writeValueAsString(any()) } returns """{"type":"INVITE_ACCEPTED"}"""
         every { redisTemplate.convertAndSend(any(), any<String>()) } returns 1L
 
-        notificationService.onInviteAccepted(event)
+        notificationDispatcher.onInviteAccepted(event)
 
         verify(exactly = 1) { redisTemplate.convertAndSend(PresenceKeys.userChannel(fromUserId), any<String>()) }
         verify(exactly = 0) { redisTemplate.convertAndSend(PresenceKeys.userChannel(toUserId), any<String>()) }
@@ -132,7 +134,7 @@ class NotificationServiceTests {
         every { presenceHandler.isUserOnline(fromUserId) } returns true
         every { presenceHandler.isUserOnline(toUserId) } returns false
 
-        notificationService.onInviteAccepted(event)
+        notificationDispatcher.onInviteAccepted(event)
 
         verify(exactly = 2) { redisTemplate.convertAndSend(PresenceKeys.userChannel(fromUserId), any<String>()) }
         verify(exactly = 1) { redisTemplate.convertAndSend(PresenceKeys.userChannel(toUserId), any<String>()) }
@@ -151,7 +153,7 @@ class NotificationServiceTests {
         every { listOps.rightPush(any<String>(), any<String>()) } returns 1L
         every { rabbitTemplate.convertAndSend(any<String>(), any<Any>()) } returns Unit
 
-        notificationService.onUserJoinedRoom(event)
+        notificationDispatcher.onUserJoinedRoom(event)
 
         verify(exactly = 2) { redisTemplate.convertAndSend(PresenceKeys.roomChannel(roomId), any<String>()) }
     }
@@ -165,7 +167,7 @@ class NotificationServiceTests {
         every { objectMapper.writeValueAsString(any()) } returns """{"type":"ROOM_ACTION"}"""
         every { redisTemplate.convertAndSend(any(), any<String>()) } returns 1L
 
-        notificationService.onUserRemoved(event)
+        notificationDispatcher.onUserRemoved(event)
 
         verify(exactly = 1) { redisTemplate.convertAndSend(PresenceKeys.userChannel(targetId), any<String>()) }
     }
@@ -179,7 +181,7 @@ class NotificationServiceTests {
         every { objectMapper.writeValueAsString(any()) } returns """{"type":"ROOM_ACTION"}"""
         every { redisTemplate.convertAndSend(any(), any<String>()) } returns 1L
 
-        notificationService.onUserRemoved(event)
+        notificationDispatcher.onUserRemoved(event)
 
         verify(exactly = 1) { redisTemplate.convertAndSend(PresenceKeys.userChannel(targetId), any<String>()) }
     }
@@ -194,7 +196,7 @@ class NotificationServiceTests {
         every { objectMapper.writeValueAsString(any()) } returns """{"type":"ROOM_DELETED"}"""
         every { redisTemplate.convertAndSend(any(), any<String>()) } returns 1L
 
-        notificationService.onRoomDeleted(event)
+        notificationDispatcher.onRoomDeleted(event)
 
         verify(exactly = 1) { redisTemplate.convertAndSend(PresenceKeys.userChannel(member1), any<String>()) }
         verify(exactly = 1) { redisTemplate.convertAndSend(PresenceKeys.userChannel(member2), any<String>()) }
@@ -207,7 +209,7 @@ class NotificationServiceTests {
 
         every { objectMapper.writeValueAsString(any()) } returns """{"type":"ROOM_DELETED"}"""
 
-        notificationService.onRoomDeleted(event)
+        notificationDispatcher.onRoomDeleted(event)
 
         verify(exactly = 0) { redisTemplate.convertAndSend(any(), any<String>()) }
     }
@@ -222,7 +224,7 @@ class NotificationServiceTests {
         every { userRevocationService.revokeBanned(targetId) } returns Unit
         every { sessionRegistry.closeUserSessions(targetId) } returns Unit
 
-        notificationService.onUserBanned(event)
+        notificationDispatcher.onUserBanned(event)
 
         verify(exactly = 1) { redisTemplate.convertAndSend(PresenceKeys.userChannel(targetId), any<String>()) }
     }
@@ -241,7 +243,7 @@ class NotificationServiceTests {
         every { objectMapper.writeValueAsString(any()) } returns """{"type":"USER_ROLE_CHANGED"}"""
         every { redisTemplate.convertAndSend(any(), any<String>()) } returns 1L
 
-        notificationService.onUserRoleChanges(event)
+        notificationDispatcher.onUserRoleChanges(event)
 
         verify(exactly = 1) {
             objectMapper.writeValueAsString(
@@ -276,7 +278,7 @@ class NotificationServiceTests {
         every { objectMapper.writeValueAsString(any()) } returns """{"type":"FRIEND_REMOVED"}"""
         every { redisTemplate.convertAndSend(any(), any<String>()) } returns 1L
 
-        notificationService.onFriendRemoved(event)
+        notificationDispatcher.onFriendRemoved(event)
 
         verify(exactly = 1) {
             redisTemplate.convertAndSend(PresenceKeys.userChannel(userId), any<String>())
@@ -284,6 +286,41 @@ class NotificationServiceTests {
 
         verify(exactly = 1) {
             redisTemplate.convertAndSend(PresenceKeys.userChannel(friendId), any<String>())
+        }
+    }
+
+    @Test
+    fun shouldSendRoomPresenceOnRoomJoinedEvent() {
+        val roomId = UUID.randomUUID()
+        val userId = UUID.randomUUID()
+
+        val event =
+            RoomPresenceEvent(
+                roomId = roomId,
+                userId = userId,
+                online = true,
+            )
+
+        every { objectMapper.writeValueAsString(any()) } returns """{"type":"ROOM_PRESENCE"}"""
+        every { redisTemplate.convertAndSend(any(), any<String>()) } returns 1L
+
+        notificationDispatcher.onRoomJoined(event)
+
+        verify(exactly = 1) {
+            objectMapper.writeValueAsString(
+                match<WsRoomPresence> {
+                    it.roomId == roomId &&
+                        it.userId == userId &&
+                        it.online
+                },
+            )
+        }
+
+        verify(exactly = 1) {
+            redisTemplate.convertAndSend(
+                PresenceKeys.roomChannel(roomId),
+                any<String>(),
+            )
         }
     }
 }

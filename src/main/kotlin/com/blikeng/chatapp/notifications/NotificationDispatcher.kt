@@ -19,6 +19,7 @@ import com.blikeng.chatapp.notifications.events.FriendRemovedEvent
 import com.blikeng.chatapp.notifications.events.InviteAcceptedEvent
 import com.blikeng.chatapp.notifications.events.InviteSentEvent
 import com.blikeng.chatapp.notifications.events.RoomDeletedEvent
+import com.blikeng.chatapp.notifications.events.RoomPresenceEvent
 import com.blikeng.chatapp.notifications.events.UserBannedEvent
 import com.blikeng.chatapp.notifications.events.UserJoinedRoomEvent
 import com.blikeng.chatapp.notifications.events.UserLeftRoomEvent
@@ -36,7 +37,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Service
-class NotificationService(
+class NotificationDispatcher(
     private val redisTemplate: RedisTemplate<String, String>,
     private val objectMapper: ObjectMapper,
     private val presenceHandler: PresenceHandler,
@@ -209,5 +210,16 @@ class NotificationService(
 
         redisTemplate.convertAndSend(PresenceKeys.userChannel(event.userId), payloadFrom)
         redisTemplate.convertAndSend(PresenceKeys.userChannel(event.friendId), payloadTo)
+    }
+
+    fun onRoomJoined(event: RoomPresenceEvent) {
+        val roomId = event.roomId
+
+        val payload =
+            objectMapper.writeValueAsString(
+                WsRoomPresence(roomId = roomId, userId = event.userId, online = event.online),
+            )
+
+        redisTemplate.convertAndSend(PresenceKeys.roomChannel(roomId), payload)
     }
 }

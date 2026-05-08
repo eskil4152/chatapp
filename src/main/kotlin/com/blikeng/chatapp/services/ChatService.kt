@@ -11,7 +11,6 @@ import com.blikeng.chatapp.dtos.websocket.chat.WsMessageNotification
 import com.blikeng.chatapp.dtos.websocket.chat.WsTyping
 import com.blikeng.chatapp.dtos.websocket.rooms.RoomMember
 import com.blikeng.chatapp.dtos.websocket.rooms.WsRoomJoined
-import com.blikeng.chatapp.dtos.websocket.rooms.WsRoomPresence
 import com.blikeng.chatapp.entities.ChatEntity
 import com.blikeng.chatapp.errors.InvalidMessageException
 import com.blikeng.chatapp.errors.InvalidParametersException
@@ -19,6 +18,7 @@ import com.blikeng.chatapp.errors.InvalidTokenException
 import com.blikeng.chatapp.errors.RoomNotFoundException
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.messaging.redis.PresenceKeys
+import com.blikeng.chatapp.notifications.events.RoomPresenceEvent
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
@@ -27,6 +27,7 @@ import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.amqp.rabbit.core.RabbitTemplate
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
@@ -55,6 +56,7 @@ class ChatService(
     private val presenceHandler: PresenceHandler,
     private val userService: UserService,
     meterRegistry: MeterRegistry,
+    private val eventPublisher: ApplicationEventPublisher,
 ) {
     val sessionsInRooms = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
     private val roomNameMap = ConcurrentHashMap<UUID, String>()
@@ -145,12 +147,7 @@ class ChatService(
             }
 
         roomIds.forEach { roomId ->
-            val payload =
-                objectMapper.writeValueAsString(
-                    WsRoomPresence(roomId = roomId, userId = userId, online = online),
-                )
-
-            redisTemplate.convertAndSend("room:$roomId", payload)
+            eventPublisher.publishEvent(RoomPresenceEvent(roomId, userId, online))
         }
     }
 
