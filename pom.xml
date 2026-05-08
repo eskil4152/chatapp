@@ -13,22 +13,10 @@
 	<version>0.0.1-SNAPSHOT</version>
 	<name>chatapp</name>
 	<description>Chat Application</description>
-	<url/>
-	<licenses>
-		<license/>
-	</licenses>
-	<developers>
-		<developer/>
-	</developers>
-	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
-	</scm>
+
 	<properties>
 		<java.version>21</java.version>
-		<kotlin.version>2.2.21</kotlin.version>
+		<kotlin.version>2.3.21</kotlin.version>
 		<sonar.organization>eskil4152</sonar.organization>
 		<sonar.projectKey>eskil4152_chatapp</sonar.projectKey>
 		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
@@ -49,18 +37,18 @@
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-api</artifactId>
-			<version>0.11.5</version>
+			<version>0.13.0</version>
 		</dependency>
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-impl</artifactId>
-			<version>0.11.5</version>
+			<version>0.13.0</version>
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-jackson</artifactId>
-			<version>0.11.5</version>
+			<version>0.13.0</version>
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
@@ -179,11 +167,6 @@
 			<artifactId>spring-boot-starter-webmvc-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-		<dependency>
-			<groupId>com.h2database</groupId>
-			<artifactId>h2</artifactId>
-			<scope>runtime</scope>
-		</dependency>
 	</dependencies>
 
 	<build>
@@ -258,6 +241,27 @@
 						<version>${kotlin.version}</version>
 					</dependency>
 				</dependencies>
+			</plugin>
+			<plugin>
+				<groupId>com.github.gantsign.maven</groupId>
+				<artifactId>ktlint-maven-plugin</artifactId>
+				<version>3.5.0</version>
+
+				<executions>
+					<execution>
+						<id>ktlint-check</id>
+						<goals>
+							<goal>check</goal>
+						</goals>
+					</execution>
+
+					<execution>
+						<id>ktlint-format</id>
+						<goals>
+							<goal>format</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>
