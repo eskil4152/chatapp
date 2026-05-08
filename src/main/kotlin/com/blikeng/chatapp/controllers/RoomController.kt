@@ -1,10 +1,21 @@
 package com.blikeng.chatapp.controllers
 
 import com.blikeng.chatapp.dtos.UserIdDTO
-import com.blikeng.chatapp.dtos.room.*
+import com.blikeng.chatapp.dtos.room.AdministrationDTO
+import com.blikeng.chatapp.dtos.room.ChangeRoleDTO
+import com.blikeng.chatapp.dtos.room.RoomDTO
+import com.blikeng.chatapp.dtos.room.RoomUserDTO
+import com.blikeng.chatapp.dtos.room.UnbanDTO
 import com.blikeng.chatapp.services.RoomService
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
 
 // ==========================
 // Exposes room management endpoints for listing rooms, creating rooms,
@@ -18,8 +29,7 @@ class RoomController(
     private val roomService: RoomService,
 ) {
     @GetMapping
-    fun getRooms(
-    ): ResponseEntity<List<RoomDTO>> {
+    fun getRooms(): ResponseEntity<List<RoomDTO>> {
         val rooms = roomService.getAllUserRooms()
 
         return ResponseEntity.ok(rooms)
@@ -27,7 +37,7 @@ class RoomController(
 
     @PostMapping("/make")
     fun makeRoom(
-        @RequestBody roomDTO: RoomDTO
+        @RequestBody roomDTO: RoomDTO,
     ): ResponseEntity<String> {
         roomService.makeNewRoom(roomDTO.roomName, roomDTO.encrypted)
 
@@ -36,8 +46,8 @@ class RoomController(
 
     @PutMapping("/edit")
     fun editRoom(
-        @RequestBody roomDTO: RoomDTO
-    ) : ResponseEntity<String> {
+        @RequestBody roomDTO: RoomDTO,
+    ): ResponseEntity<String> {
         roomService.editRoom(roomDTO)
 
         return ResponseEntity.ok("Room edited successfully")
@@ -45,8 +55,8 @@ class RoomController(
 
     @DeleteMapping("/leave")
     fun leaveRoom(
-        @RequestBody roomDTO: RoomDTO
-    ) : ResponseEntity<String> {
+        @RequestBody roomDTO: RoomDTO,
+    ): ResponseEntity<String> {
         roomService.leaveRoom(roomDTO.roomId)
 
         return ResponseEntity.ok("Left room successfully")
@@ -54,8 +64,8 @@ class RoomController(
 
     @DeleteMapping("/delete")
     fun deleteRoom(
-        @RequestBody roomDTO: RoomDTO
-    ) : ResponseEntity<String> {
+        @RequestBody roomDTO: RoomDTO,
+    ): ResponseEntity<String> {
         roomService.deleteRoom(roomDTO.roomId)
 
         return ResponseEntity.ok("Deleted room successfully")
@@ -63,15 +73,13 @@ class RoomController(
 
     @PostMapping("/dm")
     fun privateMessage(
-        @RequestBody userIdDTO: UserIdDTO
-    ) : ResponseEntity<String> {
-        return ResponseEntity.status(201).body(roomService.getOrStartPrivateMessage(userIdDTO).toString())
-    }
+        @RequestBody userIdDTO: UserIdDTO,
+    ): ResponseEntity<String> = ResponseEntity.status(201).body(roomService.getOrStartPrivateMessage(userIdDTO).toString())
 
     @PostMapping("/changeRole")
     fun changeRole(
-        @RequestBody changeRoleDTO: ChangeRoleDTO
-    ) : ResponseEntity<String> {
+        @RequestBody changeRoleDTO: ChangeRoleDTO,
+    ): ResponseEntity<String> {
         roomService.changeRole(changeRoleDTO)
 
         return ResponseEntity.ok("Role updated successfully")
@@ -79,8 +87,8 @@ class RoomController(
 
     @PostMapping("/action")
     fun kickOrBanUser(
-        @RequestBody administrationDTO: AdministrationDTO
-    ) : ResponseEntity<String> {
+        @RequestBody administrationDTO: AdministrationDTO,
+    ): ResponseEntity<String> {
         roomService.removeUserFromRoom(administrationDTO)
 
         return ResponseEntity.ok("Removed user successfully")
@@ -88,8 +96,8 @@ class RoomController(
 
     @DeleteMapping("/unban")
     fun unbanUser(
-        @RequestBody unbanDTO: UnbanDTO
-    ) : ResponseEntity<String> {
+        @RequestBody unbanDTO: UnbanDTO,
+    ): ResponseEntity<String> {
         roomService.unbanUser(unbanDTO)
 
         return ResponseEntity.ok("Unbanned user successfully")
@@ -97,8 +105,8 @@ class RoomController(
 
     @GetMapping("{roomId}/bans")
     fun getBans(
-        @PathVariable roomId: String
-    ) : ResponseEntity<List<RoomUserDTO>> {
+        @PathVariable roomId: String,
+    ): ResponseEntity<List<RoomUserDTO>> {
         val bannedUsers = roomService.getAllBansForRoom(roomId)
 
         return ResponseEntity.ok(bannedUsers)
@@ -106,8 +114,6 @@ class RoomController(
 
     @GetMapping("/{roomId}/members")
     fun getRoomMember(
-        @PathVariable roomId: String
-    ) : ResponseEntity<List<RoomUserDTO>> {
-        return ResponseEntity.ok(roomService.getAllUsersInRoom(roomId))
-    }
+        @PathVariable roomId: String,
+    ): ResponseEntity<List<RoomUserDTO>> = ResponseEntity.ok(roomService.getAllUsersInRoom(roomId))
 }

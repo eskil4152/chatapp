@@ -11,5 +11,5 @@ data class BannedUserDTO(
     val bannedByUsername: String,
     val bannedByRole: UserRole,
     val bannedAt: Instant,
-    val reason: String?
+    val reason: String?,
 )

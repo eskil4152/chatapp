@@ -1,6 +1,6 @@
 import http from 'k6/http';
-import { check, sleep } from 'k6';
-import { BASE, PASSWORD, jsonParams, getAuthCookie, makeOptions } from './lib.js';
+import {check, sleep} from 'k6';
+import {BASE, getAuthCookie, jsonParams, makeOptions, PASSWORD} from './lib.js';
 
 const TARGET_VUS = __ENV.USERS ? parseInt(__ENV.USERS) : 100;
 const RUN_ID = Date.now();

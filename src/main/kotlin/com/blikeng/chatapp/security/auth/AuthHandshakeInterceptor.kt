@@ -25,7 +25,7 @@ class AuthHandshakeInterceptor(
         request: ServerHttpRequest,
         response: ServerHttpResponse,
         wsHandler: WebSocketHandler,
-        attributes: MutableMap<String, Any>
+        attributes: MutableMap<String, Any>,
     ): Boolean {
         if (request !is ServletServerHttpRequest) return false
 
@@ -46,7 +46,7 @@ class AuthHandshakeInterceptor(
         request: ServerHttpRequest,
         response: ServerHttpResponse,
         wsHandler: WebSocketHandler,
-        exception: Exception?
+        exception: Exception?,
     ) {
         exception?.let { log.warn("Handshake failed: ${it.message}") }
     }

@@ -1,7 +1,7 @@
 package com.blikeng.chatapp.dtos.messaging
 
 import java.time.Instant
-import java.util.*
+import java.util.UUID
 
 data class SendMessageDTO(
     val id: UUID,

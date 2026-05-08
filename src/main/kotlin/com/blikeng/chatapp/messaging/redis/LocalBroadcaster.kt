@@ -6,7 +6,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.TextMessage
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.Executor
 
 // ==========================
@@ -22,7 +22,10 @@ class LocalBroadcaster(
 ) {
     private val logger = LoggerFactory.getLogger(this::class.java)
 
-    fun broadcastRaw(roomId: UUID, payload: String) {
+    fun broadcastRaw(
+        roomId: UUID,
+        payload: String,
+    ) {
         val message = TextMessage(payload)
         chatService.sessionsInRooms[roomId]?.forEach { session ->
             broadcastExecutor.execute {
@@ -40,7 +43,10 @@ class LocalBroadcaster(
         }
     }
 
-    fun sendToUser(userId: UUID, payload: String) {
+    fun sendToUser(
+        userId: UUID,
+        payload: String,
+    ) {
         val message = TextMessage(payload)
         sessionRegistry.users[userId]?.forEach { session ->
             broadcastExecutor.execute {

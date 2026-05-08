@@ -1,4 +1,4 @@
-package com.blikeng.chatapp.dtos.websocket
+package com.blikeng.chatapp.dtos.websocket.invites
 
 import com.blikeng.chatapp.entities.InviteType
 import java.util.UUID

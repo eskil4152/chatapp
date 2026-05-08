@@ -17,11 +17,10 @@ class GlobalExceptionHandler {
     val logger: Logger = getLogger(javaClass)
 
     @ExceptionHandler(ApiException::class)
-    fun handleApiException(ex: ApiException): ResponseEntity<String> {
-        return ResponseEntity
+    fun handleApiException(ex: ApiException): ResponseEntity<String> =
+        ResponseEntity
             .status(ex.status)
             .body(ex.message)
-    }
 
     @ExceptionHandler(Exception::class)
     fun handleUnknown(ex: Exception): ResponseEntity<String> {

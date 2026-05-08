@@ -2,10 +2,11 @@ package com.blikeng.chatapp.securityTests.crypto
 
 import com.blikeng.chatapp.config.configureAad
 import com.blikeng.chatapp.security.crypto.ChatEncrypt
-import java.util.*
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import java.util.Base64
+import java.util.UUID
 
 class ChatEncryptTests {
     // ==========================
@@ -16,7 +17,7 @@ class ChatEncryptTests {
     private var encrypt = ChatEncrypt("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
 
     @Test
-    fun shouldEncryptAndDecrypt(){
+    fun shouldEncryptAndDecrypt() {
         val stringToEncrypt = "Hello from unit testing!"
 
         val roomId = UUID.randomUUID()
@@ -25,16 +26,18 @@ class ChatEncryptTests {
 
         val aad = configureAad(roomId, chatId, userId)
 
-        val encrypted = encrypt.encrypt(
-            plaintext = stringToEncrypt,
-            aad = aad,
-        )
+        val encrypted =
+            encrypt.encrypt(
+                plaintext = stringToEncrypt,
+                aad = aad,
+            )
 
-        val decrypted = encrypt.decrypt(
-            ciphertext = encrypted.ciphertext,
-            nonce = encrypted.nonce,
-            aad = aad,
-        )
+        val decrypted =
+            encrypt.decrypt(
+                ciphertext = encrypted.ciphertext,
+                nonce = encrypted.nonce,
+                aad = aad,
+            )
 
         assertEquals(decrypted, stringToEncrypt)
     }

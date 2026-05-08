@@ -18,9 +18,7 @@ import org.springframework.context.annotation.Configuration
 @Configuration
 class RabbitConfig {
     @Bean
-    fun chatBufferQueue(): Queue {
-        return QueueBuilder.durable("chat.buffer").build()
-    }
+    fun chatBufferQueue(): Queue = QueueBuilder.durable("chat.buffer").build()
 
     @Bean
     fun rabbitTemplate(connectionFactory: ConnectionFactory): RabbitTemplate {

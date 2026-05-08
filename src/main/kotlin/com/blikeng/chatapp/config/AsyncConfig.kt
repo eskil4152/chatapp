@@ -18,12 +18,8 @@ import java.util.concurrent.Executors
 @EnableAsync
 class AsyncConfig {
     @Bean(name = ["snapshotExecutor"])
-    fun snapshotExecutor(): Executor {
-        return Executors.newVirtualThreadPerTaskExecutor()
-    }
+    fun snapshotExecutor(): Executor = Executors.newVirtualThreadPerTaskExecutor()
 
     @Bean(name = ["broadcastExecutor"])
-    fun broadcastExecutor(): Executor {
-        return Executors.newVirtualThreadPerTaskExecutor()
-    }
+    fun broadcastExecutor(): Executor = Executors.newVirtualThreadPerTaskExecutor()
 }

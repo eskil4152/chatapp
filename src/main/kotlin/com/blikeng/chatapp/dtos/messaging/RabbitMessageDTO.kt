@@ -1,7 +1,7 @@
 package com.blikeng.chatapp.dtos.messaging
 
 import java.time.Instant
-import java.util.*
+import java.util.UUID
 
 @Suppress("ArrayInDataClass")
 data class RabbitMessageDTO(
@@ -13,5 +13,5 @@ data class RabbitMessageDTO(
     val ciphertext: ByteArray? = null,
     val nonce: ByteArray? = null,
     val keyVersion: Int? = null,
-    val timestamp: Instant = Instant.now()
+    val timestamp: Instant = Instant.now(),
 )

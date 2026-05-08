@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.dtos.user
 
-data class EditPasswordDTO (
+data class EditPasswordDTO(
     val oldPassword: String,
-    val newPassword: String
+    val newPassword: String,
 )

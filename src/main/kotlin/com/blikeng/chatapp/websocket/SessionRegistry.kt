@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.websocket
 
-import com.blikeng.chatapp.dtos.websocket.WsPendingInviteSnapshot
+import com.blikeng.chatapp.dtos.websocket.invites.WsPendingInviteSnapshot
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.services.ChatService
 import com.blikeng.chatapp.services.FriendService
@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import java.io.IOException
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
@@ -27,7 +27,7 @@ class SessionRegistry(
     private val inviteService: InviteService,
     private val objectMapper: ObjectMapper,
     @Qualifier("snapshotExecutor") private val snapshotExecutor: Executor,
-    meterRegistry: MeterRegistry
+    meterRegistry: MeterRegistry,
 ) {
     val users = ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>()
     private val sessionIndex = ConcurrentHashMap<String, WebSocketSession>()
@@ -39,7 +39,10 @@ class SessionRegistry(
         }
     }
 
-    fun registerSession(userId: UUID, session: WebSocketSession) {
+    fun registerSession(
+        userId: UUID,
+        session: WebSocketSession,
+    ) {
         users.computeIfAbsent(userId) { CopyOnWriteArraySet() }.add(session)
         val count = presenceHandler.userConnected(userId)
 
@@ -52,15 +55,20 @@ class SessionRegistry(
     }
 
     @Async("snapshotExecutor")
-    fun sendSnapshots(userId: UUID, session: WebSocketSession) {
-        val presenceFuture = CompletableFuture.supplyAsync(
-            { objectMapper.writeValueAsString(friendService.getOnlineFriends(userId)) },
-            snapshotExecutor
-        )
-        val inviteFuture = CompletableFuture.supplyAsync(
-            { objectMapper.writeValueAsString(WsPendingInviteSnapshot(invites = inviteService.getPendingInvites(userId))) },
-            snapshotExecutor
-        )
+    fun sendSnapshots(
+        userId: UUID,
+        session: WebSocketSession,
+    ) {
+        val presenceFuture =
+            CompletableFuture.supplyAsync(
+                { objectMapper.writeValueAsString(friendService.getOnlineFriends(userId)) },
+                snapshotExecutor,
+            )
+        val inviteFuture =
+            CompletableFuture.supplyAsync(
+                { objectMapper.writeValueAsString(WsPendingInviteSnapshot(invites = inviteService.getPendingInvites(userId))) },
+                snapshotExecutor,
+            )
 
         try {
             trySend(session, presenceFuture.get())
@@ -70,7 +78,10 @@ class SessionRegistry(
         }
     }
 
-    private fun trySend(session: WebSocketSession, payload: String) {
+    private fun trySend(
+        session: WebSocketSession,
+        payload: String,
+    ) {
         synchronized(session) {
             if (!session.isOpen) return
             try {
@@ -81,7 +92,10 @@ class SessionRegistry(
         }
     }
 
-    fun removeSession(userId: UUID, session: WebSocketSession) {
+    fun removeSession(
+        userId: UUID,
+        session: WebSocketSession,
+    ) {
         val sessions = users[userId] ?: return
         val removed = sessions.remove(session)
         if (!removed) return
@@ -103,7 +117,9 @@ class SessionRegistry(
     fun closeUserSessions(userId: UUID) {
         users[userId]?.forEach { session ->
             if (session.isOpen) {
-                try { session.close() } catch (_: IOException) {
+                try {
+                    session.close()
+                } catch (_: IOException) {
                     // Session closed before we could close it. Ignore.
                 }
             }

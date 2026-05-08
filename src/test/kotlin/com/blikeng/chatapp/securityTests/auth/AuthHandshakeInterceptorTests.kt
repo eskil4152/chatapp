@@ -11,17 +11,17 @@ import io.mockk.mockk
 import io.mockk.verify
 import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletRequest
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.http.server.ServerHttpRequest
 import org.springframework.http.server.ServerHttpResponse
 import org.springframework.http.server.ServletServerHttpRequest
 import org.springframework.web.socket.WebSocketHandler
-import java.util.*
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertTrue
+import java.util.UUID
 
 @ExtendWith(MockKExtension::class)
 class AuthHandshakeInterceptorTests {
@@ -53,17 +53,19 @@ class AuthHandshakeInterceptorTests {
 
         val userId = UUID.randomUUID()
 
-        every { jwtService.validateToken("token") } returns JwtService.JwtPrincipal(
-            username = "user",
-            userId = userId,
-            role = "USER"
-        )
+        every { jwtService.validateToken("token") } returns
+            JwtService.JwtPrincipal(
+                username = "user",
+                userId = userId,
+                role = "USER",
+            )
         every { userRevocationService.isRevoked(userId) } returns false
         every { userRevocationService.isBanned(userId) } returns false
 
-        val servletRequest = mockk<HttpServletRequest> {
-            every { cookies } returns cookiesList
-        }
+        val servletRequest =
+            mockk<HttpServletRequest> {
+                every { cookies } returns cookiesList
+            }
 
         val request = ServletServerHttpRequest(servletRequest)
         val response = mockk<ServerHttpResponse>(relaxed = true)
@@ -71,12 +73,13 @@ class AuthHandshakeInterceptorTests {
 
         val attributes = mutableMapOf<String, Any>()
 
-        val result = interceptor.beforeHandshake(
-            request,
-            response,
-            wsHandler,
-            attributes
-        )
+        val result =
+            interceptor.beforeHandshake(
+                request,
+                response,
+                wsHandler,
+                attributes,
+            )
 
         assertTrue(result)
         assertEquals(userId, attributes["userId"])
@@ -87,18 +90,20 @@ class AuthHandshakeInterceptorTests {
 
     @Test
     fun shouldFailWithoutCookie() {
-        val servletRequest = mockk<HttpServletRequest> {
-            every { cookies } returns null
-        }
+        val servletRequest =
+            mockk<HttpServletRequest> {
+                every { cookies } returns null
+            }
 
         val request = ServletServerHttpRequest(servletRequest)
 
-        val result = interceptor.beforeHandshake(
-            request,
-            mockk(relaxed = true),
-            mockk(relaxed = true),
-            mutableMapOf()
-        )
+        val result =
+            interceptor.beforeHandshake(
+                request,
+                mockk(relaxed = true),
+                mockk(relaxed = true),
+                mutableMapOf(),
+            )
 
         assertFalse(result)
 
@@ -108,18 +113,20 @@ class AuthHandshakeInterceptorTests {
     @Test
     fun shouldFailWithoutCorrectCookie() {
         val cookiesList: Array<Cookie> = arrayOf(Cookie("AUT", "token"))
-        val servletRequest = mockk<HttpServletRequest> {
-            every { cookies } returns cookiesList
-        }
+        val servletRequest =
+            mockk<HttpServletRequest> {
+                every { cookies } returns cookiesList
+            }
 
         val request = ServletServerHttpRequest(servletRequest)
 
-        val result = interceptor.beforeHandshake(
-            request,
-            mockk(relaxed = true),
-            mockk(relaxed = true),
-            mutableMapOf()
-        )
+        val result =
+            interceptor.beforeHandshake(
+                request,
+                mockk(relaxed = true),
+                mockk(relaxed = true),
+                mutableMapOf(),
+            )
 
         assertFalse(result)
         verify { jwtService wasNot Called }
@@ -131,18 +138,20 @@ class AuthHandshakeInterceptorTests {
 
         every { jwtService.validateToken("fake_token") } returns null
 
-        val servletRequest = mockk<HttpServletRequest> {
-            every { cookies } returns cookiesList
-        }
+        val servletRequest =
+            mockk<HttpServletRequest> {
+                every { cookies } returns cookiesList
+            }
 
         val request = ServletServerHttpRequest(servletRequest)
 
-        val result = interceptor.beforeHandshake(
-            request,
-            mockk(relaxed = true),
-            mockk(relaxed = true),
-            mutableMapOf()
-        )
+        val result =
+            interceptor.beforeHandshake(
+                request,
+                mockk(relaxed = true),
+                mockk(relaxed = true),
+                mutableMapOf(),
+            )
 
         verify(exactly = 1) { jwtService.validateToken("fake_token") }
         assertFalse(result)
@@ -152,12 +161,13 @@ class AuthHandshakeInterceptorTests {
     fun failsWhenRequestIsNotServletBased() {
         val request: ServerHttpRequest = mockk()
 
-        val result = interceptor.beforeHandshake(
-            request,
-            mockk(relaxed = true),
-            mockk(relaxed = true),
-            mutableMapOf()
-        )
+        val result =
+            interceptor.beforeHandshake(
+                request,
+                mockk(relaxed = true),
+                mockk(relaxed = true),
+                mutableMapOf(),
+            )
 
         assertFalse(result)
         verify { jwtService wasNot Called }
@@ -170,7 +180,7 @@ class AuthHandshakeInterceptorTests {
     }
 
     @Test
-    fun afterHandshakeShouldPass(){
+    fun afterHandshakeShouldPass() {
         interceptor.afterHandshake(mockk(), mockk(), mockk(), null)
     }
 
@@ -179,16 +189,18 @@ class AuthHandshakeInterceptorTests {
         val cookiesList: Array<Cookie> = arrayOf(Cookie("AUTH", "token"))
         val userId = UUID.randomUUID()
 
-        every { jwtService.validateToken("token") } returns JwtService.JwtPrincipal(
-            username = "user",
-            userId = userId,
-            role = "USER"
-        )
+        every { jwtService.validateToken("token") } returns
+            JwtService.JwtPrincipal(
+                username = "user",
+                userId = userId,
+                role = "USER",
+            )
         every { userRevocationService.isRevoked(userId) } returns true
 
-        val servletRequest = mockk<HttpServletRequest> {
-            every { cookies } returns cookiesList
-        }
+        val servletRequest =
+            mockk<HttpServletRequest> {
+                every { cookies } returns cookiesList
+            }
 
         val request = ServletServerHttpRequest(servletRequest)
         val attributes = mutableMapOf<String, Any>()
@@ -204,17 +216,19 @@ class AuthHandshakeInterceptorTests {
         val cookiesList: Array<Cookie> = arrayOf(Cookie("AUTH", "token"))
         val userId = UUID.randomUUID()
 
-        every { jwtService.validateToken("token") } returns JwtService.JwtPrincipal(
-            username = "user",
-            userId = userId,
-            role = "USER"
-        )
+        every { jwtService.validateToken("token") } returns
+            JwtService.JwtPrincipal(
+                username = "user",
+                userId = userId,
+                role = "USER",
+            )
         every { userRevocationService.isRevoked(userId) } returns false
         every { userRevocationService.isBanned(userId) } returns true
 
-        val servletRequest = mockk<HttpServletRequest> {
-            every { cookies } returns cookiesList
-        }
+        val servletRequest =
+            mockk<HttpServletRequest> {
+                every { cookies } returns cookiesList
+            }
 
         val request = ServletServerHttpRequest(servletRequest)
         val attributes = mutableMapOf<String, Any>()

@@ -2,9 +2,11 @@ package com.blikeng.chatapp.securityTests.ratelimit
 
 import com.blikeng.chatapp.security.ratelimit.WsRateLimitService
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import java.util.*
+import java.util.UUID
 
 // ==========================
 // Tests for WsRateLimitService. Verifies:
@@ -13,7 +15,7 @@ import java.util.*
 // - Isolation of buckets between different users
 // - Gauge registration and correct bucket count metrics
 // ==========================
-class WsRateLimitServiceTests {
+class WsRateLimitingServiceTests {
     private val simpleMeterRegistry = SimpleMeterRegistry()
 
     @Test

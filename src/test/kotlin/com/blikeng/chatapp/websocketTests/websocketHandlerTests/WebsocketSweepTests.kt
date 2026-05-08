@@ -7,10 +7,16 @@ import com.blikeng.chatapp.services.FriendService
 import com.blikeng.chatapp.websocket.ChatWebSocketHandler
 import com.blikeng.chatapp.websocket.SessionRegistry
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import io.mockk.*
+import io.mockk.Runs
+import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.just
+import io.mockk.mockk
+import io.mockk.slot
+import io.mockk.verify
 import junit.framework.TestCase.assertTrue
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -20,9 +26,8 @@ import org.springframework.test.util.ReflectionTestUtils
 import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-import org.junit.jupiter.api.Assertions.assertEquals
 
 @ExtendWith(MockKExtension::class)
 class WebsocketSweepTests {
@@ -31,9 +36,13 @@ class WebsocketSweepTests {
     // ==========================
 
     @MockK private lateinit var chatService: ChatService
+
     @MockK private lateinit var wsRateLimitService: WsRateLimitService
+
     @MockK private lateinit var sessionRegistry: SessionRegistry
+
     @MockK private lateinit var friendsService: FriendService
+
     @MockK private lateinit var presenceHandler: PresenceHandler
 
     private val objectMapper = jacksonObjectMapper()

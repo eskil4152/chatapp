@@ -7,6 +7,6 @@ import org.springframework.stereotype.Repository
 import java.util.UUID
 
 @Repository
-interface RoomBanRepository: JpaRepository<RoomBan, RoomBanId> {
+interface RoomBanRepository : JpaRepository<RoomBan, RoomBanId> {
     fun findAllByIdRoomId(roomId: UUID): List<RoomBan>
 }

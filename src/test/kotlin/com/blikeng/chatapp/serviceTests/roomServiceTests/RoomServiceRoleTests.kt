@@ -2,7 +2,11 @@ package com.blikeng.chatapp.serviceTests.roomServiceTests
 
 import com.blikeng.chatapp.dtos.room.ChangeRoleDTO
 import com.blikeng.chatapp.dtos.room.RoleAction
-import com.blikeng.chatapp.entities.*
+import com.blikeng.chatapp.entities.RoomRole
+import com.blikeng.chatapp.entities.RoomType
+import com.blikeng.chatapp.entities.UserEntity
+import com.blikeng.chatapp.entities.UserRoomEntity
+import com.blikeng.chatapp.entities.UserRoomId
 import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
@@ -19,7 +23,10 @@ import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.redis.core.RedisTemplate
@@ -27,10 +34,7 @@ import org.springframework.data.redis.core.ValueOperations
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
-import java.util.*
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.assertThrows
+import java.util.UUID
 
 @ExtendWith(MockKExtension::class)
 class RoomServiceRoleTests {
@@ -41,13 +45,21 @@ class RoomServiceRoleTests {
     // ==========================
 
     @InjectMockKs lateinit var roomService: RoomService
+
     @MockK private lateinit var roomRepository: RoomRepository
+
     @MockK private lateinit var userService: UserService
+
     @MockK private lateinit var userRoomRepository: UserRoomRepository
+
     @MockK private lateinit var friendService: FriendService
+
     @MockK private lateinit var bannedUserService: BannedUserService
+
     @RelaxedMockK private lateinit var eventPublisher: ApplicationEventPublisher
+
     @RelaxedMockK private lateinit var redisTemplate: RedisTemplate<String, String>
+
     @RelaxedMockK private lateinit var objectMapper: ObjectMapper
 
     @BeforeEach
@@ -58,15 +70,20 @@ class RoomServiceRoleTests {
     }
 
     @AfterEach
-    fun clearSecurity() { SecurityContextHolder.clearContext() }
+    fun clearSecurity() {
+        SecurityContextHolder.clearContext()
+    }
 
     private fun setAuth(userId: UUID) {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(userId, null, emptyList())
     }
 
-    private fun userRoom(userId: UUID, roomId: UUID, role: RoomRole) =
-        UserRoomEntity(id = UserRoomId(userId, roomId), role = role, type = RoomType.GROUP)
+    private fun userRoom(
+        userId: UUID,
+        roomId: UUID,
+        role: RoomRole,
+    ) = UserRoomEntity(id = UserRoomId(userId, roomId), role = role, type = RoomType.GROUP)
 
     // ==========================
     // Successful promotions
@@ -158,9 +175,12 @@ class RoomServiceRoleTests {
         setAuth(UUID.randomUUID())
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
 
-        val exception = assertThrows<ApiException> {
-            roomService.changeRole(ChangeRoleDTO(userId = UUID.randomUUID().toString(), roomId = "not-a-uuid", action = RoleAction.PROMOTE))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                roomService.changeRole(
+                    ChangeRoleDTO(userId = UUID.randomUUID().toString(), roomId = "not-a-uuid", action = RoleAction.PROMOTE),
+                )
+            }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
@@ -169,9 +189,12 @@ class RoomServiceRoleTests {
         setAuth(UUID.randomUUID())
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
 
-        val exception = assertThrows<ApiException> {
-            roomService.changeRole(ChangeRoleDTO(userId = "not-a-uuid", roomId = UUID.randomUUID().toString(), action = RoleAction.PROMOTE))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                roomService.changeRole(
+                    ChangeRoleDTO(userId = "not-a-uuid", roomId = UUID.randomUUID().toString(), action = RoleAction.PROMOTE),
+                )
+            }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
@@ -183,9 +206,10 @@ class RoomServiceRoleTests {
         setAuth(userId)
         every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
 
-        val exception = assertThrows<ApiException> {
-            roomService.changeRole(ChangeRoleDTO(userId = userId.toString(), roomId = roomId.toString(), action = RoleAction.PROMOTE))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                roomService.changeRole(ChangeRoleDTO(userId = userId.toString(), roomId = roomId.toString(), action = RoleAction.PROMOTE))
+            }
         assertEquals(HttpStatus.FORBIDDEN, exception.status)
     }
 
@@ -199,9 +223,10 @@ class RoomServiceRoleTests {
         every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
         every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns null
 
-        val exception = assertThrows<ApiException> {
-            roomService.changeRole(ChangeRoleDTO(userId = targetId.toString(), roomId = roomId.toString(), action = RoleAction.PROMOTE))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                roomService.changeRole(ChangeRoleDTO(userId = targetId.toString(), roomId = roomId.toString(), action = RoleAction.PROMOTE))
+            }
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
@@ -216,9 +241,10 @@ class RoomServiceRoleTests {
         every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns userRoom(userId, roomId, RoomRole.OWNER)
         every { userRoomRepository.findByIdUserIdAndIdRoomId(targetId, roomId) } returns null
 
-        val exception = assertThrows<ApiException> {
-            roomService.changeRole(ChangeRoleDTO(userId = targetId.toString(), roomId = roomId.toString(), action = RoleAction.PROMOTE))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                roomService.changeRole(ChangeRoleDTO(userId = targetId.toString(), roomId = roomId.toString(), action = RoleAction.PROMOTE))
+            }
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
@@ -233,9 +259,10 @@ class RoomServiceRoleTests {
         every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns userRoom(userId, roomId, RoomRole.OWNER)
         every { userRoomRepository.findByIdUserIdAndIdRoomId(targetId, roomId) } returns userRoom(targetId, roomId, RoomRole.OWNER)
 
-        val exception = assertThrows<ApiException> {
-            roomService.changeRole(ChangeRoleDTO(userId = targetId.toString(), roomId = roomId.toString(), action = RoleAction.DEMOTE))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                roomService.changeRole(ChangeRoleDTO(userId = targetId.toString(), roomId = roomId.toString(), action = RoleAction.DEMOTE))
+            }
         assertEquals(HttpStatus.FORBIDDEN, exception.status)
     }
 
@@ -251,9 +278,10 @@ class RoomServiceRoleTests {
         every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns userRoom(userId, roomId, RoomRole.MODERATOR)
         every { userRoomRepository.findByIdUserIdAndIdRoomId(targetId, roomId) } returns userRoom(targetId, roomId, RoomRole.MEMBER)
 
-        val exception = assertThrows<ApiException> {
-            roomService.changeRole(ChangeRoleDTO(userId = targetId.toString(), roomId = roomId.toString(), action = RoleAction.PROMOTE))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                roomService.changeRole(ChangeRoleDTO(userId = targetId.toString(), roomId = roomId.toString(), action = RoleAction.PROMOTE))
+            }
         assertEquals(HttpStatus.FORBIDDEN, exception.status)
     }
 
@@ -268,9 +296,10 @@ class RoomServiceRoleTests {
         every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns userRoom(userId, roomId, RoomRole.OWNER)
         every { userRoomRepository.findByIdUserIdAndIdRoomId(targetId, roomId) } returns userRoom(targetId, roomId, RoomRole.ADMIN)
 
-        val exception = assertThrows<ApiException> {
-            roomService.changeRole(ChangeRoleDTO(userId = targetId.toString(), roomId = roomId.toString(), action = RoleAction.PROMOTE))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                roomService.changeRole(ChangeRoleDTO(userId = targetId.toString(), roomId = roomId.toString(), action = RoleAction.PROMOTE))
+            }
         assertEquals(HttpStatus.FORBIDDEN, exception.status)
     }
 
@@ -285,9 +314,10 @@ class RoomServiceRoleTests {
         every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns userRoom(userId, roomId, RoomRole.OWNER)
         every { userRoomRepository.findByIdUserIdAndIdRoomId(targetId, roomId) } returns userRoom(targetId, roomId, RoomRole.MEMBER)
 
-        val exception = assertThrows<ApiException> {
-            roomService.changeRole(ChangeRoleDTO(userId = targetId.toString(), roomId = roomId.toString(), action = RoleAction.DEMOTE))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                roomService.changeRole(ChangeRoleDTO(userId = targetId.toString(), roomId = roomId.toString(), action = RoleAction.DEMOTE))
+            }
         assertEquals(HttpStatus.FORBIDDEN, exception.status)
     }
 
@@ -303,9 +333,10 @@ class RoomServiceRoleTests {
         every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns userRoom(userId, roomId, RoomRole.ADMIN)
         every { userRoomRepository.findByIdUserIdAndIdRoomId(targetId, roomId) } returns userRoom(targetId, roomId, RoomRole.MODERATOR)
 
-        val exception = assertThrows<ApiException> {
-            roomService.changeRole(ChangeRoleDTO(userId = targetId.toString(), roomId = roomId.toString(), action = RoleAction.PROMOTE))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                roomService.changeRole(ChangeRoleDTO(userId = targetId.toString(), roomId = roomId.toString(), action = RoleAction.PROMOTE))
+            }
         assertEquals(HttpStatus.FORBIDDEN, exception.status)
     }
 
@@ -321,9 +352,10 @@ class RoomServiceRoleTests {
         every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns userRoom(userId, roomId, RoomRole.ADMIN)
         every { userRoomRepository.findByIdUserIdAndIdRoomId(targetId, roomId) } returns userRoom(targetId, roomId, RoomRole.ADMIN)
 
-        val exception = assertThrows<ApiException> {
-            roomService.changeRole(ChangeRoleDTO(userId = targetId.toString(), roomId = roomId.toString(), action = RoleAction.DEMOTE))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                roomService.changeRole(ChangeRoleDTO(userId = targetId.toString(), roomId = roomId.toString(), action = RoleAction.DEMOTE))
+            }
         assertEquals(HttpStatus.FORBIDDEN, exception.status)
     }
 
@@ -339,9 +371,10 @@ class RoomServiceRoleTests {
         every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns userRoom(userId, roomId, RoomRole.MODERATOR)
         every { userRoomRepository.findByIdUserIdAndIdRoomId(targetId, roomId) } returns userRoom(targetId, roomId, RoomRole.MODERATOR)
 
-        val exception = assertThrows<ApiException> {
-            roomService.changeRole(ChangeRoleDTO(userId = targetId.toString(), roomId = roomId.toString(), action = RoleAction.DEMOTE))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                roomService.changeRole(ChangeRoleDTO(userId = targetId.toString(), roomId = roomId.toString(), action = RoleAction.DEMOTE))
+            }
         assertEquals(HttpStatus.FORBIDDEN, exception.status)
     }
 }

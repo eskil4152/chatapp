@@ -5,7 +5,7 @@ import org.springframework.context.event.EventListener
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.core.ScanOptions
 import org.springframework.stereotype.Component
-import java.util.*
+import java.util.UUID
 
 // ==========================
 // Tracks global user presence in Redis via a session-count counter.
@@ -13,14 +13,16 @@ import java.util.*
 // ==========================
 @Component
 class PresenceHandler(
-    private val redisTemplate: RedisTemplate<String, String>
+    private val redisTemplate: RedisTemplate<String, String>,
 ) {
     @EventListener(ApplicationReadyEvent::class)
     fun clearStalePresence() {
         try {
-            val scanOptions = ScanOptions.scanOptions()
-                .match("presence:user:*")
-                .build()
+            val scanOptions =
+                ScanOptions
+                    .scanOptions()
+                    .match("presence:user:*")
+                    .build()
 
             val cursor = redisTemplate.scan(scanOptions)
             val keys = cursor.asSequence().toList()
@@ -28,15 +30,12 @@ class PresenceHandler(
             if (keys.isNotEmpty()) {
                 redisTemplate.delete(keys)
             }
-
         } catch (e: Exception) {
             println("Redis cleanup failed: ${e.message}")
         }
     }
 
-    fun userConnected(userId: UUID): Long {
-        return redisTemplate.opsForValue().increment(PresenceKeys.userPresence(userId))
-    }
+    fun userConnected(userId: UUID): Long = redisTemplate.opsForValue().increment(PresenceKeys.userPresence(userId))
 
     fun userDisconnected(userId: UUID): Long {
         val key = PresenceKeys.userPresence(userId)
@@ -59,7 +58,8 @@ class PresenceHandler(
         val keys = userIds.map { PresenceKeys.userPresence(it) }
         val values = redisTemplate.opsForValue().multiGet(keys)?.toList() ?: return emptySet()
 
-        return userIds.zip(values)
+        return userIds
+            .zip(values)
             .filter { (_, v) -> v?.toLongOrNull()?.let { it > 0 } == true }
             .map { (id, _) -> id }
             .toSet()

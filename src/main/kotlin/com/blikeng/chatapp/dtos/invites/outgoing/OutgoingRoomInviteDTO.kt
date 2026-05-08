@@ -12,5 +12,5 @@ data class OutgoingRoomInviteDTO(
     val toUserId: UUID,
     val toUsername: String,
     val avatar: String?,
-    val roomId: UUID
+    val roomId: UUID,
 ) : OutgoingInvitationDTO()

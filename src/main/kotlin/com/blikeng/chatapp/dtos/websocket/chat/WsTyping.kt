@@ -1,4 +1,4 @@
-package com.blikeng.chatapp.dtos.websocket
+package com.blikeng.chatapp.dtos.websocket.chat
 
 import java.util.UUID
 

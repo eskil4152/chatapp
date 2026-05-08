@@ -13,55 +13,67 @@ import java.time.Duration
 // ==========================
 @Component
 class RateLimitInterceptor(
-    private val rateLimitService: RateLimitService,
+    private val rateLimitingService: RateLimitingService,
     @Value("\${rate-limit.login.max-tokens:5}") private val loginMaxTokens: Long,
     @Value("\${rate-limit.register.max-tokens:10}") private val registerMaxTokens: Long,
     @Value("\${rate-limit.edit-user.max-tokens:3}") private val editUserMaxTokens: Long,
     @Value("\${rate-limit.edit-password.max-tokens:3}") private val editPasswordMaxTokens: Long,
     @Value("\${rate-limit.others.max-tokens:60}") private val othersMaxTokens: Long,
 ) : HandlerInterceptor {
-
     override fun preHandle(
         request: HttpServletRequest,
         response: HttpServletResponse,
-        handler: Any
+        handler: Any,
     ): Boolean {
         val ip = request.remoteAddr ?: "unknown"
         val path = request.requestURI
 
-        val allowed = when {
-            path == "/api/login" -> rateLimitService.tryConsume(
-                key = "login:$ip",
-                maxTokens = loginMaxTokens,
-                window = Duration.ofMinutes(1)
-            )
+        val allowed =
+            when {
+                path == "/api/login" -> {
+                    rateLimitingService.tryConsume(
+                        key = "login:$ip",
+                        maxTokens = loginMaxTokens,
+                        window = Duration.ofMinutes(1),
+                    )
+                }
 
-            path == "/api/register" -> rateLimitService.tryConsume(
-                key = "register:$ip",
-                maxTokens = registerMaxTokens,
-                window = Duration.ofMinutes(1)
-            )
+                path == "/api/register" -> {
+                    rateLimitingService.tryConsume(
+                        key = "register:$ip",
+                        maxTokens = registerMaxTokens,
+                        window = Duration.ofMinutes(1),
+                    )
+                }
 
-            path == "/api/user/edit" -> rateLimitService.tryConsume(
-                key = "editUser:$ip",
-                maxTokens = editUserMaxTokens,
-                window = Duration.ofMinutes(1)
-            )
+                path == "/api/user/edit" -> {
+                    rateLimitingService.tryConsume(
+                        key = "editUser:$ip",
+                        maxTokens = editUserMaxTokens,
+                        window = Duration.ofMinutes(1),
+                    )
+                }
 
-            path == "/api/user/edit/password" -> rateLimitService.tryConsume(
-                key = "editPassword:$ip",
-                maxTokens = editPasswordMaxTokens,
-                window = Duration.ofMinutes(1)
-            )
+                path == "/api/user/edit/password" -> {
+                    rateLimitingService.tryConsume(
+                        key = "editPassword:$ip",
+                        maxTokens = editPasswordMaxTokens,
+                        window = Duration.ofMinutes(1),
+                    )
+                }
 
-            path.startsWith("/api/") -> rateLimitService.tryConsume(
-                key = "others:$ip",
-                maxTokens = othersMaxTokens,
-                window = Duration.ofMinutes(1)
-            )
+                path.startsWith("/api/") -> {
+                    rateLimitingService.tryConsume(
+                        key = "others:$ip",
+                        maxTokens = othersMaxTokens,
+                        window = Duration.ofMinutes(1),
+                    )
+                }
 
-            else -> true
-        }
+                else -> {
+                    true
+                }
+            }
 
         if (!allowed) {
             response.status = 429

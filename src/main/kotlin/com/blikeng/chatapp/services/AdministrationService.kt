@@ -1,12 +1,27 @@
 package com.blikeng.chatapp.services
 
 import com.blikeng.chatapp.dtos.UserIdDTO
-import com.blikeng.chatapp.dtos.administration.*
+import com.blikeng.chatapp.dtos.administration.AdvancedSiteInfoDTO
+import com.blikeng.chatapp.dtos.administration.BanUserDTO
+import com.blikeng.chatapp.dtos.administration.BannedUserDTO
+import com.blikeng.chatapp.dtos.administration.ElevatedUserDTO
+import com.blikeng.chatapp.dtos.administration.HttpEndpointMetric
+import com.blikeng.chatapp.dtos.administration.HttpStatusCount
+import com.blikeng.chatapp.dtos.administration.SiteInfoDTO
+import com.blikeng.chatapp.dtos.administration.UserDetailDTO
+import com.blikeng.chatapp.dtos.administration.UserRoleDTO
 import com.blikeng.chatapp.dtos.room.RoleAction
 import com.blikeng.chatapp.entities.BannedUser
-import com.blikeng.chatapp.errors.*
-import com.blikeng.chatapp.events.UserBannedEvent
-import com.blikeng.chatapp.events.UserRoleChangedEvent
+import com.blikeng.chatapp.errors.AlreadyBannedException
+import com.blikeng.chatapp.errors.InvalidParametersException
+import com.blikeng.chatapp.errors.InvalidUUIDException
+import com.blikeng.chatapp.errors.InvalidUnbanException
+import com.blikeng.chatapp.errors.InvalidUserException
+import com.blikeng.chatapp.errors.NotBannedException
+import com.blikeng.chatapp.errors.NotPermittedException
+import com.blikeng.chatapp.errors.UserNotFoundException
+import com.blikeng.chatapp.notifications.events.UserBannedEvent
+import com.blikeng.chatapp.notifications.events.UserRoleChangedEvent
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserBanRepository
 import com.blikeng.chatapp.repositories.UserRepository
@@ -21,7 +36,7 @@ import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 @Service
@@ -38,8 +53,8 @@ class AdministrationService(
     private val siteInfoType = object : TypeReference<SiteInfo>() {}
     private val siteInfoTTL = Duration.ofHours(6)
 
-    fun getElevatedUsers(): List<ElevatedUserDTO> {
-        return userRepository.findAllByRoleNot(UserRole.USER).map { user ->
+    fun getElevatedUsers(): List<ElevatedUserDTO> =
+        userRepository.findAllByRoleNot(UserRole.USER).map { user ->
             ElevatedUserDTO(
                 id = user.id,
                 username = user.username,
@@ -48,22 +63,24 @@ class AdministrationService(
                 createdAt = user.createdAt,
             )
         }
-    }
 
     fun getUser(username: String): UserDetailDTO {
-        val user = userRepository.findByUsername(username).map { user ->
-            UserDetailDTO(
-                id = user.id,
-                username = user.username,
-                bio = user.bio,
-                email = user.email,
-                fullName = user.fullName,
-                avatarUrl = user.avatarUrl,
-                role = user.role,
-                createdAt = user.createdAt,
-                rooms = null
-            )
-        }.orElseThrow { UserNotFoundException() }
+        val user =
+            userRepository
+                .findByUsername(username)
+                .map { user ->
+                    UserDetailDTO(
+                        id = user.id,
+                        username = user.username,
+                        bio = user.bio,
+                        email = user.email,
+                        fullName = user.fullName,
+                        avatarUrl = user.avatarUrl,
+                        role = user.role,
+                        createdAt = user.createdAt,
+                        rooms = null,
+                    )
+                }.orElseThrow { UserNotFoundException() }
 
         return user
     }
@@ -71,74 +88,83 @@ class AdministrationService(
     @Transactional
     fun changeUserRole(userRoleDTO: UserRoleDTO) {
         val user = userRepository.findById(getId()).orElseThrow { InvalidUserException() }
-        val targetId = try {
-            UUID.fromString(userRoleDTO.id)
-        } catch (_: IllegalArgumentException) {
-            throw InvalidUUIDException()
-        }
+        val targetId =
+            try {
+                UUID.fromString(userRoleDTO.id)
+            } catch (_: IllegalArgumentException) {
+                throw InvalidUUIDException()
+            }
 
         val target = userRepository.findById(targetId).orElseThrow { UserNotFoundException() }
 
-        if (!checkRequiredRole(target.role, user.role)){
+        if (!checkRequiredRole(target.role, user.role)) {
             throw NotPermittedException()
         }
 
         val entries = UserRole.entries
-        val newRole = when (userRoleDTO.action) {
-            RoleAction.PROMOTE -> entries[target.role.ordinal + 1]
-            RoleAction.DEMOTE  -> entries[target.role.ordinal - 1]
-        }
+        val newRole =
+            when (userRoleDTO.action) {
+                RoleAction.PROMOTE -> entries[target.role.ordinal + 1]
+                RoleAction.DEMOTE -> entries[target.role.ordinal - 1]
+            }
 
         target.role = newRole
 
         userRepository.save(target)
 
-        eventPublisher.publishEvent(UserRoleChangedEvent(
-            userId = targetId,
-            byUsername = user.username,
-            newRole = newRole,
-            action = userRoleDTO.action,
-        ))
+        eventPublisher.publishEvent(
+            UserRoleChangedEvent(
+                userId = targetId,
+                byUsername = user.username,
+                newRole = newRole,
+                action = userRoleDTO.action,
+            ),
+        )
     }
 
     @Transactional
     fun banUser(banUserDTO: BanUserDTO) {
         val user = userRepository.findById(getId()).orElseThrow { InvalidUserException() }
-        val targetId = try {
-            UUID.fromString(banUserDTO.id)
-        } catch (_: IllegalArgumentException) {
-            throw InvalidUUIDException()
-        }
+        val targetId =
+            try {
+                UUID.fromString(banUserDTO.id)
+            } catch (_: IllegalArgumentException) {
+                throw InvalidUUIDException()
+            }
 
         val target = userRepository.findById(targetId).orElseThrow { UserNotFoundException() }
 
-        if (!checkRequiredRole(target.role, user.role)){
+        if (!checkRequiredRole(target.role, user.role)) {
             throw NotPermittedException()
         }
 
         if (userBanRepository.existsById(targetId)) throw AlreadyBannedException()
-        val ban = BannedUser(
-            userId = targetId,
-            bannedBy = user.id,
-            reason = banUserDTO.reason
-        )
+        val ban =
+            BannedUser(
+                userId = targetId,
+                bannedBy = user.id,
+                reason = banUserDTO.reason,
+            )
 
         userBanRepository.save(ban)
 
-        eventPublisher.publishEvent(UserBannedEvent(
-            userId = targetId,
-            byUsername = user.username,
-            reason = banUserDTO.reason ?: "No reason provided"
-        ))
+        eventPublisher.publishEvent(
+            UserBannedEvent(
+                userId = targetId,
+                byUsername = user.username,
+                reason = banUserDTO.reason ?: "No reason provided",
+            ),
+        )
     }
 
     fun unbanUser(userIdDTO: UserIdDTO) {
         val user = userRepository.findById(getId()).orElseThrow { InvalidUserException() }
-        val targetId = try {
-            UUID.fromString(userIdDTO.userId)
-        } catch (_: IllegalArgumentException) {
-            throw InvalidUUIDException()
-        }
+        val targetId =
+            try {
+                UUID.fromString(userIdDTO.userId)
+            } catch (_: IllegalArgumentException) {
+                throw InvalidUUIDException()
+            }
 
         val ban = userBanRepository.findById(targetId).orElseThrow { NotBannedException() }
         val banner = userRepository.findById(ban.bannedBy).orElse(null)
@@ -151,20 +177,25 @@ class AdministrationService(
         userRevocationService.unRevokeBanned(targetId)
     }
 
-    fun getAllUserBans(page: Int, size: Int): List<BannedUserDTO> {
+    fun getAllUserBans(
+        page: Int,
+        size: Int,
+    ): List<BannedUserDTO> {
         if (page < 0 || size !in setOf(25, 50, 100)) throw InvalidParametersException()
 
-        return userBanRepository.findAllWithUsers(PageRequest.of(page, size)).map { ban ->
-            BannedUserDTO(
-                userId = ban.userId,
-                username = ban.username,
-                bannedBy = ban.bannedBy,
-                bannedByUsername = ban.bannedByUsername,
-                bannedByRole = ban.bannedByRole,
-                bannedAt = ban.bannedAt,
-                reason = ban.reason
-            )
-        }.content
+        return userBanRepository
+            .findAllWithUsers(PageRequest.of(page, size))
+            .map { ban ->
+                BannedUserDTO(
+                    userId = ban.userId,
+                    username = ban.username,
+                    bannedBy = ban.bannedBy,
+                    bannedByUsername = ban.bannedByUsername,
+                    bannedByRole = ban.bannedByRole,
+                    bannedAt = ban.bannedAt,
+                    reason = ban.reason,
+                )
+            }.content
     }
 
     fun getSiteInfo(): SiteInfoDTO {
@@ -184,56 +215,66 @@ class AdministrationService(
     fun getAdvancedSiteInfo(): AdvancedSiteInfoDTO {
         fun gauge(name: String) = meterRegistry.find(name).gauge()?.value() ?: 0.0
 
-        val httpRequests = meterRegistry.find("http.server.requests").timers()
-            .groupBy { timer ->
-                val tags = timer.id.tags.associate { it.key to it.value }
-                (tags["uri"] ?: "unknown") to (tags["method"] ?: "unknown")
-            }
-            .map { (key, timers) ->
-                val (uri, method) = key
+        val httpRequests =
+            meterRegistry
+                .find("http.server.requests")
+                .timers()
+                .groupBy { timer ->
+                    val tags = timer.id.tags.associate { it.key to it.value }
+                    (tags["uri"] ?: "unknown") to (tags["method"] ?: "unknown")
+                }.map { (key, timers) ->
+                    val (uri, method) = key
 
-                val statuses = timers
-                    .groupBy { timer ->
-                        val tags = timer.id.tags.associate { it.key to it.value }
-                        tags["status"]?.toIntOrNull() ?: 0
-                    }
-                    .map { (status, groupedTimers) ->
-                        HttpStatusCount(
-                            status = status,
-                            count = groupedTimers.sumOf { it.count() }
-                        )
-                    }
+                    val statuses =
+                        timers
+                            .groupBy { timer ->
+                                val tags = timer.id.tags.associate { it.key to it.value }
+                                tags["status"]?.toIntOrNull() ?: 0
+                            }.map { (status, groupedTimers) ->
+                                HttpStatusCount(
+                                    status = status,
+                                    count = groupedTimers.sumOf { it.count() },
+                                )
+                            }
 
-                val totalCount = timers.sumOf { it.count() }
+                    val totalCount = timers.sumOf { it.count() }
 
-                val meanMs = if (totalCount > 0) {
-                    timers.sumOf {
-                        it.mean(TimeUnit.MILLISECONDS) * it.count()
-                    } / totalCount
-                } else 0.0
+                    val meanMs =
+                        if (totalCount > 0) {
+                            timers.sumOf {
+                                it.mean(TimeUnit.MILLISECONDS) * it.count()
+                            } / totalCount
+                        } else {
+                            0.0
+                        }
 
-                val maxMs = timers.fold(0.0) { acc, timer ->
-                    maxOf(acc, timer.max(TimeUnit.MILLISECONDS))
+                    val maxMs =
+                        timers.fold(0.0) { acc, timer ->
+                            maxOf(acc, timer.max(TimeUnit.MILLISECONDS))
+                        }
+
+                    val errorCount =
+                        statuses
+                            .filter { it.status >= 500 }
+                            .sumOf { it.count }
+
+                    val errorRate =
+                        if (totalCount > 0) {
+                            errorCount.toDouble() / totalCount
+                        } else {
+                            0.0
+                        }
+
+                    HttpEndpointMetric(
+                        uri = uri,
+                        method = method,
+                        statuses = statuses,
+                        totalCount = totalCount,
+                        errorRate = errorRate,
+                        meanMs = meanMs,
+                        maxMs = maxMs,
+                    )
                 }
-
-                val errorCount = statuses
-                    .filter { it.status >= 500 }
-                    .sumOf { it.count }
-
-                val errorRate = if (totalCount > 0) {
-                    errorCount.toDouble() / totalCount
-                } else 0.0
-
-                HttpEndpointMetric(
-                    uri = uri,
-                    method = method,
-                    statuses = statuses,
-                    totalCount = totalCount,
-                    errorRate = errorRate,
-                    meanMs = meanMs,
-                    maxMs = maxMs
-                )
-            }
 
         val gcPause = meterRegistry.find("jvm.gc.pause").timer()
 
@@ -247,13 +288,14 @@ class AdministrationService(
             gcPauseMeanMs = gcPause?.mean(TimeUnit.MILLISECONDS) ?: 0.0,
             gcPauseMaxMs = gcPause?.max(TimeUnit.MILLISECONDS) ?: 0.0,
             uptimeSeconds = gauge("process.uptime").toLong(),
-            httpRequests = httpRequests
+            httpRequests = httpRequests,
         )
     }
 
-    private fun checkRequiredRole(targetRole: UserRole, userRole: UserRole) : Boolean {
-        return userRole.ordinal > targetRole.ordinal
-    }
+    private fun checkRequiredRole(
+        targetRole: UserRole,
+        userRole: UserRole,
+    ): Boolean = userRole.ordinal > targetRole.ordinal
 
     private fun getSiteCounts(): SiteInfo {
         val key = "site-info:counts"
@@ -265,11 +307,12 @@ class AdministrationService(
         val countRoom = roomRepository.count()
         val countBanned = userBanRepository.count()
 
-        val siteInfo = SiteInfo(
-            totalUsers = countUsers,
-            totalRooms = countRoom,
-            bannedUsers = countBanned
-        )
+        val siteInfo =
+            SiteInfo(
+                totalUsers = countUsers,
+                totalRooms = countRoom,
+                bannedUsers = countBanned,
+            )
 
         redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(siteInfo), siteInfoTTL)
         return siteInfo

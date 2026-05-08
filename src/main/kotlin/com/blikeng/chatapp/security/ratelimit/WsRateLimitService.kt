@@ -8,7 +8,7 @@ import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.binder.cache.CaffeineStatsCounter
 import org.springframework.stereotype.Service
 import java.time.Duration
-import java.util.*
+import java.util.UUID
 
 // ==========================
 // File for WebSocket message rate limiting. Injected in WebSocketHandler.
@@ -16,25 +16,29 @@ import java.util.*
 // ==========================
 @Service
 class WsRateLimitService(
-    meterRegistry: MeterRegistry
+    meterRegistry: MeterRegistry,
 ) {
-    private val buckets = Caffeine.newBuilder()
-        .expireAfterAccess(Duration.ofMinutes(10))
-        .recordStats { CaffeineStatsCounter(meterRegistry, "app.ratelimit.ws.buckets") }
-        .build<UUID, Bucket>()
-        .also { cache -> Gauge.builder("app.ratelimit.ws.buckets", cache) { it.asMap().size.toDouble() }.register(meterRegistry) }
+    private val buckets =
+        Caffeine
+            .newBuilder()
+            .expireAfterAccess(Duration.ofMinutes(10))
+            .recordStats { CaffeineStatsCounter(meterRegistry, "app.ratelimit.ws.buckets") }
+            .build<UUID, Bucket>()
+            .also { cache -> Gauge.builder("app.ratelimit.ws.buckets", cache) { it.asMap().size.toDouble() }.register(meterRegistry) }
 
     fun tryConsumeMessage(userId: UUID): Boolean {
-        val bucket = buckets.get(userId) {
-            Bucket.builder()
-                .addLimit(
-                    Bandwidth.builder()
-                        .capacity(60)
-                        .refillGreedy(30, Duration.ofMinutes(1))
-                        .build()
-                )
-                .build()
-        }
+        val bucket =
+            buckets.get(userId) {
+                Bucket
+                    .builder()
+                    .addLimit(
+                        Bandwidth
+                            .builder()
+                            .capacity(60)
+                            .refillGreedy(30, Duration.ofMinutes(1))
+                            .build(),
+                    ).build()
+            }
 
         return bucket.tryConsume(1)
     }

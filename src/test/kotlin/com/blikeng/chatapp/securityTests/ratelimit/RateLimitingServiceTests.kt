@@ -1,8 +1,10 @@
 package com.blikeng.chatapp.securityTests.ratelimit
 
-import com.blikeng.chatapp.security.ratelimit.RateLimitService
+import com.blikeng.chatapp.security.ratelimit.RateLimitingService
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.Duration
 
@@ -13,13 +15,13 @@ import java.time.Duration
 // - Separation of buckets by unique rate-limit keys
 // - Gauge registration and correct bucket count metrics
 // ==========================
-class RateLimitServiceTests {
+class RateLimitingServiceTests {
     private val simpleMeterRegistry = SimpleMeterRegistry()
 
     @Test
     fun shouldTrackHttpRateLimitBucketsGauge() {
         val registry = SimpleMeterRegistry()
-        val service = RateLimitService(registry)
+        val service = RateLimitingService(registry)
 
         val gauge = registry.get("app.ratelimit.http.buckets").gauge()
 
@@ -34,30 +36,30 @@ class RateLimitServiceTests {
 
     @Test
     fun shouldAllowRequestsWithinLimit() {
-        val service = RateLimitService(simpleMeterRegistry)
+        val service = RateLimitingService(simpleMeterRegistry)
 
         repeat(5) {
             assertTrue(
                 service.tryConsume(
                     key = "login:127.0.0.1",
                     maxTokens = 5,
-                    window = Duration.ofMinutes(1)
-                )
+                    window = Duration.ofMinutes(1),
+                ),
             )
         }
     }
 
     @Test
     fun shouldBlockRequestsAboveLimit() {
-        val service = RateLimitService(simpleMeterRegistry)
+        val service = RateLimitingService(simpleMeterRegistry)
 
         repeat(5) {
             assertTrue(
                 service.tryConsume(
                     key = "login:127.0.0.1",
                     maxTokens = 5,
-                    window = Duration.ofMinutes(1)
-                )
+                    window = Duration.ofMinutes(1),
+                ),
             )
         }
 
@@ -65,14 +67,14 @@ class RateLimitServiceTests {
             service.tryConsume(
                 key = "login:127.0.0.1",
                 maxTokens = 5,
-                window = Duration.ofMinutes(1)
-            )
+                window = Duration.ofMinutes(1),
+            ),
         )
     }
 
     @Test
     fun shouldKeepBucketsSeparateByKey() {
-        val service = RateLimitService(simpleMeterRegistry)
+        val service = RateLimitingService(simpleMeterRegistry)
 
         repeat(5) {
             assertTrue(service.tryConsume("login:127.0.0.1", 5, Duration.ofMinutes(1)))

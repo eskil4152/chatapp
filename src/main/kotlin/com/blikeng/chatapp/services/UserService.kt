@@ -15,8 +15,7 @@ import com.blikeng.chatapp.security.auth.PasswordService
 import com.blikeng.chatapp.security.auth.getId
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.util.*
-
+import java.util.UUID
 
 // ==========================
 // Handles user retrieval, authenticated profile access,
@@ -29,9 +28,7 @@ class UserService(
     private val roomRepository: RoomRepository,
     private val userRevocationService: UserRevocationService,
 ) {
-    fun getUserById(id: UUID): UserEntity? {
-        return userRepository.findById(id).orElse(null)
-    }
+    fun getUserById(id: UUID): UserEntity? = userRepository.findById(id).orElse(null)
 
     fun getSelf(): UserDTO {
         val id = getId()
@@ -46,7 +43,7 @@ class UserService(
             avatarUrl = user.avatarUrl,
             birthday = user.birthday,
             createdAt = user.createdAt,
-            rooms = roomRepository.findRoomsForUser(id)
+            rooms = roomRepository.findRoomsForUser(id),
         )
     }
 
@@ -104,7 +101,5 @@ class UserService(
         userRepository.delete(user)
     }
 
-    fun getAllById(userIds: List<UUID>): List<UserEntity> {
-        return userRepository.findAllById(userIds)
-    }
+    fun getAllById(userIds: List<UUID>): List<UserEntity> = userRepository.findAllById(userIds)
 }

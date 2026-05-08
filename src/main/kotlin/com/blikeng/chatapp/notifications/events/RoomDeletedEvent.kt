@@ -1,4 +1,4 @@
-package com.blikeng.chatapp.events
+package com.blikeng.chatapp.notifications.events
 
 import java.util.UUID
 

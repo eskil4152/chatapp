@@ -1,4 +1,4 @@
-package com.blikeng.chatapp.events
+package com.blikeng.chatapp.notifications.events
 
 import com.blikeng.chatapp.dtos.room.RoomAction
 import java.util.UUID

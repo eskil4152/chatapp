@@ -23,8 +23,11 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.redis.core.RedisTemplate
@@ -33,10 +36,8 @@ import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
 import java.time.Instant
-import java.util.*
-import org.junit.jupiter.api.assertThrows
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertInstanceOf
+import java.util.Optional
+import java.util.UUID
 
 @ExtendWith(MockKExtension::class)
 class InviteOutgoingTests {
@@ -52,15 +53,25 @@ class InviteOutgoingTests {
     // ==========================
 
     @InjectMockKs private lateinit var inviteService: InviteService
+
     @MockK private lateinit var userService: UserService
+
     @MockK private lateinit var userRepository: UserRepository
+
     @MockK private lateinit var userRoomRepository: UserRoomRepository
+
     @MockK private lateinit var friendService: FriendService
+
     @MockK private lateinit var inviteRepository: InviteRepository
+
     @MockK private lateinit var roomService: RoomService
+
     @MockK private lateinit var bannedUserService: BannedUserService
+
     @RelaxedMockK private lateinit var eventPublisher: ApplicationEventPublisher
+
     @RelaxedMockK private lateinit var redisTemplate: RedisTemplate<String, String>
+
     @RelaxedMockK private lateinit var objectMapper: ObjectMapper
 
     private val user1 = UserEntity(id = UUID.randomUUID(), username = "user1", password = "pw")
@@ -82,13 +93,14 @@ class InviteOutgoingTests {
     @Test
     fun shouldReturnOutgoingFriendRequests() {
         setAuth(user1.id)
-        val invite = InviteEntity(
-            type = InviteType.FRIEND_REQUEST,
-            fromUserId = user1.id,
-            toUserId = user2.id,
-            expiresAt = Instant.now().plusSeconds(3600),
-            status = InviteStatus.PENDING,
-        )
+        val invite =
+            InviteEntity(
+                type = InviteType.FRIEND_REQUEST,
+                fromUserId = user1.id,
+                toUserId = user2.id,
+                expiresAt = Instant.now().plusSeconds(3600),
+                status = InviteStatus.PENDING,
+            )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findByFromUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns listOf(invite)
         every { userRepository.findById(user2.id) } returns Optional.of(user2)
@@ -104,14 +116,15 @@ class InviteOutgoingTests {
     @Test
     fun shouldReturnOutgoingRoomInvites() {
         setAuth(user1.id)
-        val invite = InviteEntity(
-            type = InviteType.ROOM_INVITE,
-            fromUserId = user1.id,
-            toUserId = user2.id,
-            roomId = roomId,
-            expiresAt = Instant.now().plusSeconds(3600),
-            status = InviteStatus.PENDING,
-        )
+        val invite =
+            InviteEntity(
+                type = InviteType.ROOM_INVITE,
+                fromUserId = user1.id,
+                toUserId = user2.id,
+                roomId = roomId,
+                expiresAt = Instant.now().plusSeconds(3600),
+                status = InviteStatus.PENDING,
+            )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findByFromUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns listOf(invite)
         every { userRepository.findById(user2.id) } returns Optional.of(user2)
@@ -127,15 +140,16 @@ class InviteOutgoingTests {
     @Test
     fun shouldReturnOutgoingOpenRoomInvites() {
         setAuth(user1.id)
-        val invite = InviteEntity(
-            type = InviteType.OPEN_ROOM_INVITE,
-            fromUserId = user1.id,
-            roomId = roomId,
-            usages = 3,
-            maxUsages = 10,
-            expiresAt = Instant.now().plusSeconds(3600),
-            status = InviteStatus.PENDING,
-        )
+        val invite =
+            InviteEntity(
+                type = InviteType.OPEN_ROOM_INVITE,
+                fromUserId = user1.id,
+                roomId = roomId,
+                usages = 3,
+                maxUsages = 10,
+                expiresAt = Instant.now().plusSeconds(3600),
+                status = InviteStatus.PENDING,
+            )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findByFromUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns listOf(invite)
 
@@ -162,13 +176,14 @@ class InviteOutgoingTests {
     @Test
     fun shouldFailOnFriendRequestWithNullToUserId() {
         setAuth(user1.id)
-        val invite = InviteEntity(
-            type = InviteType.FRIEND_REQUEST,
-            fromUserId = user1.id,
-            toUserId = null,
-            expiresAt = Instant.now().plusSeconds(3600),
-            status = InviteStatus.PENDING,
-        )
+        val invite =
+            InviteEntity(
+                type = InviteType.FRIEND_REQUEST,
+                fromUserId = user1.id,
+                toUserId = null,
+                expiresAt = Instant.now().plusSeconds(3600),
+                status = InviteStatus.PENDING,
+            )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findByFromUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns listOf(invite)
 
@@ -179,14 +194,15 @@ class InviteOutgoingTests {
     @Test
     fun shouldFailOnRoomInviteWithNullToUserId() {
         setAuth(user1.id)
-        val invite = InviteEntity(
-            type = InviteType.ROOM_INVITE,
-            fromUserId = user1.id,
-            toUserId = null,
-            roomId = roomId,
-            expiresAt = Instant.now().plusSeconds(3600),
-            status = InviteStatus.PENDING,
-        )
+        val invite =
+            InviteEntity(
+                type = InviteType.ROOM_INVITE,
+                fromUserId = user1.id,
+                toUserId = null,
+                roomId = roomId,
+                expiresAt = Instant.now().plusSeconds(3600),
+                status = InviteStatus.PENDING,
+            )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findByFromUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns listOf(invite)
 
@@ -197,14 +213,15 @@ class InviteOutgoingTests {
     @Test
     fun shouldFailOnRoomInviteWithNullRoomId() {
         setAuth(user1.id)
-        val invite = InviteEntity(
-            type = InviteType.ROOM_INVITE,
-            fromUserId = user1.id,
-            toUserId = user2.id,
-            roomId = null,
-            expiresAt = Instant.now().plusSeconds(3600),
-            status = InviteStatus.PENDING,
-        )
+        val invite =
+            InviteEntity(
+                type = InviteType.ROOM_INVITE,
+                fromUserId = user1.id,
+                toUserId = user2.id,
+                roomId = null,
+                expiresAt = Instant.now().plusSeconds(3600),
+                status = InviteStatus.PENDING,
+            )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findByFromUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns listOf(invite)
         every { userRepository.findById(user2.id) } returns Optional.of(user2)
@@ -216,15 +233,16 @@ class InviteOutgoingTests {
     @Test
     fun shouldFailOnOpenRoomInviteWithNullRoomId() {
         setAuth(user1.id)
-        val invite = InviteEntity(
-            type = InviteType.OPEN_ROOM_INVITE,
-            fromUserId = user1.id,
-            roomId = null,
-            usages = 0,
-            maxUsages = 10,
-            expiresAt = Instant.now().plusSeconds(3600),
-            status = InviteStatus.PENDING,
-        )
+        val invite =
+            InviteEntity(
+                type = InviteType.OPEN_ROOM_INVITE,
+                fromUserId = user1.id,
+                roomId = null,
+                usages = 0,
+                maxUsages = 10,
+                expiresAt = Instant.now().plusSeconds(3600),
+                status = InviteStatus.PENDING,
+            )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findByFromUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns listOf(invite)
 
@@ -235,13 +253,14 @@ class InviteOutgoingTests {
     @Test
     fun shouldFailOnFriendRequestWhenTargetUserNotFound() {
         setAuth(user1.id)
-        val invite = InviteEntity(
-            type = InviteType.FRIEND_REQUEST,
-            fromUserId = user1.id,
-            toUserId = user2.id,
-            expiresAt = Instant.now().plusSeconds(3600),
-            status = InviteStatus.PENDING,
-        )
+        val invite =
+            InviteEntity(
+                type = InviteType.FRIEND_REQUEST,
+                fromUserId = user1.id,
+                toUserId = user2.id,
+                expiresAt = Instant.now().plusSeconds(3600),
+                status = InviteStatus.PENDING,
+            )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findByFromUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns listOf(invite)
         every { userRepository.findById(user2.id) } returns Optional.empty()
@@ -253,14 +272,15 @@ class InviteOutgoingTests {
     @Test
     fun shouldFailOnRoomInviteWhenTargetUserNotFound() {
         setAuth(user1.id)
-        val invite = InviteEntity(
-            type = InviteType.ROOM_INVITE,
-            fromUserId = user1.id,
-            toUserId = user2.id,
-            roomId = roomId,
-            expiresAt = Instant.now().plusSeconds(3600),
-            status = InviteStatus.PENDING,
-        )
+        val invite =
+            InviteEntity(
+                type = InviteType.ROOM_INVITE,
+                fromUserId = user1.id,
+                toUserId = user2.id,
+                roomId = roomId,
+                expiresAt = Instant.now().plusSeconds(3600),
+                status = InviteStatus.PENDING,
+            )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findByFromUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns listOf(invite)
         every { userRepository.findById(user2.id) } returns Optional.empty()
@@ -272,15 +292,16 @@ class InviteOutgoingTests {
     @Test
     fun shouldFailOnOpenRoomInviteWithNullUsages() {
         setAuth(user1.id)
-        val invite = InviteEntity(
-            type = InviteType.OPEN_ROOM_INVITE,
-            fromUserId = user1.id,
-            roomId = roomId,
-            usages = null,
-            maxUsages = 10,
-            expiresAt = Instant.now().plusSeconds(3600),
-            status = InviteStatus.PENDING,
-        )
+        val invite =
+            InviteEntity(
+                type = InviteType.OPEN_ROOM_INVITE,
+                fromUserId = user1.id,
+                roomId = roomId,
+                usages = null,
+                maxUsages = 10,
+                expiresAt = Instant.now().plusSeconds(3600),
+                status = InviteStatus.PENDING,
+            )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findByFromUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns listOf(invite)
 
@@ -291,15 +312,16 @@ class InviteOutgoingTests {
     @Test
     fun shouldFailOnOpenRoomInviteWithNullMaxUsages() {
         setAuth(user1.id)
-        val invite = InviteEntity(
-            type = InviteType.OPEN_ROOM_INVITE,
-            fromUserId = user1.id,
-            roomId = roomId,
-            usages = 0,
-            maxUsages = null,
-            expiresAt = Instant.now().plusSeconds(3600),
-            status = InviteStatus.PENDING,
-        )
+        val invite =
+            InviteEntity(
+                type = InviteType.OPEN_ROOM_INVITE,
+                fromUserId = user1.id,
+                roomId = roomId,
+                usages = 0,
+                maxUsages = null,
+                expiresAt = Instant.now().plusSeconds(3600),
+                status = InviteStatus.PENDING,
+            )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findByFromUserIdAndStatus(user1.id, InviteStatus.PENDING) } returns listOf(invite)
 

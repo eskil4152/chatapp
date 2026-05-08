@@ -2,7 +2,10 @@ package com.blikeng.chatapp.serviceTests.roomServiceTests
 
 import com.blikeng.chatapp.dtos.room.JoinedRoomDTO
 import com.blikeng.chatapp.dtos.room.RoomDTO
-import com.blikeng.chatapp.entities.*
+import com.blikeng.chatapp.entities.RoomEntity
+import com.blikeng.chatapp.entities.RoomRole
+import com.blikeng.chatapp.entities.RoomType
+import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.repositories.PrivateRoomPartner
@@ -13,15 +16,21 @@ import com.blikeng.chatapp.services.FriendService
 import com.blikeng.chatapp.services.RoomService
 import com.blikeng.chatapp.services.UserService
 import com.fasterxml.jackson.databind.ObjectMapper
-import io.mockk.*
+import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.mockk
+import io.mockk.slot
+import io.mockk.verify
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNotNull
 import org.junit.jupiter.api.assertNull
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.redis.core.RedisTemplate
@@ -29,10 +38,7 @@ import org.springframework.data.redis.core.ValueOperations
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
-import java.util.*
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.assertThrows
+import java.util.UUID
 
 @ExtendWith(MockKExtension::class)
 class RoomServiceCreationTests {
@@ -45,12 +51,19 @@ class RoomServiceCreationTests {
     // ==========================
 
     @MockK private lateinit var roomRepository: RoomRepository
+
     @MockK private lateinit var userService: UserService
+
     @MockK private lateinit var userRoomRepository: UserRoomRepository
+
     @MockK private lateinit var friendsService: FriendService
+
     @MockK private lateinit var bannedUserService: BannedUserService
+
     @MockK private lateinit var eventPublisher: ApplicationEventPublisher
+
     @RelaxedMockK private lateinit var redisTemplate: RedisTemplate<String, String>
+
     @RelaxedMockK private lateinit var objectMapper: ObjectMapper
 
     @InjectMockKs lateinit var roomService: RoomService
@@ -63,7 +76,9 @@ class RoomServiceCreationTests {
     }
 
     @AfterEach
-    fun clearSecurity() { SecurityContextHolder.clearContext() }
+    fun clearSecurity() {
+        SecurityContextHolder.clearContext()
+    }
 
     // ==========================
     // Create rooms
@@ -181,10 +196,11 @@ class RoomServiceCreationTests {
         val secondRoom = RoomEntity(name = "r2", type = RoomType.PRIVATE)
 
         every { userService.getUserById(any()) } returns UserEntity(username = "u", password = "")
-        every { roomRepository.findRoomsForUser(any()) } returns listOf(
-            JoinedRoomDTO(room, RoomRole.OWNER),
-            JoinedRoomDTO(secondRoom, RoomRole.OWNER, type = RoomType.PRIVATE)
-        )
+        every { roomRepository.findRoomsForUser(any()) } returns
+            listOf(
+                JoinedRoomDTO(room, RoomRole.OWNER),
+                JoinedRoomDTO(secondRoom, RoomRole.OWNER, type = RoomType.PRIVATE),
+            )
         val partner = mockk<PrivateRoomPartner>()
         every { partner.roomId } returns secondRoom.id
         every { partner.username } returns "su"
@@ -193,10 +209,22 @@ class RoomServiceCreationTests {
         val rooms = roomService.getAllUserRooms()
         assertEquals(
             listOf(
-                RoomDTO(roomId = room.id.toString(), roomName = room.name, encrypted = room.encrypted, role = RoomRole.OWNER, type = room.type),
-                RoomDTO(roomId = secondRoom.id.toString(), roomName = "su", encrypted = secondRoom.encrypted, role = RoomRole.OWNER, type = secondRoom.type)
+                RoomDTO(
+                    roomId = room.id.toString(),
+                    roomName = room.name,
+                    encrypted = room.encrypted,
+                    role = RoomRole.OWNER,
+                    type = room.type,
+                ),
+                RoomDTO(
+                    roomId = secondRoom.id.toString(),
+                    roomName = "su",
+                    encrypted = secondRoom.encrypted,
+                    role = RoomRole.OWNER,
+                    type = secondRoom.type,
+                ),
             ),
-            rooms
+            rooms,
         )
     }
 
@@ -219,8 +247,16 @@ class RoomServiceCreationTests {
 
         val rooms = roomService.getAllUserRooms()
         assertEquals(
-            listOf(RoomDTO(roomId = room.id.toString(), roomName = "Error", encrypted = room.encrypted, role = RoomRole.OWNER, type = room.type)),
-            rooms
+            listOf(
+                RoomDTO(
+                    roomId = room.id.toString(),
+                    roomName = "Error",
+                    encrypted = room.encrypted,
+                    role = RoomRole.OWNER,
+                    type = room.type,
+                ),
+            ),
+            rooms,
         )
     }
 
@@ -230,7 +266,16 @@ class RoomServiceCreationTests {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(userId, null, emptyList())
 
-        val cached = listOf(RoomDTO(roomId = UUID.randomUUID().toString(), roomName = "cached", encrypted = false, role = RoomRole.MEMBER, type = RoomType.GROUP))
+        val cached =
+            listOf(
+                RoomDTO(
+                    roomId = UUID.randomUUID().toString(),
+                    roomName = "cached",
+                    encrypted = false,
+                    role = RoomRole.MEMBER,
+                    type = RoomType.GROUP,
+                ),
+            )
         val ops = mockk<ValueOperations<String, String>>(relaxed = true)
         every { ops.get("user:$userId:rooms") } returns "cached-json"
         every { redisTemplate.opsForValue() } returns ops

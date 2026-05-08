@@ -10,7 +10,6 @@ import com.blikeng.chatapp.errors.UsernameAlreadyExistsException
 import com.blikeng.chatapp.repositories.AuthRepository
 import com.blikeng.chatapp.security.auth.JwtService
 import com.blikeng.chatapp.security.auth.PasswordService
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 
 // ==========================
@@ -24,7 +23,10 @@ class AuthService(
     private val jwtService: JwtService,
     private val authRepository: AuthRepository,
 ) {
-    fun registerUser(username: String, password: String): String {
+    fun registerUser(
+        username: String,
+        password: String,
+    ): String {
         val trimmedUsername = username.trim()
         val trimmedPassword = password.trim()
 
@@ -39,7 +41,10 @@ class AuthService(
         return jwtService.generateToken(user)
     }
 
-    fun loginUser(username: String, password: String): String {
+    fun loginUser(
+        username: String,
+        password: String,
+    ): String {
         val user = authRepository.findByUsernameIgnoreCase(username) ?: throw InvalidCredentialsException()
         if (!passwordService.checkPassword(password, user.password)) throw InvalidCredentialsException()
 

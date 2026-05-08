@@ -6,20 +6,18 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
-import io.mockk.just
-import io.mockk.Runs
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.data.redis.core.Cursor
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.core.ValueOperations
-import java.util.*
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertTrue
+import java.util.UUID
 
 @ExtendWith(MockKExtension::class)
 class PresenceHandlerTests {
@@ -31,6 +29,7 @@ class PresenceHandlerTests {
     // ==========================
 
     @MockK lateinit var redisTemplate: RedisTemplate<String, String>
+
     @MockK lateinit var valueOps: ValueOperations<String, String>
 
     @InjectMockKs lateinit var presenceHandler: PresenceHandler

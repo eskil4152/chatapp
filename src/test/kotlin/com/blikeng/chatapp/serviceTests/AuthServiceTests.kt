@@ -11,11 +11,11 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.http.HttpStatus
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.assertThrows
 
 @ExtendWith(MockKExtension::class)
 class AuthServiceTests {
@@ -27,7 +27,9 @@ class AuthServiceTests {
     // - Login failure cases
     // ==========================
     @MockK private lateinit var authRepository: AuthRepository
+
     @MockK private lateinit var passwordService: PasswordService
+
     @MockK private lateinit var jwtService: JwtService
 
     @InjectMockKs
@@ -48,9 +50,10 @@ class AuthServiceTests {
     fun shouldNotRegisterUserWithExistingUsername() {
         every { authRepository.existsByUsernameIgnoreCase(any()) } returns true
 
-        val exception = assertThrows<ApiException> {
-            authService.registerUser("existinguser", "password123")
-        }
+        val exception =
+            assertThrows<ApiException> {
+                authService.registerUser("existinguser", "password123")
+            }
 
         assertEquals(HttpStatus.CONFLICT, exception.status)
         assertEquals(ErrorMessages.USERNAME_EXISTS, exception.message)
@@ -60,9 +63,10 @@ class AuthServiceTests {
     fun shouldNotRegisterUserWithTooShortUsername() {
         every { authRepository.existsByUsernameIgnoreCase(any()) } returns false
 
-        val exception = assertThrows<ApiException> {
-            authService.registerUser("u", "password")
-        }
+        val exception =
+            assertThrows<ApiException> {
+                authService.registerUser("u", "password")
+            }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         assertEquals(ErrorMessages.SHORT_USERNAME, exception.message)
@@ -72,9 +76,10 @@ class AuthServiceTests {
     fun shouldNotRegisterUserWithTooShortPassword() {
         every { authRepository.existsByUsernameIgnoreCase(any()) } returns false
 
-        val exception = assertThrows<ApiException> {
-            authService.registerUser("username", "p")
-        }
+        val exception =
+            assertThrows<ApiException> {
+                authService.registerUser("username", "p")
+            }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         assertEquals(ErrorMessages.SHORT_PASSWORD, exception.message)
@@ -82,9 +87,10 @@ class AuthServiceTests {
 
     @Test
     fun shouldNotRegisterUserWithTooLongUsername() {
-        val exception = assertThrows<ApiException> {
-            authService.registerUser("a".repeat(33), "password123")
-        }
+        val exception =
+            assertThrows<ApiException> {
+                authService.registerUser("a".repeat(33), "password123")
+            }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         assertEquals(ErrorMessages.LONG_USERNAME, exception.message)
@@ -92,9 +98,10 @@ class AuthServiceTests {
 
     @Test
     fun shouldNotRegisterUserWithTooLongPassword() {
-        val exception = assertThrows<ApiException> {
-            authService.registerUser("username", "p".repeat(129))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                authService.registerUser("username", "p".repeat(129))
+            }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         assertEquals(ErrorMessages.LONG_PASSWORD, exception.message)
@@ -112,7 +119,7 @@ class AuthServiceTests {
     }
 
     @Test
-    fun shouldLoginSuccessfully(){
+    fun shouldLoginSuccessfully() {
         every { authRepository.findByUsernameIgnoreCase(any()) } returns UserEntity(username = "u", password = "")
         every { passwordService.checkPassword("p", any()) } returns true
         every { jwtService.generateToken(any()) } returns "TOKEN"
@@ -122,25 +129,27 @@ class AuthServiceTests {
     }
 
     @Test
-    fun shouldFailLoginOnNonExistingUser(){
+    fun shouldFailLoginOnNonExistingUser() {
         every { authRepository.findByUsernameIgnoreCase(any()) } returns null
 
-       val exception = assertThrows<ApiException> {
-           authService.loginUser("u", "p")
-       }
+        val exception =
+            assertThrows<ApiException> {
+                authService.loginUser("u", "p")
+            }
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
         assertEquals(ErrorMessages.INVALID_CREDENTIALS, exception.message)
     }
 
     @Test
-    fun shouldFailLoginOnWrongPassword(){
+    fun shouldFailLoginOnWrongPassword() {
         every { authRepository.findByUsernameIgnoreCase(any()) } returns UserEntity(username = "u", password = "")
         every { passwordService.checkPassword("p", any()) } returns false
 
-        val exception = assertThrows<ApiException> {
-            authService.loginUser("u", "p")
-        }
+        val exception =
+            assertThrows<ApiException> {
+                authService.loginUser("u", "p")
+            }
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
         assertEquals(ErrorMessages.INVALID_CREDENTIALS, exception.message)

@@ -8,13 +8,13 @@ import org.springframework.stereotype.Service
 // Spring Security PasswordEncoder.
 // ==========================
 @Service
-class PasswordService(private val passwordEncoder: PasswordEncoder) {
+class PasswordService(
+    private val passwordEncoder: PasswordEncoder,
+) {
+    fun encodePassword(password: String): String = passwordEncoder.encode(password)!!
 
-    fun encodePassword(password: String): String {
-        return passwordEncoder.encode(password)!!
-    }
-
-    fun checkPassword(password: String, encoded: String): Boolean {
-        return passwordEncoder.matches(password, encoded)
-    }
+    fun checkPassword(
+        password: String,
+        encoded: String,
+    ): Boolean = passwordEncoder.matches(password, encoded)
 }

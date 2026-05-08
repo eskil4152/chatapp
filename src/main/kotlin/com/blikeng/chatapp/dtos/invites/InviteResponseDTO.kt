@@ -1,11 +1,11 @@
 package com.blikeng.chatapp.dtos.invites
 
-data class InviteResponseDTO (
+data class InviteResponseDTO(
     val inviteId: String,
-    val response: InviteResponse
+    val response: InviteResponse,
 )
 
 enum class InviteResponse {
     ACCEPTED,
-    REJECTED
+    REJECTED,
 }

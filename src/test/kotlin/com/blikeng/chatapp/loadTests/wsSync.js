@@ -1,6 +1,6 @@
 import ws from 'k6/ws';
-import { check, sleep } from 'k6';
-import { WS_URL, makeOptions } from './lib.js';
+import {check, sleep} from 'k6';
+import {makeOptions, WS_URL} from './lib.js';
 
 // Tests the client-pull SYNC flow: connect, send SYNC, assert both snapshots arrive.
 // No room setup needed — SYNC returns friend presence and pending invites, independent of rooms.

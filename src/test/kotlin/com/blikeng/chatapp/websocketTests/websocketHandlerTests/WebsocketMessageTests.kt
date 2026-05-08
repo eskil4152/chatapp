@@ -7,10 +7,16 @@ import com.blikeng.chatapp.services.FriendService
 import com.blikeng.chatapp.websocket.ChatWebSocketHandler
 import com.blikeng.chatapp.websocket.SessionRegistry
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import io.mockk.*
+import io.mockk.Runs
+import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.just
+import io.mockk.mockk
+import io.mockk.slot
+import io.mockk.verify
 import junit.framework.TestCase.assertTrue
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -18,8 +24,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
-import java.util.*
-import org.junit.jupiter.api.Assertions.assertEquals
+import java.util.UUID
 
 @ExtendWith(MockKExtension::class)
 class WebsocketMessageTests {
@@ -29,10 +34,15 @@ class WebsocketMessageTests {
     // ==========================
 
     @MockK private lateinit var chatService: ChatService
+
     @MockK private lateinit var wsRateLimitService: WsRateLimitService
+
     @MockK private lateinit var sessionRegistry: SessionRegistry
+
     @MockK private lateinit var friendsService: FriendService
+
     @MockK private lateinit var presenceHandler: PresenceHandler
+
     @MockK private lateinit var session: WebSocketSession
 
     private val objectMapper = jacksonObjectMapper()
@@ -49,8 +59,15 @@ class WebsocketMessageTests {
     // ==========================
     @Test
     fun shouldSendJoinMessage() {
-        val payload = TextMessage(objectMapper.createObjectNode()
-            .put("type", "JOIN").put("message", "m").put("roomId", UUID.randomUUID().toString()).toString())
+        val payload =
+            TextMessage(
+                objectMapper
+                    .createObjectNode()
+                    .put("type", "JOIN")
+                    .put("message", "m")
+                    .put("roomId", UUID.randomUUID().toString())
+                    .toString(),
+            )
 
         every { session.attributes } returns mutableMapOf("username" to "u", "userId" to UUID.randomUUID())
         every { chatService.joinRoom(any(), any()) } returns Unit
@@ -64,8 +81,15 @@ class WebsocketMessageTests {
 
     @Test
     fun shouldSendLeaveMessage() {
-        val payload = TextMessage(objectMapper.createObjectNode()
-            .put("type", "LEAVE").put("message", "m").put("roomId", UUID.randomUUID().toString()).toString())
+        val payload =
+            TextMessage(
+                objectMapper
+                    .createObjectNode()
+                    .put("type", "LEAVE")
+                    .put("message", "m")
+                    .put("roomId", UUID.randomUUID().toString())
+                    .toString(),
+            )
 
         every { session.attributes } returns mutableMapOf("username" to "u", "userId" to UUID.randomUUID())
         every { chatService.leaveRoom(any(), any()) } returns Unit
@@ -80,8 +104,15 @@ class WebsocketMessageTests {
 
     @Test
     fun shouldSendMessage() {
-        val payload = TextMessage(objectMapper.createObjectNode()
-            .put("type", "MESSAGE").put("message", "m").put("roomId", UUID.randomUUID().toString()).toString())
+        val payload =
+            TextMessage(
+                objectMapper
+                    .createObjectNode()
+                    .put("type", "MESSAGE")
+                    .put("message", "m")
+                    .put("roomId", UUID.randomUUID().toString())
+                    .toString(),
+            )
 
         every { session.attributes } returns mutableMapOf("username" to "u", "userId" to UUID.randomUUID())
         every { chatService.broadcast(any(), any(), any(), any()) } just Runs
@@ -97,8 +128,14 @@ class WebsocketMessageTests {
 
     @Test
     fun shouldReceivePing() {
-        val payload = TextMessage(objectMapper.createObjectNode()
-            .put("type", "PING").put("message", "").toString())
+        val payload =
+            TextMessage(
+                objectMapper
+                    .createObjectNode()
+                    .put("type", "PING")
+                    .put("message", "")
+                    .toString(),
+            )
 
         every { session.attributes } returns mutableMapOf("username" to "u", "userId" to UUID.randomUUID())
         every { session.isOpen } returns true
@@ -115,8 +152,14 @@ class WebsocketMessageTests {
     fun shouldRouteTypingMessage() {
         val roomId = UUID.randomUUID()
         val userId = UUID.randomUUID()
-        val payload = TextMessage(objectMapper.createObjectNode()
-            .put("type", "TYPING").put("roomId", roomId.toString()).toString())
+        val payload =
+            TextMessage(
+                objectMapper
+                    .createObjectNode()
+                    .put("type", "TYPING")
+                    .put("roomId", roomId.toString())
+                    .toString(),
+            )
 
         every { session.attributes } returns mutableMapOf("username" to "alice", "userId" to userId)
         every { chatService.notifyTyping(any(), any(), any()) } just Runs
@@ -129,8 +172,14 @@ class WebsocketMessageTests {
 
     @Test
     fun shouldSendErrorOnTypingWithInvalidRoomId() {
-        val payload = TextMessage(objectMapper.createObjectNode()
-            .put("type", "TYPING").put("roomId", "not-a-uuid").toString())
+        val payload =
+            TextMessage(
+                objectMapper
+                    .createObjectNode()
+                    .put("type", "TYPING")
+                    .put("roomId", "not-a-uuid")
+                    .toString(),
+            )
 
         every { session.attributes } returns mutableMapOf("username" to "u", "userId" to UUID.randomUUID())
         every { session.isOpen } returns true
@@ -147,8 +196,14 @@ class WebsocketMessageTests {
 
     @Test
     fun shouldSendErrorOnTypingWithoutUserId() {
-        val payload = TextMessage(objectMapper.createObjectNode()
-            .put("type", "TYPING").put("roomId", UUID.randomUUID().toString()).toString())
+        val payload =
+            TextMessage(
+                objectMapper
+                    .createObjectNode()
+                    .put("type", "TYPING")
+                    .put("roomId", UUID.randomUUID().toString())
+                    .toString(),
+            )
 
         every { session.attributes } returns mutableMapOf("username" to "u")
         every { session.isOpen } returns true
@@ -165,8 +220,14 @@ class WebsocketMessageTests {
 
     @Test
     fun shouldSendErrorOnTypingWithoutUsername() {
-        val payload = TextMessage(objectMapper.createObjectNode()
-            .put("type", "TYPING").put("roomId", UUID.randomUUID().toString()).toString())
+        val payload =
+            TextMessage(
+                objectMapper
+                    .createObjectNode()
+                    .put("type", "TYPING")
+                    .put("roomId", UUID.randomUUID().toString())
+                    .toString(),
+            )
 
         every { session.attributes } returns mutableMapOf("userId" to UUID.randomUUID())
         every { session.isOpen } returns true
@@ -186,8 +247,14 @@ class WebsocketMessageTests {
     // ==========================
     @Test
     fun shouldSendErrorWithoutUsername() {
-        val payload = TextMessage(objectMapper.createObjectNode()
-            .put("type", "TYPING").put("roomId", UUID.randomUUID().toString()).toString())
+        val payload =
+            TextMessage(
+                objectMapper
+                    .createObjectNode()
+                    .put("type", "TYPING")
+                    .put("roomId", UUID.randomUUID().toString())
+                    .toString(),
+            )
 
         every { session.attributes } returns mutableMapOf("userId" to UUID.randomUUID())
         every { session.isOpen } returns true
@@ -207,8 +274,14 @@ class WebsocketMessageTests {
 
     @Test
     fun shouldFailToSendMessageWithoutUserId() {
-        val payload = TextMessage(objectMapper.createObjectNode()
-            .put("type", "TYPING").put("roomId", UUID.randomUUID().toString()).toString())
+        val payload =
+            TextMessage(
+                objectMapper
+                    .createObjectNode()
+                    .put("type", "TYPING")
+                    .put("roomId", UUID.randomUUID().toString())
+                    .toString(),
+            )
 
         every { session.attributes } returns mutableMapOf("username" to "user")
         every { session.isOpen } returns true
@@ -226,8 +299,15 @@ class WebsocketMessageTests {
 
     @Test
     fun shouldFailToSendMessageWithInvalidType() {
-        val payload = TextMessage(objectMapper.createObjectNode()
-            .put("type", "").put("message", "m").put("roomId", UUID.randomUUID().toString()).toString())
+        val payload =
+            TextMessage(
+                objectMapper
+                    .createObjectNode()
+                    .put("type", "")
+                    .put("message", "m")
+                    .put("roomId", UUID.randomUUID().toString())
+                    .toString(),
+            )
 
         every { session.attributes } returns mutableMapOf("username" to "u", "userId" to UUID.randomUUID())
         every { session.isOpen } returns true
@@ -245,8 +325,15 @@ class WebsocketMessageTests {
 
     @Test
     fun shouldFailToSendMessageWithInvalidRoomId() {
-        val payload = TextMessage(objectMapper.createObjectNode()
-            .put("type", "MESSAGE").put("message", "m").put("roomId", "").toString())
+        val payload =
+            TextMessage(
+                objectMapper
+                    .createObjectNode()
+                    .put("type", "MESSAGE")
+                    .put("message", "m")
+                    .put("roomId", "")
+                    .toString(),
+            )
 
         every { session.attributes } returns mutableMapOf("username" to "u", "userId" to UUID.randomUUID())
         every { session.isOpen } returns true
@@ -300,8 +387,14 @@ class WebsocketMessageTests {
     @Test
     fun shouldSendErrorForResponseStatusException() {
         val roomId = UUID.randomUUID().toString()
-        val payload = TextMessage(objectMapper.createObjectNode()
-            .put("type", "JOIN").put("roomId", roomId).toString())
+        val payload =
+            TextMessage(
+                objectMapper
+                    .createObjectNode()
+                    .put("type", "JOIN")
+                    .put("roomId", roomId)
+                    .toString(),
+            )
 
         every { session.attributes } returns mutableMapOf("username" to "u", "userId" to UUID.randomUUID())
         every { session.isOpen } returns true
@@ -321,8 +414,15 @@ class WebsocketMessageTests {
 
     @Test
     fun shouldSendErrorForIllegalArgumentException() {
-        val payload = TextMessage(objectMapper.createObjectNode()
-            .put("type", "MESSAGE").put("roomId", UUID.randomUUID().toString()).put("message", "m").toString())
+        val payload =
+            TextMessage(
+                objectMapper
+                    .createObjectNode()
+                    .put("type", "MESSAGE")
+                    .put("roomId", UUID.randomUUID().toString())
+                    .put("message", "m")
+                    .toString(),
+            )
 
         every { session.attributes } returns mutableMapOf("username" to "u", "userId" to UUID.randomUUID())
         every { session.isOpen } returns true
@@ -341,8 +441,15 @@ class WebsocketMessageTests {
 
     @Test
     fun shouldSendErrorForUnknownException() {
-        val payload = TextMessage(objectMapper.createObjectNode()
-            .put("type", "MESSAGE").put("roomId", UUID.randomUUID().toString()).put("message", "m").toString())
+        val payload =
+            TextMessage(
+                objectMapper
+                    .createObjectNode()
+                    .put("type", "MESSAGE")
+                    .put("roomId", UUID.randomUUID().toString())
+                    .put("message", "m")
+                    .toString(),
+            )
 
         every { session.attributes } returns mutableMapOf("username" to "u", "userId" to UUID.randomUUID())
         every { session.isOpen } returns true
@@ -361,8 +468,15 @@ class WebsocketMessageTests {
 
     @Test
     fun shouldNotSendErrorWhenSessionClosed() {
-        val payload = TextMessage(objectMapper.createObjectNode()
-            .put("type", "MESSAGE").put("roomId", UUID.randomUUID().toString()).put("message", "m").toString())
+        val payload =
+            TextMessage(
+                objectMapper
+                    .createObjectNode()
+                    .put("type", "MESSAGE")
+                    .put("roomId", UUID.randomUUID().toString())
+                    .put("message", "m")
+                    .toString(),
+            )
 
         every { session.attributes } returns mutableMapOf("username" to "u", "userId" to UUID.randomUUID())
         every { session.isOpen } returns false
@@ -376,8 +490,14 @@ class WebsocketMessageTests {
 
     @Test
     fun shouldUseExceptionMessageWhenReasonIsNull() {
-        val payload = TextMessage(objectMapper.createObjectNode()
-            .put("type", "JOIN").put("roomId", UUID.randomUUID().toString()).toString())
+        val payload =
+            TextMessage(
+                objectMapper
+                    .createObjectNode()
+                    .put("type", "JOIN")
+                    .put("roomId", UUID.randomUUID().toString())
+                    .toString(),
+            )
 
         every { session.attributes } returns mutableMapOf("username" to "u", "userId" to UUID.randomUUID())
         every { session.isOpen } returns true
@@ -396,8 +516,15 @@ class WebsocketMessageTests {
 
     @Test
     fun shouldFallbackToBadRequestWhenIllegalArgumentMessageNull() {
-        val payload = TextMessage(objectMapper.createObjectNode()
-            .put("type", "MESSAGE").put("message", "m").put("roomId", UUID.randomUUID().toString()).toString())
+        val payload =
+            TextMessage(
+                objectMapper
+                    .createObjectNode()
+                    .put("type", "MESSAGE")
+                    .put("message", "m")
+                    .put("roomId", UUID.randomUUID().toString())
+                    .toString(),
+            )
 
         every { session.attributes } returns mutableMapOf("username" to "u", "userId" to UUID.randomUUID())
         every { session.isOpen } returns true
@@ -419,8 +546,15 @@ class WebsocketMessageTests {
     // ==========================
     @Test
     fun shouldSendRateLimitErrorForMessage() {
-        val payload = TextMessage(objectMapper.createObjectNode()
-            .put("type", "MESSAGE").put("roomId", UUID.randomUUID().toString()).put("message", "m").toString())
+        val payload =
+            TextMessage(
+                objectMapper
+                    .createObjectNode()
+                    .put("type", "MESSAGE")
+                    .put("roomId", UUID.randomUUID().toString())
+                    .put("message", "m")
+                    .toString(),
+            )
 
         every { session.attributes } returns mutableMapOf("username" to "u", "userId" to UUID.randomUUID())
         every { session.isOpen } returns true

@@ -23,15 +23,15 @@ class JwtAuthFilter(
     private val userRevocationService: UserRevocationService,
     private val environment: Environment,
 ) : OncePerRequestFilter() {
-
     override fun doFilterInternal(
         request: HttpServletRequest,
         response: HttpServletResponse,
-        chain: FilterChain
+        chain: FilterChain,
     ) {
-        val token = request.cookies
-            ?.firstOrNull { it.name == "AUTH" }
-            ?.value
+        val token =
+            request.cookies
+                ?.firstOrNull { it.name == "AUTH" }
+                ?.value
 
         if (!token.isNullOrBlank() && SecurityContextHolder.getContext().authentication == null) {
             val principal = jwtService.validateToken(token)
@@ -39,21 +39,24 @@ class JwtAuthFilter(
             if (principal != null && !userRevocationService.isRevoked(principal.userId)) {
                 if (userRevocationService.isBanned(principal.userId)) {
                     val isProd = environment.activeProfiles.contains("prod")
-                    val cookie = ResponseCookie.from("AUTH", "")
-                        .httpOnly(true)
-                        .secure(isProd)
-                        .path("/")
-                        .sameSite("Strict")
-                        .maxAge(0)
-                        .build()
+                    val cookie =
+                        ResponseCookie
+                            .from("AUTH", "")
+                            .httpOnly(true)
+                            .secure(isProd)
+                            .path("/")
+                            .sameSite("Strict")
+                            .maxAge(0)
+                            .build()
                     response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString())
                 } else {
                     val authorities = listOf(SimpleGrantedAuthority("ROLE_${principal.role}"))
-                    val auth = UsernamePasswordAuthenticationToken(
-                        principal.userId,
-                        principal.username,
-                        authorities
-                    )
+                    val auth =
+                        UsernamePasswordAuthenticationToken(
+                            principal.userId,
+                            principal.username,
+                            authorities,
+                        )
                     SecurityContextHolder.getContext().authentication = auth
                 }
             }

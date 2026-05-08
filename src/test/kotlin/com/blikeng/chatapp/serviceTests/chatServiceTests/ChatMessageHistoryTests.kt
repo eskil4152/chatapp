@@ -19,13 +19,19 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
-import io.mockk.*
+import io.mockk.Runs
+import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
-import org.junit.jupiter.api.Assertions.*
+import io.mockk.just
+import io.mockk.mockk
+import io.mockk.verify
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.data.domain.PageImpl
@@ -33,10 +39,10 @@ import org.springframework.data.redis.core.ListOperations
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.http.HttpStatus
 import java.time.Instant
-import java.util.*
 import java.util.Collections.emptyList
+import java.util.Optional
+import java.util.UUID
 import java.util.concurrent.CopyOnWriteArraySet
-import org.junit.jupiter.api.assertThrows
 
 @ExtendWith(MockKExtension::class)
 class ChatMessageHistoryTests {
@@ -51,15 +57,25 @@ class ChatMessageHistoryTests {
     // ==========================
 
     @MockK lateinit var userService: UserService
+
     @MockK lateinit var chatRepository: ChatRepository
+
     @MockK lateinit var roomRepository: RoomRepository
+
     @MockK lateinit var userRoomRepository: UserRoomRepository
+
     @MockK lateinit var encrypt: ChatEncrypt
+
     @MockK lateinit var redisTemplate: RedisTemplate<String, String>
+
     @MockK lateinit var rabbitTemplate: RabbitTemplate
+
     @MockK lateinit var listOps: ListOperations<String, String>
+
     @MockK lateinit var presenceHandler: PresenceHandler
-    @MockK(relaxed = true) lateinit var meterRegistry: MeterRegistry
+
+    @MockK(relaxed = true)
+    lateinit var meterRegistry: MeterRegistry
 
     @InjectMockKs lateinit var chatService: ChatService
     private val objectMapper = jacksonObjectMapper().registerModule(JavaTimeModule())
@@ -159,15 +175,17 @@ class ChatMessageHistoryTests {
 
     @Test
     fun shouldFailToGetMessagesWhenUsingInvalidParameters() {
-        val pageNumberException = assertThrows<ApiException> {
-            chatService.getRoomMessages(UUID.randomUUID(), -1, 25)
-        }
+        val pageNumberException =
+            assertThrows<ApiException> {
+                chatService.getRoomMessages(UUID.randomUUID(), -1, 25)
+            }
         assertEquals(HttpStatus.BAD_REQUEST, pageNumberException.status)
         assertEquals(ErrorMessages.INVALID_PARAMETERS, pageNumberException.message)
 
-        val pageSizeException = assertThrows<ApiException> {
-            chatService.getRoomMessages(UUID.randomUUID(), 0, 250)
-        }
+        val pageSizeException =
+            assertThrows<ApiException> {
+                chatService.getRoomMessages(UUID.randomUUID(), 0, 250)
+            }
         assertEquals(HttpStatus.BAD_REQUEST, pageSizeException.status)
         assertEquals(ErrorMessages.INVALID_PARAMETERS, pageSizeException.message)
     }
@@ -192,15 +210,16 @@ class ChatMessageHistoryTests {
         val cipher = "cipher".toByteArray()
         val nonce = "nonce".toByteArray()
 
-        val chat = ChatEntity(
-            roomId = room.id,
-            user = user,
-            message = null,
-            ciphertext = cipher,
-            nonce = nonce,
-            keyVersion = 1,
-            timestamp = Instant.now()
-        )
+        val chat =
+            ChatEntity(
+                roomId = room.id,
+                user = user,
+                message = null,
+                ciphertext = cipher,
+                nonce = nonce,
+                keyVersion = 1,
+                timestamp = Instant.now(),
+            )
 
         every { roomRepository.findById(room.id) } returns Optional.of(room)
         every { chatRepository.findByRoomIdOrderByTimestampDesc(eq(room.id), any()) } returns PageImpl(listOf(chat))
@@ -236,7 +255,14 @@ class ChatMessageHistoryTests {
         every { roomRepository.findById(room.id) } returns Optional.of(room)
         every { chatRepository.findByRoomIdOrderByTimestampDesc(eq(room.id), any()) } returns PageImpl(emptyList())
 
-        val pending = RabbitMessageDTO(roomId = room.id, userId = user.id, username = user.username, ciphertext = "cipher".toByteArray(), nonce = null)
+        val pending =
+            RabbitMessageDTO(
+                roomId = room.id,
+                userId = user.id,
+                username = user.username,
+                ciphertext = "cipher".toByteArray(),
+                nonce = null,
+            )
         every { listOps.range("chat.peek.${room.id}", 0L, -1L) } returns listOf(objectMapper.writeValueAsString(pending))
 
         val ex = assertThrows<ApiException> { chatService.getRoomMessages(room.id, 0, 25) }
@@ -248,7 +274,8 @@ class ChatMessageHistoryTests {
         val room = RoomEntity(name = "r", encrypted = true, keyVersion = 1, type = RoomType.GROUP)
         val user = UserEntity(username = "u", password = "")
 
-        val chat = ChatEntity(roomId = room.id, user = user, message = null, ciphertext = null, nonce = "nonce".toByteArray(), keyVersion = 1)
+        val chat =
+            ChatEntity(roomId = room.id, user = user, message = null, ciphertext = null, nonce = "nonce".toByteArray(), keyVersion = 1)
 
         every { roomRepository.findById(room.id) } returns Optional.of(room)
         every { chatRepository.findByRoomIdOrderByTimestampDesc(eq(room.id), any()) } returns PageImpl(listOf(chat))
@@ -262,7 +289,8 @@ class ChatMessageHistoryTests {
         val room = RoomEntity(name = "r", encrypted = true, keyVersion = 1, type = RoomType.GROUP)
         val user = UserEntity(username = "u", password = "")
 
-        val chat = ChatEntity(roomId = room.id, user = user, message = null, ciphertext = "cipher".toByteArray(), nonce = null, keyVersion = 1)
+        val chat =
+            ChatEntity(roomId = room.id, user = user, message = null, ciphertext = "cipher".toByteArray(), nonce = null, keyVersion = 1)
 
         every { roomRepository.findById(room.id) } returns Optional.of(room)
         every { chatRepository.findByRoomIdOrderByTimestampDesc(eq(room.id), any()) } returns PageImpl(listOf(chat))
@@ -278,18 +306,19 @@ class ChatMessageHistoryTests {
     fun shouldRegisterAndEvaluateChatGauges() {
         val meterRegistry = SimpleMeterRegistry()
 
-        val chatService = ChatService(
-            chatRepository = chatRepository,
-            roomRepository = roomRepository,
-            userRoomRepository = userRoomRepository,
-            encrypt = encrypt,
-            redisTemplate = redisTemplate,
-            rabbitTemplate = rabbitTemplate,
-            objectMapper = objectMapper,
-            presenceHandler = presenceHandler,
-            meterRegistry = meterRegistry,
-            userService = userService
-        )
+        val chatService =
+            ChatService(
+                chatRepository = chatRepository,
+                roomRepository = roomRepository,
+                userRoomRepository = userRoomRepository,
+                encrypt = encrypt,
+                redisTemplate = redisTemplate,
+                rabbitTemplate = rabbitTemplate,
+                objectMapper = objectMapper,
+                presenceHandler = presenceHandler,
+                meterRegistry = meterRegistry,
+                userService = userService,
+            )
 
         val roomsGauge = meterRegistry.get("app.rooms.active").gauge()
         assertEquals(0.0, roomsGauge.value())

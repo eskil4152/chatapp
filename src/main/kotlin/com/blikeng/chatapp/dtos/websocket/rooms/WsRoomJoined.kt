@@ -1,15 +1,15 @@
-package com.blikeng.chatapp.dtos.websocket
+package com.blikeng.chatapp.dtos.websocket.rooms
 
 import com.blikeng.chatapp.entities.RoomRole
 import java.util.UUID
 
-data class WsRoomJoined (
+data class WsRoomJoined(
     val type: String = "ROOM_JOINED",
     val roomId: UUID,
     val members: List<RoomMember>,
     val roomName: String,
     val encrypted: Boolean,
-    val role: RoomRole
+    val role: RoomRole,
 )
 
 data class RoomMember(

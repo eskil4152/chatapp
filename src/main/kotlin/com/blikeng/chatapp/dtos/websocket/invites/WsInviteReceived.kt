@@ -1,8 +1,7 @@
-package com.blikeng.chatapp.dtos.websocket
+package com.blikeng.chatapp.dtos.websocket.invites
 
 import com.blikeng.chatapp.entities.InviteType
-import java.time.Instant
-import java.util.*
+import java.util.UUID
 
 data class WsInviteReceived(
     val type: String = "INVITE_RECEIVED",

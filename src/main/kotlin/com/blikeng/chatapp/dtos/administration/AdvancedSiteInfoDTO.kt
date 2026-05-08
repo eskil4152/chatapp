@@ -2,7 +2,7 @@ package com.blikeng.chatapp.dtos.administration
 
 data class HttpStatusCount(
     val status: Int,
-    val count: Long
+    val count: Long,
 )
 
 data class HttpEndpointMetric(
@@ -25,5 +25,5 @@ data class AdvancedSiteInfoDTO(
     val gcPauseMeanMs: Double,
     val gcPauseMaxMs: Double,
     val uptimeSeconds: Long,
-    val httpRequests: List<HttpEndpointMetric>
+    val httpRequests: List<HttpEndpointMetric>,
 )

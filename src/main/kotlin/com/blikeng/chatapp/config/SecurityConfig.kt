@@ -17,7 +17,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 // ==========================
 @Configuration
 class SecurityConfig(
-    private val jwtAuthFilter: JwtAuthFilter
+    private val jwtAuthFilter: JwtAuthFilter,
 ) {
     @Bean
     fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
@@ -37,10 +37,9 @@ class SecurityConfig(
 
                 authRequest.requestMatchers("/actuator/**").permitAll()
                 authRequest.anyRequest().hasRole("USER")
-            }
-            .httpBasic { it.disable() }
+            }.httpBasic { it.disable() }
             .formLogin { it.disable() }
-            .cors {  }
+            .cors { }
             .csrf { it.disable() }
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter::class.java)
             .exceptionHandling {

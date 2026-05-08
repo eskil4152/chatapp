@@ -2,16 +2,14 @@ package com.blikeng.chatapp.websocket
 
 import com.blikeng.chatapp.dtos.websocket.ReceivedMessage
 import com.blikeng.chatapp.dtos.websocket.WsError
-import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.security.ratelimit.WsRateLimitService
 import com.blikeng.chatapp.services.ChatService
-import com.blikeng.chatapp.services.FriendService
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.springframework.http.HttpStatus
-import org.slf4j.LoggerFactory
 import jakarta.annotation.PreDestroy
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.http.HttpStatus
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.springframework.web.server.ResponseStatusException
@@ -19,9 +17,8 @@ import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import org.springframework.web.socket.handler.TextWebSocketHandler
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-
 
 // ==========================
 // Handles authenticated WebSocket chat connections.
@@ -35,7 +32,7 @@ class ChatWebSocketHandler(
     private val objectMapper: ObjectMapper,
     private val wsRateLimitService: WsRateLimitService,
     private val sessionRegistry: SessionRegistry,
-    @Value("\${chat.ping.ttlMs}") private val ttlMs: Long
+    @Value("\${chat.ping.ttlMs}") private val ttlMs: Long,
 ) : TextWebSocketHandler() {
     private val logger = LoggerFactory.getLogger(this::class.java)
     private val lastPing = ConcurrentHashMap<String, Long>()
@@ -49,7 +46,10 @@ class ChatWebSocketHandler(
         lastPing[session.id] = System.currentTimeMillis()
     }
 
-    override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
+    override fun afterConnectionClosed(
+        session: WebSocketSession,
+        status: CloseStatus,
+    ) {
         val userId = getUserId(session)
 
         lastPing.remove(session.id)
@@ -59,20 +59,36 @@ class ChatWebSocketHandler(
     // ==========================
     // Message handling
     // ==========================
-    override fun handleTextMessage(session: WebSocketSession, wsMessage: TextMessage) {
+    override fun handleTextMessage(
+        session: WebSocketSession,
+        wsMessage: TextMessage,
+    ) {
         try {
             val json = objectMapper.readTree(wsMessage.payload)
             val type = parseMessageType(json)
 
             when (type) {
-                MessageType.JOIN -> handleJoin(session, json)
-                MessageType.MESSAGE -> handleChatMessage(session, json)
-                MessageType.LEAVE -> handleLeave(session, json)
+                MessageType.JOIN -> {
+                    handleJoin(session, json)
+                }
+
+                MessageType.MESSAGE -> {
+                    handleChatMessage(session, json)
+                }
+
+                MessageType.LEAVE -> {
+                    handleLeave(session, json)
+                }
+
                 MessageType.PING -> {
                     lastPing[session.id] = System.currentTimeMillis()
                     session.sendMessage(TextMessage("pong"))
                 }
-                MessageType.SYNC -> sessionRegistry.sendSnapshots(getUserId(session), session)
+
+                MessageType.SYNC -> {
+                    sessionRegistry.sendSnapshots(getUserId(session), session)
+                }
+
                 MessageType.TYPING -> {
                     handleTyping(session, json)
                 }
@@ -83,7 +99,12 @@ class ChatWebSocketHandler(
     }
 
     enum class MessageType {
-        MESSAGE, JOIN, LEAVE, PING, SYNC, TYPING
+        MESSAGE,
+        JOIN,
+        LEAVE,
+        PING,
+        SYNC,
+        TYPING,
     }
 
     // ==========================
@@ -109,35 +130,44 @@ class ChatWebSocketHandler(
 
         lastPing.forEach { (sessionId, time) ->
             if (time < cutoff) {
-                val session = sessionRegistry.getSessionById(sessionId) ?: run {
-                    lastPing.remove(sessionId)
-                    return@forEach
-                }
+                val session =
+                    sessionRegistry.getSessionById(sessionId) ?: run {
+                        lastPing.remove(sessionId)
+                        return@forEach
+                    }
 
                 try {
                     session.close(CloseStatus.SESSION_NOT_RELIABLE)
                 } catch (e: Exception) {
                     logger.error("Failed to close stale session {}", session.id, e)
                 }
-
             }
         }
     }
 
-    private fun handleJoin(session: WebSocketSession, json: JsonNode) {
+    private fun handleJoin(
+        session: WebSocketSession,
+        json: JsonNode,
+    ) {
         val roomId = getRoomId(json)
 
         chatService.joinRoom(roomId, session)
     }
 
-    private fun handleLeave(session: WebSocketSession, json: JsonNode) {
+    private fun handleLeave(
+        session: WebSocketSession,
+        json: JsonNode,
+    ) {
         val roomId = getRoomId(json)
 
         lastPing.remove(session.id)
         chatService.leaveRoom(roomId, session)
     }
 
-    private fun handleChatMessage(session: WebSocketSession, json: JsonNode) {
+    private fun handleChatMessage(
+        session: WebSocketSession,
+        json: JsonNode,
+    ) {
         val roomId = getRoomId(json)
         val userId = getUserId(session)
         val username = getUsername(session)
@@ -147,18 +177,22 @@ class ChatWebSocketHandler(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing message field")
         }
 
-        val message = ReceivedMessage(
-            roomId,
-            userId,
-            messageNode.asText(),
-            "MESSAGE"
-        )
+        val message =
+            ReceivedMessage(
+                roomId,
+                userId,
+                messageNode.asText(),
+                "MESSAGE",
+            )
 
         if (!checkRateLimit(userId, session)) return
         chatService.broadcast(roomId, userId, message, username)
     }
 
-    private fun handleTyping(session: WebSocketSession, json: JsonNode) {
+    private fun handleTyping(
+        session: WebSocketSession,
+        json: JsonNode,
+    ) {
         val roomId = getRoomId(json)
         val userId = getUserId(session)
         val username = getUsername(session)
@@ -176,29 +210,33 @@ class ChatWebSocketHandler(
         }
     }
 
-    private fun getRoomId(json: JsonNode): UUID {
-        return try {
+    private fun getRoomId(json: JsonNode): UUID =
+        try {
             UUID.fromString(json["roomId"].asText())
         } catch (_: IllegalArgumentException) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid room ID")
         }
-    }
 
-    private fun getUserId(session: WebSocketSession): UUID {
-        return (session.attributes["userId"]
-            ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No userID found")) as UUID
-    }
+    private fun getUserId(session: WebSocketSession): UUID =
+        (
+            session.attributes["userId"]
+                ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No userID found")
+        ) as UUID
 
-    private fun getUsername(session: WebSocketSession): String {
-        return (session.attributes["username"]
-            ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No username found")) as String
-    }
+    private fun getUsername(session: WebSocketSession): String =
+        (
+            session.attributes["username"]
+                ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "No username found")
+        ) as String
 
-    private fun checkRateLimit(userId: UUID, session: WebSocketSession) : Boolean{
+    private fun checkRateLimit(
+        userId: UUID,
+        session: WebSocketSession,
+    ): Boolean {
         if (!wsRateLimitService.tryConsumeMessage(userId)) {
             sendWsError(
                 session,
-                ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Rate limit exceeded")
+                ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Rate limit exceeded"),
             )
             return false
         }
@@ -206,16 +244,21 @@ class ChatWebSocketHandler(
         return true
     }
 
-    private fun sendWsError(session: WebSocketSession, e: Exception) {
-        val (code, msg) = when (e) {
-            is ResponseStatusException -> e.statusCode.value() to (e.reason ?: e.message)
-            is IllegalArgumentException -> 400 to (e.message ?: "Bad request")
-            else -> 500 to "Internal error"
-        }
+    private fun sendWsError(
+        session: WebSocketSession,
+        e: Exception,
+    ) {
+        val (code, msg) =
+            when (e) {
+                is ResponseStatusException -> e.statusCode.value() to (e.reason ?: e.message)
+                is IllegalArgumentException -> 400 to (e.message ?: "Bad request")
+                else -> 500 to "Internal error"
+            }
 
-        val payload = objectMapper.writeValueAsString(
-            WsError(code = code, message = msg)
-        )
+        val payload =
+            objectMapper.writeValueAsString(
+                WsError(code = code, message = msg),
+            )
 
         synchronized(session) {
             if (session.isOpen) {

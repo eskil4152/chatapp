@@ -3,10 +3,14 @@ package com.blikeng.chatapp.messagingTests
 import com.blikeng.chatapp.messaging.redis.LocalBroadcaster
 import com.blikeng.chatapp.services.ChatService
 import com.blikeng.chatapp.websocket.SessionRegistry
-import io.mockk.*
+import io.mockk.Runs
+import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.just
+import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -14,7 +18,7 @@ import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.Executor
@@ -31,7 +35,9 @@ class LocalBroadcasterTests {
     @InjectMockKs lateinit var broadcaster: LocalBroadcaster
 
     @MockK lateinit var chatService: ChatService
+
     @MockK lateinit var sessionRegistry: SessionRegistry
+
     @MockK lateinit var broadcastExecutor: Executor
 
     @BeforeEach
@@ -49,9 +55,10 @@ class LocalBroadcasterTests {
         every { session2.isOpen } returns true
         every { session1.sendMessage(any()) } just Runs
         every { session2.sendMessage(any()) } just Runs
-        every { chatService.sessionsInRooms } returns ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
-            put(roomId, CopyOnWriteArraySet(listOf(session1, session2)))
-        }
+        every { chatService.sessionsInRooms } returns
+            ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
+                put(roomId, CopyOnWriteArraySet(listOf(session1, session2)))
+            }
 
         broadcaster.broadcastRaw(roomId, "hello")
 
@@ -65,9 +72,10 @@ class LocalBroadcasterTests {
         val session = mockk<WebSocketSession>()
 
         every { session.isOpen } returns false
-        every { chatService.sessionsInRooms } returns ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
-            put(roomId, CopyOnWriteArraySet(listOf(session)))
-        }
+        every { chatService.sessionsInRooms } returns
+            ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
+                put(roomId, CopyOnWriteArraySet(listOf(session)))
+            }
 
         broadcaster.broadcastRaw(roomId, "hello")
 
@@ -123,9 +131,10 @@ class LocalBroadcasterTests {
         every { session2.isOpen } returns true
         every { session1.sendMessage(any()) } just Runs
         every { session2.sendMessage(any()) } just Runs
-        every { sessionRegistry.users } returns ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
-            put(userId, CopyOnWriteArraySet(listOf(session1, session2)))
-        }
+        every { sessionRegistry.users } returns
+            ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
+                put(userId, CopyOnWriteArraySet(listOf(session1, session2)))
+            }
 
         broadcaster.sendToUser(userId, "payload")
 
@@ -139,9 +148,10 @@ class LocalBroadcasterTests {
         val session = mockk<WebSocketSession>()
 
         every { session.isOpen } returns false
-        every { sessionRegistry.users } returns ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
-            put(userId, CopyOnWriteArraySet(listOf(session)))
-        }
+        every { sessionRegistry.users } returns
+            ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
+                put(userId, CopyOnWriteArraySet(listOf(session)))
+            }
 
         broadcaster.sendToUser(userId, "payload")
 
@@ -156,9 +166,10 @@ class LocalBroadcasterTests {
         every { session.isOpen } returns true
         every { session.sendMessage(any()) } throws RuntimeException("error")
         every { session.id } returns userId.toString()
-        every { sessionRegistry.users } returns ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
-            put(userId, CopyOnWriteArraySet(listOf(session)))
-        }
+        every { sessionRegistry.users } returns
+            ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
+                put(userId, CopyOnWriteArraySet(listOf(session)))
+            }
 
         assertDoesNotThrow { broadcaster.sendToUser(userId, "payload") }
         verify(exactly = 0) { chatService.leaveRoom(any(), any()) }

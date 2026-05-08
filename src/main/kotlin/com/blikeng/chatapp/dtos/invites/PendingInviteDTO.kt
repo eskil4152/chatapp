@@ -2,7 +2,7 @@ package com.blikeng.chatapp.dtos.invites
 
 import com.blikeng.chatapp.entities.InviteType
 import java.time.Instant
-import java.util.*
+import java.util.UUID
 
 data class PendingInviteDTO(
     val id: UUID,

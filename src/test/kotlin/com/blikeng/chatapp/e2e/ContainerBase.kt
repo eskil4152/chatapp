@@ -8,21 +8,24 @@ import org.testcontainers.containers.RabbitMQContainer
 
 abstract class ContainerBase {
     companion object {
-        private val postgres = PostgreSQLContainer("postgres:16-alpine").apply {
-            withDatabaseName("chatapp_test")
-            withUsername("test")
-            withPassword("test")
-            start()
-        }
+        private val postgres =
+            PostgreSQLContainer("postgres:16-alpine").apply {
+                withDatabaseName("chatapp_test")
+                withUsername("test")
+                withPassword("test")
+                start()
+            }
 
-        private val redis = GenericContainer("redis:7-alpine").apply {
-            withExposedPorts(6379)
-            start()
-        }
+        private val redis =
+            GenericContainer("redis:7-alpine").apply {
+                withExposedPorts(6379)
+                start()
+            }
 
-        private val rabbit = RabbitMQContainer("rabbitmq:3-alpine").apply {
-            start()
-        }
+        private val rabbit =
+            RabbitMQContainer("rabbitmq:3-alpine").apply {
+                start()
+            }
 
         @JvmStatic
         @DynamicPropertySource

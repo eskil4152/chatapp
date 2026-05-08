@@ -1,14 +1,18 @@
 package com.blikeng.chatapp.controllers
 
 import com.blikeng.chatapp.dtos.auth.AuthDTO
-import com.blikeng.chatapp.dtos.auth.LoginDto
+import com.blikeng.chatapp.dtos.auth.LoginDTO
 import com.blikeng.chatapp.services.AuthService
 import com.blikeng.chatapp.services.UserService
 import org.springframework.core.env.Environment
 import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseCookie
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
 
 // ==========================
 // Exposes authentication endpoints for user registration, login,
@@ -20,12 +24,14 @@ import org.springframework.web.bind.annotation.*
 class AuthController(
     private val authService: AuthService,
     private val userService: UserService,
-    private val environment: Environment
+    private val environment: Environment,
 ) {
     private val maxCookieAge: Long = 24 * 60 * 60 // 24 hours
 
     @PostMapping("/register")
-    fun register(@RequestBody loginDto: LoginDto): ResponseEntity<String> {
+    fun register(
+        @RequestBody loginDto: LoginDTO,
+    ): ResponseEntity<String> {
         val username = loginDto.username
         val password = loginDto.password
 
@@ -39,7 +45,9 @@ class AuthController(
     }
 
     @PostMapping("/login")
-    fun login(@RequestBody loginDto: LoginDto): ResponseEntity<String> {
+    fun login(
+        @RequestBody loginDto: LoginDTO,
+    ): ResponseEntity<String> {
         val username = loginDto.username
         val password = loginDto.password
 
@@ -64,14 +72,16 @@ class AuthController(
     }
 
     @GetMapping("/auth")
-    fun auth(): ResponseEntity<AuthDTO> {
-        return ResponseEntity.ok(userService.authenticate())
-    }
+    fun auth(): ResponseEntity<AuthDTO> = ResponseEntity.ok(userService.authenticate())
 
-    private fun makeCookie(token: String, maxAge: Long): ResponseCookie {
+    private fun makeCookie(
+        token: String,
+        maxAge: Long,
+    ): ResponseCookie {
         val isProd: Boolean = environment.activeProfiles.contains("prod")
 
-        return ResponseCookie.from("AUTH", token)
+        return ResponseCookie
+            .from("AUTH", token)
             .httpOnly(true)
             .secure(isProd)
             .path("/")

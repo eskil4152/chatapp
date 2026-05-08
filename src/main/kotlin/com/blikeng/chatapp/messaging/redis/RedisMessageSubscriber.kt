@@ -6,25 +6,27 @@ import org.springframework.data.redis.connection.MessageListener
 import org.springframework.data.redis.listener.PatternTopic
 import org.springframework.data.redis.listener.RedisMessageListenerContainer
 import org.springframework.stereotype.Component
-import java.util.*
+import java.util.UUID
 
 // ==========================
 // Subscribes to Redis room Pub/Sub channels and forwards incoming
 // messages to the local WebSocket broadcaster for this instance.
 // ==========================
 @Component
-class RedisMessageSubscriber (
+class RedisMessageSubscriber(
     private val localBroadcaster: LocalBroadcaster,
-    private val container: RedisMessageListenerContainer
+    private val container: RedisMessageListenerContainer,
 ) : MessageListener {
-
     @PostConstruct
     fun register() {
         container.addMessageListener(this, PatternTopic("room:*"))
         container.addMessageListener(this, PatternTopic("user:*"))
     }
 
-    override fun onMessage(message: Message, pattern: ByteArray?) {
+    override fun onMessage(
+        message: Message,
+        pattern: ByteArray?,
+    ) {
         val payload = message.body.toString(Charsets.UTF_8)
         val channel = message.channel.toString(Charsets.UTF_8)
 
@@ -33,6 +35,7 @@ class RedisMessageSubscriber (
                 val roomId = UUID.fromString(channel.removePrefix("room:"))
                 localBroadcaster.broadcastRaw(roomId, payload)
             }
+
             channel.startsWith("user:") -> {
                 val userId = UUID.fromString(channel.removePrefix("user:"))
                 localBroadcaster.sendToUser(userId, payload)

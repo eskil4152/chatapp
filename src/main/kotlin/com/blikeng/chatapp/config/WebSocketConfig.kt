@@ -15,10 +15,11 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 @EnableWebSocket
 class WebSocketConfig(
     private val chatHandler: ChatWebSocketHandler,
-    private val authHandshakeInterceptor: AuthHandshakeInterceptor
+    private val authHandshakeInterceptor: AuthHandshakeInterceptor,
 ) : WebSocketConfigurer {
     override fun registerWebSocketHandlers(registry: WebSocketHandlerRegistry) {
-        registry.addHandler(chatHandler, "/ws")
+        registry
+            .addHandler(chatHandler, "/ws")
             .addInterceptors(authHandshakeInterceptor)
             .setAllowedOriginPatterns("*")
     }

@@ -3,7 +3,6 @@ package com.blikeng.chatapp.controllers
 import com.blikeng.chatapp.dtos.invites.FriendRequestDTO
 import com.blikeng.chatapp.dtos.invites.InviteResponseDTO
 import com.blikeng.chatapp.dtos.invites.OpenRoomInviteDTO
-import com.blikeng.chatapp.dtos.invites.outgoing.OutgoingFriendRequestDTO
 import com.blikeng.chatapp.dtos.invites.PendingInviteDTO
 import com.blikeng.chatapp.dtos.invites.RoomInviteDTO
 import com.blikeng.chatapp.dtos.invites.outgoing.OutgoingInvitationDTO
@@ -23,30 +22,26 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/invites")
 class InvitesController(
-    private val inviteService: InviteService
+    private val inviteService: InviteService,
 ) {
     @GetMapping("/pending")
-    fun getPendingInvites(): ResponseEntity<List<PendingInviteDTO>> {
-        return ResponseEntity.ok(inviteService.getPendingInvites())
-    }
+    fun getPendingInvites(): ResponseEntity<List<PendingInviteDTO>> = ResponseEntity.ok(inviteService.getPendingInvites())
 
     @GetMapping("/outgoing")
-    fun getOutgoingInvites(): ResponseEntity<List<OutgoingInvitationDTO>> {
-        return ResponseEntity.ok(inviteService.getOutgoingInvites())
-    }
+    fun getOutgoingInvites(): ResponseEntity<List<OutgoingInvitationDTO>> = ResponseEntity.ok(inviteService.getOutgoingInvites())
 
     @PostMapping("/friend")
     fun sendFriendRequest(
-        @RequestBody friendRequestDTO: FriendRequestDTO
-    ) : ResponseEntity<String> {
+        @RequestBody friendRequestDTO: FriendRequestDTO,
+    ): ResponseEntity<String> {
         inviteService.sendFriendRequest(friendRequestDTO)
         return ResponseEntity.ok("Friend request sent successfully")
     }
 
     @PostMapping("/room")
     fun sendRoomInvite(
-        @RequestBody roomInviteDTO: RoomInviteDTO
-    ) : ResponseEntity<String> {
+        @RequestBody roomInviteDTO: RoomInviteDTO,
+    ): ResponseEntity<String> {
         inviteService.sendRoomInvite(roomInviteDTO)
 
         return ResponseEntity.ok("Room invite sent successfully")
@@ -54,16 +49,16 @@ class InvitesController(
 
     @PostMapping("/open")
     fun createOpenRoomInvite(
-        @RequestBody openRoomInviteDTO: OpenRoomInviteDTO
-    ) : ResponseEntity<String> {
+        @RequestBody openRoomInviteDTO: OpenRoomInviteDTO,
+    ): ResponseEntity<String> {
         val inviteId = inviteService.createOpenRoomInvite(openRoomInviteDTO)
         return ResponseEntity.ok(inviteId.toString())
     }
 
     @PostMapping("/respond")
     fun respondToInvite(
-        @RequestBody inviteResponseDTO: InviteResponseDTO
-    ) : ResponseEntity<String> {
+        @RequestBody inviteResponseDTO: InviteResponseDTO,
+    ): ResponseEntity<String> {
         inviteService.respondToRequest(inviteResponseDTO)
         return ResponseEntity.ok("Invite responded successfully")
     }

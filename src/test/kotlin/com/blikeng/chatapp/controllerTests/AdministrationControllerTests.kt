@@ -12,30 +12,32 @@ import com.blikeng.chatapp.errors.NotPermittedException
 import com.blikeng.chatapp.errors.UserNotFoundException
 import com.blikeng.chatapp.security.UserRole
 import com.blikeng.chatapp.security.auth.JwtAuthFilter
-import com.blikeng.chatapp.security.ratelimit.RateLimitService
+import com.blikeng.chatapp.security.ratelimit.RateLimitingService
 import com.blikeng.chatapp.services.AdministrationService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.FilterType
 import org.springframework.http.MediaType
-import org.springframework.test.web.servlet.*
+import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.post
 import java.time.Instant
-import java.util.*
-import org.junit.jupiter.api.Test
+import java.util.UUID
 
 @WebMvcTest(
     controllers = [AdministrationController::class],
     excludeFilters = [
         ComponentScan.Filter(
             type = FilterType.ASSIGNABLE_TYPE,
-            classes = [JwtAuthFilter::class]
-        )
-    ]
+            classes = [JwtAuthFilter::class],
+        ),
+    ],
 )
 @AutoConfigureMockMvc(addFilters = false)
 class AdministrationControllerTests {
@@ -51,23 +53,30 @@ class AdministrationControllerTests {
     // ==========================
 
     @MockkBean private lateinit var administrationService: AdministrationService
-    @MockkBean private lateinit var rateLimitService: RateLimitService
+
+    @MockkBean private lateinit var rateLimitingService: RateLimitingService
+
     @Autowired private lateinit var mockMvc: MockMvc
 
     @BeforeEach
     fun setup() {
-        every { rateLimitService.tryConsume(any(), any(), any()) } returns true
+        every { rateLimitingService.tryConsume(any(), any(), any()) } returns true
     }
 
     @Test
     fun shouldGetElevatedUsers() {
-        val user = ElevatedUserDTO(
-            id = UUID.randomUUID(), username = "admin", avatarUrl = null,
-            role = UserRole.ADMIN, createdAt = Instant.now()
-        )
+        val user =
+            ElevatedUserDTO(
+                id = UUID.randomUUID(),
+                username = "admin",
+                avatarUrl = null,
+                role = UserRole.ADMIN,
+                createdAt = Instant.now(),
+            )
         every { administrationService.getElevatedUsers() } returns listOf(user)
 
-        mockMvc.get("/api/admin/users")
+        mockMvc
+            .get("/api/admin/users")
             .andExpect { status { isOk() } }
             .andExpect { jsonPath("$[0].username") { value("admin") } }
             .andExpect { jsonPath("$[0].role") { value("ADMIN") } }
@@ -77,7 +86,8 @@ class AdministrationControllerTests {
     fun shouldGetEmptyListWhenNoElevatedUsers() {
         every { administrationService.getElevatedUsers() } returns emptyList()
 
-        mockMvc.get("/api/admin/users")
+        mockMvc
+            .get("/api/admin/users")
             .andExpect { status { isOk() } }
             .andExpect { content { json("[]") } }
     }
@@ -85,14 +95,22 @@ class AdministrationControllerTests {
     @Test
     fun shouldGetUserById() {
         val userId = UUID.randomUUID()
-        val detail = UserDetailDTO(
-            id = userId, username = "alice", bio = null, email = null,
-            fullName = null, avatarUrl = null, role = UserRole.USER,
-            createdAt = Instant.now(), rooms = null
-        )
+        val detail =
+            UserDetailDTO(
+                id = userId,
+                username = "alice",
+                bio = null,
+                email = null,
+                fullName = null,
+                avatarUrl = null,
+                role = UserRole.USER,
+                createdAt = Instant.now(),
+                rooms = null,
+            )
         every { administrationService.getUser(userId.toString()) } returns detail
 
-        mockMvc.get("/api/admin/user/$userId")
+        mockMvc
+            .get("/api/admin/user/$userId")
             .andExpect { status { isOk() } }
             .andExpect { jsonPath("$.username") { value("alice") } }
             .andExpect { jsonPath("$.role") { value("USER") } }
@@ -102,11 +120,11 @@ class AdministrationControllerTests {
     fun shouldChangeUserRole() {
         every { administrationService.changeUserRole(any()) } returns Unit
 
-        mockMvc.post("/api/admin/change-user-role") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"id":"${UUID.randomUUID()}","action":"PROMOTE"}"""
-        }
-            .andExpect { status { isOk() } }
+        mockMvc
+            .post("/api/admin/change-user-role") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"id":"${UUID.randomUUID()}","action":"PROMOTE"}"""
+            }.andExpect { status { isOk() } }
             .andExpect { content { string("Role updated successfully") } }
     }
 
@@ -114,11 +132,11 @@ class AdministrationControllerTests {
     fun shouldBanUser() {
         every { administrationService.banUser(any()) } returns Unit
 
-        mockMvc.post("/api/admin/ban-user") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"id":"${UUID.randomUUID()}","reason":"spam"}"""
-        }
-            .andExpect { status { isOk() } }
+        mockMvc
+            .post("/api/admin/ban-user") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"id":"${UUID.randomUUID()}","reason":"spam"}"""
+            }.andExpect { status { isOk() } }
             .andExpect { content { string("Banned user") } }
     }
 
@@ -126,11 +144,11 @@ class AdministrationControllerTests {
     fun shouldUnbanUser() {
         every { administrationService.unbanUser(any()) } returns Unit
 
-        mockMvc.post("/api/admin/unban-user") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"userId":"${UUID.randomUUID()}"}"""
-        }
-            .andExpect { status { isOk() } }
+        mockMvc
+            .post("/api/admin/unban-user") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"userId":"${UUID.randomUUID()}"}"""
+            }.andExpect { status { isOk() } }
             .andExpect { content { string("Unbanned user") } }
     }
 
@@ -138,7 +156,8 @@ class AdministrationControllerTests {
     fun shouldGetBannedUsers() {
         every { administrationService.getAllUserBans(0, 25) } returns emptyList()
 
-        mockMvc.get("/api/admin/banned")
+        mockMvc
+            .get("/api/admin/banned")
             .andExpect { status { isOk() } }
             .andExpect { content { json("[]") } }
     }
@@ -147,7 +166,8 @@ class AdministrationControllerTests {
     fun shouldGetBannedUsersWithCustomPagination() {
         every { administrationService.getAllUserBans(1, 50) } returns emptyList()
 
-        mockMvc.get("/api/admin/banned?page=1&size=50")
+        mockMvc
+            .get("/api/admin/banned?page=1&size=50")
             .andExpect { status { isOk() } }
     }
 
@@ -158,7 +178,8 @@ class AdministrationControllerTests {
     fun shouldGetUnauthorizedWhenTokenInvalid() {
         every { administrationService.getElevatedUsers() } throws InvalidTokenException()
 
-        mockMvc.get("/api/admin/users")
+        mockMvc
+            .get("/api/admin/users")
             .andExpect { status { isUnauthorized() } }
             .andExpect { content { string("Invalid token") } }
     }
@@ -167,11 +188,11 @@ class AdministrationControllerTests {
     fun shouldGetForbiddenWhenNotPermittedToChangeRole() {
         every { administrationService.changeUserRole(any()) } throws NotPermittedException()
 
-        mockMvc.post("/api/admin/change-user-role") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"id":"${UUID.randomUUID()}","action":"PROMOTE"}"""
-        }
-            .andExpect { status { isForbidden() } }
+        mockMvc
+            .post("/api/admin/change-user-role") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"id":"${UUID.randomUUID()}","action":"PROMOTE"}"""
+            }.andExpect { status { isForbidden() } }
             .andExpect { content { string("Not permitted") } }
     }
 
@@ -180,7 +201,8 @@ class AdministrationControllerTests {
         val userId = UUID.randomUUID()
         every { administrationService.getUser(userId.toString()) } throws UserNotFoundException()
 
-        mockMvc.get("/api/admin/user/$userId")
+        mockMvc
+            .get("/api/admin/user/$userId")
             .andExpect { status { isNotFound() } }
     }
 
@@ -188,11 +210,11 @@ class AdministrationControllerTests {
     fun shouldGetForbiddenWhenNotPermittedToBan() {
         every { administrationService.banUser(any()) } throws NotPermittedException()
 
-        mockMvc.post("/api/admin/ban-user") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"id":"${UUID.randomUUID()}"}"""
-        }
-            .andExpect { status { isForbidden() } }
+        mockMvc
+            .post("/api/admin/ban-user") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"id":"${UUID.randomUUID()}"}"""
+            }.andExpect { status { isForbidden() } }
             .andExpect { content { string("Not permitted") } }
     }
 
@@ -200,11 +222,11 @@ class AdministrationControllerTests {
     fun shouldGetForbiddenWhenNotPermittedToUnban() {
         every { administrationService.unbanUser(any()) } throws NotPermittedException()
 
-        mockMvc.post("/api/admin/unban-user") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"userId":"${UUID.randomUUID()}"}"""
-        }
-            .andExpect { status { isForbidden() } }
+        mockMvc
+            .post("/api/admin/unban-user") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"userId":"${UUID.randomUUID()}"}"""
+            }.andExpect { status { isForbidden() } }
     }
 
     // ==========================
@@ -212,13 +234,19 @@ class AdministrationControllerTests {
     // ==========================
     @Test
     fun shouldGetSiteInfo() {
-        val dto = SiteInfoDTO(
-            connectedUsers = 5.0, totalSessions = 8.0, activeRooms = 3.0,
-            totalUsers = 100L, totalRooms = 20L, bannedUsers = 2L
-        )
+        val dto =
+            SiteInfoDTO(
+                connectedUsers = 5.0,
+                totalSessions = 8.0,
+                activeRooms = 3.0,
+                totalUsers = 100L,
+                totalRooms = 20L,
+                bannedUsers = 2L,
+            )
         every { administrationService.getSiteInfo() } returns dto
 
-        mockMvc.get("/api/admin/site-info")
+        mockMvc
+            .get("/api/admin/site-info")
             .andExpect { status { isOk() } }
             .andExpect { jsonPath("$.connectedUsers") { value(5.0) } }
             .andExpect { jsonPath("$.totalSessions") { value(8.0) } }
@@ -232,7 +260,8 @@ class AdministrationControllerTests {
     fun shouldGetUnauthorizedOnSiteInfoWhenTokenInvalid() {
         every { administrationService.getSiteInfo() } throws InvalidTokenException()
 
-        mockMvc.get("/api/admin/site-info")
+        mockMvc
+            .get("/api/admin/site-info")
             .andExpect { status { isUnauthorized() } }
     }
 
@@ -241,24 +270,34 @@ class AdministrationControllerTests {
     // ==========================
     @Test
     fun shouldGetAdvancedSiteInfo() {
-        val dto = AdvancedSiteInfoDTO(
-            jvmMemoryUsedMb = 256.0, jvmMemoryMaxMb = 512.0, jvmMemoryCommittedMb = 384.0,
-            jvmThreadsLive = 20, jvmThreadsPeak = 25,
-            cpuUsagePercent = 42.0,
-            gcPauseMeanMs = 1.5, gcPauseMaxMs = 10.0,
-            uptimeSeconds = 3600L,
-            httpRequests = listOf(
-                HttpEndpointMetric(
-                    uri = "/api/rooms", method = "GET",
-                    statuses = listOf(HttpStatusCount(200, 50L)),
-                    totalCount = 50L, errorRate = 0.0,
-                    meanMs = 12.0, maxMs = 100.0
-                )
+        val dto =
+            AdvancedSiteInfoDTO(
+                jvmMemoryUsedMb = 256.0,
+                jvmMemoryMaxMb = 512.0,
+                jvmMemoryCommittedMb = 384.0,
+                jvmThreadsLive = 20,
+                jvmThreadsPeak = 25,
+                cpuUsagePercent = 42.0,
+                gcPauseMeanMs = 1.5,
+                gcPauseMaxMs = 10.0,
+                uptimeSeconds = 3600L,
+                httpRequests =
+                    listOf(
+                        HttpEndpointMetric(
+                            uri = "/api/rooms",
+                            method = "GET",
+                            statuses = listOf(HttpStatusCount(200, 50L)),
+                            totalCount = 50L,
+                            errorRate = 0.0,
+                            meanMs = 12.0,
+                            maxMs = 100.0,
+                        ),
+                    ),
             )
-        )
         every { administrationService.getAdvancedSiteInfo() } returns dto
 
-        mockMvc.get("/api/admin/advanced-site-info")
+        mockMvc
+            .get("/api/admin/advanced-site-info")
             .andExpect { status { isOk() } }
             .andExpect { jsonPath("$.cpuUsagePercent") { value(42.0) } }
             .andExpect { jsonPath("$.jvmThreadsLive") { value(20) } }
@@ -275,7 +314,8 @@ class AdministrationControllerTests {
     fun shouldGetUnauthorizedOnAdvancedSiteInfoWhenTokenInvalid() {
         every { administrationService.getAdvancedSiteInfo() } throws InvalidTokenException()
 
-        mockMvc.get("/api/admin/advanced-site-info")
+        mockMvc
+            .get("/api/admin/advanced-site-info")
             .andExpect { status { isUnauthorized() } }
     }
 }

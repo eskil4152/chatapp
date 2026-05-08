@@ -1,6 +1,6 @@
 import http from 'k6/http';
-import { check, sleep } from 'k6';
-import { BASE, jsonParams, getAuthCookie, makeOptions } from './lib.js';
+import {check, sleep} from 'k6';
+import {BASE, getAuthCookie, jsonParams, makeOptions} from './lib.js';
 
 const USERS_FILE = __ENV.USERS_FILE;
 const _preloaded = USERS_FILE ? JSON.parse(open(USERS_FILE)) : null;

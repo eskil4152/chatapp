@@ -19,16 +19,17 @@ import io.mockk.junit5.MockKExtension
 import io.mockk.just
 import io.mockk.verify
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNotNull
 import org.junit.jupiter.api.assertNull
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
-import java.util.*
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.assertThrows
+import java.util.Optional
+import java.util.UUID
 
 @ExtendWith(MockKExtension::class)
 class UserServiceTests {
@@ -40,8 +41,11 @@ class UserServiceTests {
     // - Failure cases for invalid users, invalid passwords, and missing authentication
     // ==========================
     @MockK private lateinit var userRepository: UserRepository
+
     @MockK private lateinit var roomRepository: RoomRepository
+
     @MockK private lateinit var passwordService: PasswordService
+
     @RelaxedMockK private lateinit var userRevocationService: UserRevocationService
 
     @InjectMockKs
@@ -53,7 +57,7 @@ class UserServiceTests {
     }
 
     @Test
-    fun shouldGetUserById(){
+    fun shouldGetUserById() {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
 
@@ -65,7 +69,7 @@ class UserServiceTests {
     }
 
     @Test
-    fun shouldNotGetUserByInvalidId(){
+    fun shouldNotGetUserByInvalidId() {
         every { userRepository.findById(any()) } returns Optional.empty()
 
         val user = userService.getUserById(UUID.randomUUID())
@@ -74,7 +78,7 @@ class UserServiceTests {
     }
 
     @Test
-    fun shouldGetSelf(){
+    fun shouldGetSelf() {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
 
@@ -86,30 +90,32 @@ class UserServiceTests {
     }
 
     @Test
-    fun shouldNotGetSelfWhenInvalidUser(){
+    fun shouldNotGetSelfWhenInvalidUser() {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
 
         every { userRepository.findById(any()) } returns Optional.empty()
 
-        val exception = assertThrows<ApiException> {
-            userService.getSelf()
-        }
+        val exception =
+            assertThrows<ApiException> {
+                userService.getSelf()
+            }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         assertEquals(ErrorMessages.INVALID_USER, exception.message)
     }
 
     @Test
-    fun shouldFailToUpdateUserWhenInvalidUser(){
+    fun shouldFailToUpdateUserWhenInvalidUser() {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(UUID.randomUUID(), null, emptyList())
 
         every { userRepository.findById(any()) } returns Optional.empty()
 
-        val exception = assertThrows<ApiException> {
-            userService.editProfile(ChangeUserDTO("","","",""))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                userService.editProfile(ChangeUserDTO("", "", "", ""))
+            }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         assertEquals(ErrorMessages.INVALID_USER, exception.message)
@@ -121,15 +127,16 @@ class UserServiceTests {
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(userId, null, emptyList())
 
-        val user = UserEntity(
-            id = userId,
-            username = "username",
-            password = "",
-            bio = "oldBio",
-            email = "oldEmail",
-            fullName = "oldName",
-            avatarUrl = "oldAvatar"
-        )
+        val user =
+            UserEntity(
+                id = userId,
+                username = "username",
+                password = "",
+                bio = "oldBio",
+                email = "oldEmail",
+                fullName = "oldName",
+                avatarUrl = "oldAvatar",
+            )
 
         every { userRepository.findById(userId) } returns Optional.of(user)
 
@@ -138,7 +145,7 @@ class UserServiceTests {
                 bio = "newBio",
                 email = "new@email.com",
                 fullName = "newFullName",
-                avatarUrl = "newAvatar"
+                avatarUrl = "newAvatar",
             ),
         )
 
@@ -162,8 +169,8 @@ class UserServiceTests {
                 bio = "  my bio  ",
                 email = "  user@example.com  ",
                 fullName = "  Full Name  ",
-                avatarUrl = "  https://example.com/avatar.png  "
-            )
+                avatarUrl = "  https://example.com/avatar.png  ",
+            ),
         )
 
         assertEquals("my bio", user.bio)
@@ -180,9 +187,10 @@ class UserServiceTests {
 
         every { userRepository.findById(userId) } returns Optional.of(UserEntity(id = userId, username = "username", password = ""))
 
-        val exception = assertThrows<ApiException> {
-            userService.editProfile(ChangeUserDTO(bio = "a".repeat(501), email = "", fullName = "", avatarUrl = ""))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                userService.editProfile(ChangeUserDTO(bio = "a".repeat(501), email = "", fullName = "", avatarUrl = ""))
+            }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         assertEquals(ErrorMessages.INVALID_FIELD, exception.message)
@@ -196,9 +204,10 @@ class UserServiceTests {
 
         every { userRepository.findById(userId) } returns Optional.of(UserEntity(id = userId, username = "username", password = ""))
 
-        val exception = assertThrows<ApiException> {
-            userService.editProfile(ChangeUserDTO(bio = "", email = "a".repeat(250) + "@b.com", fullName = "", avatarUrl = ""))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                userService.editProfile(ChangeUserDTO(bio = "", email = "a".repeat(250) + "@b.com", fullName = "", avatarUrl = ""))
+            }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         assertEquals(ErrorMessages.INVALID_FIELD, exception.message)
@@ -212,9 +221,10 @@ class UserServiceTests {
 
         every { userRepository.findById(userId) } returns Optional.of(UserEntity(id = userId, username = "username", password = ""))
 
-        val exception = assertThrows<ApiException> {
-            userService.editProfile(ChangeUserDTO(bio = "", email = "notanemail", fullName = "", avatarUrl = ""))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                userService.editProfile(ChangeUserDTO(bio = "", email = "notanemail", fullName = "", avatarUrl = ""))
+            }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         assertEquals(ErrorMessages.INVALID_FIELD, exception.message)
@@ -242,9 +252,10 @@ class UserServiceTests {
 
         every { userRepository.findById(userId) } returns Optional.of(UserEntity(id = userId, username = "username", password = ""))
 
-        val exception = assertThrows<ApiException> {
-            userService.editProfile(ChangeUserDTO(bio = "", email = "", fullName = "a".repeat(101), avatarUrl = ""))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                userService.editProfile(ChangeUserDTO(bio = "", email = "", fullName = "a".repeat(101), avatarUrl = ""))
+            }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         assertEquals(ErrorMessages.INVALID_FIELD, exception.message)
@@ -258,9 +269,10 @@ class UserServiceTests {
 
         every { userRepository.findById(userId) } returns Optional.of(UserEntity(id = userId, username = "username", password = ""))
 
-        val exception = assertThrows<ApiException> {
-            userService.editProfile(ChangeUserDTO(bio = "", email = "", fullName = "", avatarUrl = "a".repeat(501)))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                userService.editProfile(ChangeUserDTO(bio = "", email = "", fullName = "", avatarUrl = "a".repeat(501)))
+            }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         assertEquals(ErrorMessages.INVALID_FIELD, exception.message)
@@ -269,11 +281,12 @@ class UserServiceTests {
     @Test
     fun shouldUpdateUserPassword() {
         val userId = UUID.randomUUID()
-        val user = UserEntity(
-            id = userId,
-            username = "username",
-            password = "old password",
-        )
+        val user =
+            UserEntity(
+                id = userId,
+                username = "username",
+                password = "old password",
+            )
 
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(userId, null, emptyList())
@@ -285,8 +298,8 @@ class UserServiceTests {
         userService.editPassword(
             EditPasswordDTO(
                 oldPassword = "old password",
-                newPassword = "new password"
-            )
+                newPassword = "new password",
+            ),
         )
 
         assertEquals("encoded", user.password)
@@ -299,14 +312,15 @@ class UserServiceTests {
 
         every { userRepository.findById(any()) } returns Optional.empty()
 
-        val exception = assertThrows<ApiException> {
-            userService.editPassword(
-                EditPasswordDTO(
-                    oldPassword = "old password",
-                    newPassword = "new password"
+        val exception =
+            assertThrows<ApiException> {
+                userService.editPassword(
+                    EditPasswordDTO(
+                        oldPassword = "old password",
+                        newPassword = "new password",
+                    ),
                 )
-            )
-        }
+            }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         assertEquals(ErrorMessages.INVALID_USER, exception.message)
@@ -317,11 +331,12 @@ class UserServiceTests {
     @Test
     fun shouldFailToUpdateUserPasswordWithWrongPassword() {
         val userId = UUID.randomUUID()
-        val user = UserEntity(
-            id = userId,
-            username = "username",
-            password = "old password",
-        )
+        val user =
+            UserEntity(
+                id = userId,
+                username = "username",
+                password = "old password",
+            )
 
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(userId, null, emptyList())
@@ -329,14 +344,15 @@ class UserServiceTests {
         every { userRepository.findById(userId) } returns Optional.of(user)
         every { passwordService.checkPassword(any(), any()) } returns false
 
-        val exception = assertThrows<ApiException> {
-            userService.editPassword(
-                EditPasswordDTO(
-                    oldPassword = "old passworded",
-                    newPassword = "new password"
+        val exception =
+            assertThrows<ApiException> {
+                userService.editPassword(
+                    EditPasswordDTO(
+                        oldPassword = "old passworded",
+                        newPassword = "new password",
+                    ),
                 )
-            )
-        }
+            }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         assertEquals(ErrorMessages.WRONG_PASSWORD, exception.message)
@@ -347,11 +363,12 @@ class UserServiceTests {
     @Test
     fun shouldFailToUpdateUserPasswordWithTooShortPassword() {
         val userId = UUID.randomUUID()
-        val user = UserEntity(
-            id = userId,
-            username = "username",
-            password = "oldPassword",
-        )
+        val user =
+            UserEntity(
+                id = userId,
+                username = "username",
+                password = "oldPassword",
+            )
 
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(userId, null, emptyList())
@@ -359,14 +376,15 @@ class UserServiceTests {
         every { userRepository.findById(userId) } returns Optional.of(user)
         every { passwordService.checkPassword(any(), any()) } returns true
 
-        val exception = assertThrows<ApiException> {
-            userService.editPassword(
-                EditPasswordDTO(
-                    oldPassword = "oldPassword",
-                    newPassword = "new"
+        val exception =
+            assertThrows<ApiException> {
+                userService.editPassword(
+                    EditPasswordDTO(
+                        oldPassword = "oldPassword",
+                        newPassword = "new",
+                    ),
                 )
-            )
-        }
+            }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         assertEquals(ErrorMessages.SHORT_PASSWORD, exception.message)
@@ -376,9 +394,10 @@ class UserServiceTests {
 
     @Test
     fun shouldFailToGetUserWithoutAuthentication() {
-        val exception = assertThrows<ApiException> {
-            userService.getSelf()
-        }
+        val exception =
+            assertThrows<ApiException> {
+                userService.getSelf()
+            }
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
         assertEquals(ErrorMessages.INVALID_TOKEN, exception.message)
@@ -386,9 +405,10 @@ class UserServiceTests {
 
     @Test
     fun shouldFailToEditUserWithoutAuthentication() {
-        val exception = assertThrows<ApiException> {
-            userService.editProfile(ChangeUserDTO("", "", "", ""))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                userService.editProfile(ChangeUserDTO("", "", "", ""))
+            }
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
         assertEquals(ErrorMessages.INVALID_TOKEN, exception.message)
@@ -396,9 +416,10 @@ class UserServiceTests {
 
     @Test
     fun shouldFailToEditPasswordWithoutAuthentication() {
-        val exception = assertThrows<ApiException> {
-            userService.editPassword(EditPasswordDTO("oldPassword", "newPassword"))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                userService.editPassword(EditPasswordDTO("oldPassword", "newPassword"))
+            }
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
         assertEquals(ErrorMessages.INVALID_TOKEN, exception.message)
@@ -407,11 +428,12 @@ class UserServiceTests {
     @Test
     fun shouldDeleteUser() {
         val userId = UUID.randomUUID()
-        val user = UserEntity(
-            id = userId,
-            username = "username",
-            password = "old password",
-        )
+        val user =
+            UserEntity(
+                id = userId,
+                username = "username",
+                password = "old password",
+            )
 
         SecurityContextHolder.getContext().authentication =
             UsernamePasswordAuthenticationToken(userId, null, emptyList())
@@ -431,9 +453,10 @@ class UserServiceTests {
 
         every { userRepository.findById(any()) } returns Optional.empty()
 
-        val exception = assertThrows<ApiException> {
-            userService.deleteUser()
-        }
+        val exception =
+            assertThrows<ApiException> {
+                userService.deleteUser()
+            }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
         assertEquals(ErrorMessages.INVALID_USER, exception.message)
@@ -442,7 +465,7 @@ class UserServiceTests {
     }
 
     @Test
-    fun shouldGetAllUsersById(){
+    fun shouldGetAllUsersById() {
         val user1 = UserEntity(username = "u1", password = "")
         val user2 = UserEntity(username = "u2", password = "")
         val user3 = UserEntity(username = "u3", password = "")
@@ -453,7 +476,7 @@ class UserServiceTests {
 
         assertEquals(
             listOf(user1, user2, user3),
-            users
+            users,
         )
     }
 

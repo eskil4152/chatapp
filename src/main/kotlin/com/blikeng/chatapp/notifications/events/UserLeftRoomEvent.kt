@@ -1,8 +1,8 @@
-package com.blikeng.chatapp.events
+package com.blikeng.chatapp.notifications.events
 
 import java.util.UUID
 
-data class UserJoinedRoomEvent(
+data class UserLeftRoomEvent(
     val userId: UUID,
     val username: String,
     val roomId: UUID,
