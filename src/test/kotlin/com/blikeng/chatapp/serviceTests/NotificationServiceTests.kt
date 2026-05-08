@@ -7,6 +7,8 @@ import com.blikeng.chatapp.dtos.websocket.WsUserRoleChanged
 import com.blikeng.chatapp.entities.InviteType
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.messaging.redis.PresenceKeys
+import com.blikeng.chatapp.notifications.NotificationService
+import com.blikeng.chatapp.notifications.events.FriendRemovedEvent
 import com.blikeng.chatapp.notifications.events.InviteAcceptedEvent
 import com.blikeng.chatapp.notifications.events.InviteSentEvent
 import com.blikeng.chatapp.notifications.events.RoomDeletedEvent
@@ -15,7 +17,6 @@ import com.blikeng.chatapp.notifications.events.UserJoinedRoomEvent
 import com.blikeng.chatapp.notifications.events.UserRemovedEvent
 import com.blikeng.chatapp.notifications.events.UserRoleChangedEvent
 import com.blikeng.chatapp.security.UserRole
-import com.blikeng.chatapp.services.NotificationService
 import com.blikeng.chatapp.services.UserRevocationService
 import com.blikeng.chatapp.websocket.SessionRegistry
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -258,6 +259,31 @@ class NotificationServiceTests {
                 PresenceKeys.userChannel(userId),
                 any<String>(),
             )
+        }
+    }
+
+    @Test
+    fun shouldNotifyBothUsersOnFriendRemoved() {
+        val userId = UUID.randomUUID()
+        val friendId = UUID.randomUUID()
+
+        val event =
+            FriendRemovedEvent(
+                userId = userId,
+                friendId = friendId,
+            )
+
+        every { objectMapper.writeValueAsString(any()) } returns """{"type":"FRIEND_REMOVED"}"""
+        every { redisTemplate.convertAndSend(any(), any<String>()) } returns 1L
+
+        notificationService.onFriendRemoved(event)
+
+        verify(exactly = 1) {
+            redisTemplate.convertAndSend(PresenceKeys.userChannel(userId), any<String>())
+        }
+
+        verify(exactly = 1) {
+            redisTemplate.convertAndSend(PresenceKeys.userChannel(friendId), any<String>())
         }
     }
 }

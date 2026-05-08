@@ -4,7 +4,6 @@ import com.blikeng.chatapp.dtos.UserIdDTO
 import com.blikeng.chatapp.dtos.friends.FriendDTO
 import com.blikeng.chatapp.dtos.websocket.friends.OnlineFriend
 import com.blikeng.chatapp.dtos.websocket.friends.WsFriendPresence
-import com.blikeng.chatapp.dtos.websocket.friends.WsFriendRemoved
 import com.blikeng.chatapp.dtos.websocket.friends.WsFriendSnapshot
 import com.blikeng.chatapp.entities.FriendsEntity
 import com.blikeng.chatapp.entities.FriendsId
@@ -14,13 +13,16 @@ import com.blikeng.chatapp.errors.InvalidUUIDException
 import com.blikeng.chatapp.errors.InvalidUserException
 import com.blikeng.chatapp.errors.UserNotFoundException
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
+import com.blikeng.chatapp.notifications.events.FriendRemovedEvent
 import com.blikeng.chatapp.repositories.FriendsRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.security.auth.getId
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
 import java.util.UUID
 
@@ -38,6 +40,7 @@ class FriendService(
     private val presenceHandler: PresenceHandler,
     private val objectMapper: ObjectMapper,
     private val redisTemplate: RedisTemplate<String, String>,
+    private val eventPublisher: ApplicationEventPublisher,
 ) {
     fun getFriends(): List<FriendDTO> {
         val id = getId()
@@ -88,6 +91,7 @@ class FriendService(
         redisTemplate.delete("user:$friendId:friends")
     }
 
+    @Transactional
     fun removeFriend(userIdDTO: UserIdDTO) {
         val id = getId()
         val friendId =
@@ -106,10 +110,7 @@ class FriendService(
         redisTemplate.delete("user:$id:friends")
         redisTemplate.delete("user:$friendId:friends")
 
-        val notifyRemover = objectMapper.writeValueAsString(WsFriendRemoved(userId = friendId))
-        val notifyRemoved = objectMapper.writeValueAsString(WsFriendRemoved(userId = id))
-        redisTemplate.convertAndSend("user:$id", notifyRemover)
-        redisTemplate.convertAndSend("user:$friendId", notifyRemoved)
+        eventPublisher.publishEvent(FriendRemovedEvent(id, friendId))
     }
 
     fun getFriendInfo(friendIdString: String): FriendDTO {

@@ -6,6 +6,7 @@ import com.blikeng.chatapp.entities.FriendsId
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
+import com.blikeng.chatapp.notifications.events.FriendRemovedEvent
 import com.blikeng.chatapp.repositories.FriendsRepository
 import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.services.FriendService
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.core.ValueOperations
 import org.springframework.http.HttpStatus
@@ -51,9 +53,11 @@ class FriendMutationTests {
 
     @MockK private lateinit var userRepository: UserRepository
 
-    @RelaxedMockK private lateinit var redisTemplate: RedisTemplate<String, String>
+    @MockK private lateinit var eventPublisher: ApplicationEventPublisher
 
     @MockK private lateinit var presenceHandler: PresenceHandler
+
+    @RelaxedMockK private lateinit var redisTemplate: RedisTemplate<String, String>
 
     private val objectMapper = ObjectMapper()
 
@@ -169,6 +173,7 @@ class FriendMutationTests {
         every { friendsRepository.existsById(any()) } returns true
         every { friendsRepository.deleteById(capture(slot)) } just Runs
         every { redisTemplate.convertAndSend(any<String>(), any<String>()) } returns 1L
+        every { eventPublisher.publishEvent(any<FriendRemovedEvent>()) } just Runs
 
         friendService.removeFriend(UserIdDTO(user2.id.toString()))
 
@@ -192,6 +197,7 @@ class FriendMutationTests {
         every { friendsRepository.existsById(any()) } returns true
         every { friendsRepository.deleteById(capture(slot)) } just Runs
         every { redisTemplate.convertAndSend(any<String>(), any<String>()) } returns 1L
+        every { eventPublisher.publishEvent(any<FriendRemovedEvent>()) } just Runs
 
         friendService.removeFriend(UserIdDTO(lowId.toString()))
 

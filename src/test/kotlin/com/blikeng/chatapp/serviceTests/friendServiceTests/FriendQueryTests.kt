@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.core.ValueOperations
 import org.springframework.http.HttpStatus
@@ -46,6 +47,8 @@ class FriendQueryTests {
     @MockK private lateinit var userService: UserService
 
     @MockK private lateinit var userRepository: UserRepository
+
+    @MockK private lateinit var eventPublisher: ApplicationEventPublisher
 
     @RelaxedMockK private lateinit var redisTemplate: RedisTemplate<String, String>
 

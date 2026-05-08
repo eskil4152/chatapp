@@ -1,4 +1,4 @@
-package com.blikeng.chatapp.services
+package com.blikeng.chatapp.notifications
 
 import com.blikeng.chatapp.dtos.messaging.RabbitMessageDTO
 import com.blikeng.chatapp.dtos.room.RoomAction
@@ -6,6 +6,7 @@ import com.blikeng.chatapp.dtos.websocket.WsBannedEvent
 import com.blikeng.chatapp.dtos.websocket.WsUserRoleChanged
 import com.blikeng.chatapp.dtos.websocket.chat.WsChat
 import com.blikeng.chatapp.dtos.websocket.friends.WsFriendAdded
+import com.blikeng.chatapp.dtos.websocket.friends.WsFriendRemoved
 import com.blikeng.chatapp.dtos.websocket.invites.WsInviteAccepted
 import com.blikeng.chatapp.dtos.websocket.invites.WsInviteReceived
 import com.blikeng.chatapp.dtos.websocket.rooms.WsRoomAction
@@ -14,6 +15,7 @@ import com.blikeng.chatapp.dtos.websocket.rooms.WsRoomPresence
 import com.blikeng.chatapp.entities.InviteType
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.messaging.redis.PresenceKeys
+import com.blikeng.chatapp.notifications.events.FriendRemovedEvent
 import com.blikeng.chatapp.notifications.events.InviteAcceptedEvent
 import com.blikeng.chatapp.notifications.events.InviteSentEvent
 import com.blikeng.chatapp.notifications.events.RoomDeletedEvent
@@ -22,6 +24,7 @@ import com.blikeng.chatapp.notifications.events.UserJoinedRoomEvent
 import com.blikeng.chatapp.notifications.events.UserLeftRoomEvent
 import com.blikeng.chatapp.notifications.events.UserRemovedEvent
 import com.blikeng.chatapp.notifications.events.UserRoleChangedEvent
+import com.blikeng.chatapp.services.UserRevocationService
 import com.blikeng.chatapp.websocket.SessionRegistry
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.amqp.rabbit.core.RabbitTemplate
@@ -126,7 +129,13 @@ class NotificationService(
         redisTemplate.convertAndSend(PresenceKeys.roomChannel(roomId), presencePayload)
 
         val rabbitMessage =
-            RabbitMessageDTO(id = UUID.randomUUID(), username = "Server", roomId = roomId, userId = userId, message = message)
+            RabbitMessageDTO(
+                id = UUID.randomUUID(),
+                username = "Server",
+                roomId = roomId,
+                userId = userId,
+                message = message,
+            )
         redisTemplate.opsForList().rightPush("chat.peek.$roomId", objectMapper.writeValueAsString(rabbitMessage))
         rabbitTemplate.convertAndSend("chat.buffer", rabbitMessage)
     }
@@ -184,5 +193,21 @@ class NotificationService(
         redisTemplate.convertAndSend(PresenceKeys.userChannel(event.userId), payload)
         userRevocationService.revokeBanned(event.userId)
         sessionRegistry.closeUserSessions(event.userId)
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    fun onFriendRemoved(event: FriendRemovedEvent) {
+        val payloadFrom =
+            objectMapper.writeValueAsString(
+                WsFriendRemoved(userId = event.userId),
+            )
+
+        val payloadTo =
+            objectMapper.writeValueAsString(
+                WsFriendRemoved(userId = event.friendId),
+            )
+
+        redisTemplate.convertAndSend(PresenceKeys.userChannel(event.userId), payloadFrom)
+        redisTemplate.convertAndSend(PresenceKeys.userChannel(event.friendId), payloadTo)
     }
 }

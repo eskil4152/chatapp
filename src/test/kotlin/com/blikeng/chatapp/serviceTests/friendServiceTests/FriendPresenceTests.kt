@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.core.ValueOperations
 
@@ -45,6 +46,8 @@ class FriendPresenceTests {
     @MockK private lateinit var userRepository: UserRepository
 
     @MockK private lateinit var presenceHandler: PresenceHandler
+
+    @MockK private lateinit var eventPublisher: ApplicationEventPublisher
 
     @RelaxedMockK private lateinit var redisTemplate: RedisTemplate<String, String>
     private val objectMapper = ObjectMapper()
