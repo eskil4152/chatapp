@@ -1,7 +1,7 @@
 import http from 'k6/http';
-import { check } from 'k6';
-import { scenario } from 'k6/execution';
-import { BASE, PASSWORD, jsonParams } from './lib.js';
+import {check} from 'k6';
+import {scenario} from 'k6/execution';
+import {BASE, jsonParams, PASSWORD} from './lib.js';
 
 const USERS = __ENV.USERS ? parseInt(__ENV.USERS) : 100;
 const RUN_ID = __ENV.RUN_ID || Date.now();

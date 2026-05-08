@@ -8,23 +8,28 @@ import java.util.UUID
 
 @Service
 class BannedUserService(
-    val roomBanRepository: RoomBanRepository
+    val roomBanRepository: RoomBanRepository,
 ) {
-    fun isUserBanned(userId: UUID, roomId: UUID): Boolean {
-        return roomBanRepository.existsById(RoomBanId(userId, roomId))
-    }
+    fun isUserBanned(
+        userId: UUID,
+        roomId: UUID,
+    ): Boolean = roomBanRepository.existsById(RoomBanId(userId, roomId))
 
-    fun banUser(userId: UUID, roomId: UUID) {
+    fun banUser(
+        userId: UUID,
+        roomId: UUID,
+    ) {
         val roomBan = RoomBan(RoomBanId(userId, roomId))
-        roomBanRepository.save(roomBan);
+        roomBanRepository.save(roomBan)
     }
 
-    fun unbanUser(userId: UUID, roomId: UUID) {
+    fun unbanUser(
+        userId: UUID,
+        roomId: UUID,
+    ) {
         val id = RoomBanId(userId, roomId)
         roomBanRepository.deleteById(id)
     }
 
-    fun getBannedUserIds(roomId: UUID): List<UUID> {
-        return roomBanRepository.findAllByIdRoomId(roomId).map { it.id.userId }
-    }
+    fun getBannedUserIds(roomId: UUID): List<UUID> = roomBanRepository.findAllByIdRoomId(roomId).map { it.id.userId }
 }

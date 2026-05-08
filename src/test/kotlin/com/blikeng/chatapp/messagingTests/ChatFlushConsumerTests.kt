@@ -7,10 +7,14 @@ import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.services.ChatFlushService
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.rabbitmq.client.Channel
-import io.mockk.*
+import io.mockk.Runs
+import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.just
+import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
@@ -19,7 +23,7 @@ import org.springframework.amqp.core.Message
 import org.springframework.amqp.core.MessageProperties
 import org.springframework.data.redis.core.ListOperations
 import org.springframework.data.redis.core.RedisTemplate
-import java.util.*
+import java.util.UUID
 
 @ExtendWith(MockKExtension::class)
 class ChatFlushConsumerTests {
@@ -34,9 +38,13 @@ class ChatFlushConsumerTests {
     // ==========================
 
     @MockK lateinit var userRepository: UserRepository
+
     @MockK lateinit var chatFlushService: ChatFlushService
+
     @MockK lateinit var redisTemplate: RedisTemplate<String, String>
+
     @MockK lateinit var listOps: ListOperations<String, String>
+
     @MockK lateinit var objectMapper: ObjectMapper
 
     @InjectMockKs lateinit var consumer: ChatFlushConsumer
@@ -54,12 +62,13 @@ class ChatFlushConsumerTests {
         val roomId = UUID.randomUUID()
         val user = UserEntity(id = userId, username = "u", password = "")
 
-        val payload = RabbitMessageDTO(
-            roomId = roomId,
-            userId = userId,
-            username = "u",
-            message = "hello"
-        )
+        val payload =
+            RabbitMessageDTO(
+                roomId = roomId,
+                userId = userId,
+                username = "u",
+                message = "hello",
+            )
 
         val props = MessageProperties().apply { deliveryTag = 10L }
         val message = Message("{}".toByteArray(), props)
@@ -90,12 +99,13 @@ class ChatFlushConsumerTests {
         every { channel.basicAck(any(), false) } just Runs
 
         repeat(50) { i ->
-            val payload = RabbitMessageDTO(
-                roomId = roomId,
-                userId = userId,
-                username = "u",
-                message = "hello-$i"
-            )
+            val payload =
+                RabbitMessageDTO(
+                    roomId = roomId,
+                    userId = userId,
+                    username = "u",
+                    message = "hello-$i",
+                )
 
             val props = MessageProperties().apply { deliveryTag = i.toLong() + 1 }
             val message = Message("{}".toByteArray(), props)
@@ -112,12 +122,13 @@ class ChatFlushConsumerTests {
         val userId = UUID.randomUUID()
         val roomId = UUID.randomUUID()
 
-        val payload = RabbitMessageDTO(
-            roomId = roomId,
-            userId = userId,
-            username = "u",
-            message = "hello"
-        )
+        val payload =
+            RabbitMessageDTO(
+                roomId = roomId,
+                userId = userId,
+                username = "u",
+                message = "hello",
+            )
 
         val props = MessageProperties().apply { deliveryTag = 10L }
         val message = Message("{}".toByteArray(), props)
@@ -139,12 +150,13 @@ class ChatFlushConsumerTests {
         val roomId = UUID.randomUUID()
         val user = UserEntity(id = userId, username = "u", password = "")
 
-        val payload = RabbitMessageDTO(
-            roomId = roomId,
-            userId = userId,
-            username = "u",
-            message = "hello"
-        )
+        val payload =
+            RabbitMessageDTO(
+                roomId = roomId,
+                userId = userId,
+                username = "u",
+                message = "hello",
+            )
 
         val props = MessageProperties().apply { deliveryTag = 10L }
         val message = Message("{}".toByteArray(), props)
@@ -166,12 +178,13 @@ class ChatFlushConsumerTests {
         val roomId = UUID.randomUUID()
         val user = UserEntity(id = userId, username = "u", password = "")
 
-        val payload = RabbitMessageDTO(
-            roomId = roomId,
-            userId = userId,
-            username = "u",
-            message = "hello"
-        )
+        val payload =
+            RabbitMessageDTO(
+                roomId = roomId,
+                userId = userId,
+                username = "u",
+                message = "hello",
+            )
 
         val props = MessageProperties().apply { deliveryTag = 10L }
         val message = Message("{}".toByteArray(), props)

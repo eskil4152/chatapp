@@ -1,8 +1,8 @@
 package com.blikeng.chatapp.securityTests.auth
 
 import com.blikeng.chatapp.security.auth.PasswordService
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.junit.jupiter.api.Test
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 
 class PasswordServiceTest {
     // ==========================

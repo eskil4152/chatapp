@@ -52,6 +52,12 @@ spring:
     default: dev
 
 logging:
+  file:
+    name: /logs/chatapp.log
+  logback:
+    rollingpolicy:
+      file-name-pattern: /logs/chatapp.%d{yyyy-MM-dd}.%i.log.gz
+      max-history: 30
   level:
     root: WARN
     org.springframework: WARN
@@ -62,6 +68,8 @@ logging:
     com.blikeng.chatapp: INFO
 
 management:
+  server:
+    port: 8081
   endpoints:
     web:
       exposure:

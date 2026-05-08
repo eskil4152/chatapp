@@ -2,7 +2,7 @@ package com.blikeng.chatapp.dtos.administration
 
 import com.blikeng.chatapp.dtos.room.RoleAction
 
-data class UserRoleDTO (
+data class UserRoleDTO(
     val id: String,
-    val action: RoleAction
+    val action: RoleAction,
 )

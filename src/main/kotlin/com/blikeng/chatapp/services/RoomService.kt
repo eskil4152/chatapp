@@ -1,6 +1,5 @@
 package com.blikeng.chatapp.services
 
-import com.blikeng.chatapp.events.UserLeftRoomEvent
 import com.blikeng.chatapp.dtos.UserIdDTO
 import com.blikeng.chatapp.dtos.room.AdministrationDTO
 import com.blikeng.chatapp.dtos.room.ChangeRoleDTO
@@ -9,14 +8,24 @@ import com.blikeng.chatapp.dtos.room.RoomAction
 import com.blikeng.chatapp.dtos.room.RoomDTO
 import com.blikeng.chatapp.dtos.room.RoomUserDTO
 import com.blikeng.chatapp.dtos.room.UnbanDTO
-import com.blikeng.chatapp.entities.*
-import com.blikeng.chatapp.errors.*
+import com.blikeng.chatapp.entities.RoomEntity
+import com.blikeng.chatapp.entities.RoomRole
+import com.blikeng.chatapp.entities.RoomType
+import com.blikeng.chatapp.entities.UserRoomEntity
+import com.blikeng.chatapp.entities.UserRoomId
+import com.blikeng.chatapp.errors.FriendYourselfException
+import com.blikeng.chatapp.errors.InvalidBanException
 import com.blikeng.chatapp.errors.InvalidFieldException
-import com.blikeng.chatapp.events.RoomDeletedEvent
-import com.blikeng.chatapp.events.UserJoinedRoomEvent
-import com.blikeng.chatapp.events.UserRemovedEvent
-
+import com.blikeng.chatapp.errors.InvalidRoomNameException
+import com.blikeng.chatapp.errors.InvalidUUIDException
+import com.blikeng.chatapp.errors.InvalidUserException
+import com.blikeng.chatapp.errors.NotPermittedException
+import com.blikeng.chatapp.errors.RoomNotFoundException
 import com.blikeng.chatapp.messaging.redis.PresenceKeys
+import com.blikeng.chatapp.notifications.events.RoomDeletedEvent
+import com.blikeng.chatapp.notifications.events.UserJoinedRoomEvent
+import com.blikeng.chatapp.notifications.events.UserLeftRoomEvent
+import com.blikeng.chatapp.notifications.events.UserRemovedEvent
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.auth.getId
@@ -27,7 +36,8 @@ import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
-import java.util.*
+import java.util.Optional
+import java.util.UUID
 
 // ==========================
 // Handles room creation, membership management, room updates, room deletion,
@@ -49,28 +59,32 @@ class RoomService(
     private val roomListType = object : TypeReference<List<RoomDTO>>() {}
     private val roomCacheTTL = Duration.ofMinutes(5)
 
-    private fun bustRoomsCache(vararg userIds: UUID) =
-        userIds.forEach { redisTemplate.delete("user:$it:rooms") }
+    private fun bustRoomsCache(vararg userIds: UUID) = userIds.forEach { redisTemplate.delete("user:$it:rooms") }
 
-    private fun bustRoomMembersCache(roomId: UUID) =
-        redisTemplate.delete(PresenceKeys.roomMembersKey(roomId))
+    private fun bustRoomMembersCache(roomId: UUID) = redisTemplate.delete(PresenceKeys.roomMembersKey(roomId))
+
     // ==========================
     // Room creation and retrieval
     // ==========================
-    fun makeNewRoom(roomName: String?, encrypted: Boolean?) {
+    fun makeNewRoom(
+        roomName: String?,
+        encrypted: Boolean?,
+    ) {
         val userId = getId()
 
         val trimmedName = roomName?.trim()
         if (trimmedName.isNullOrEmpty()) throw InvalidRoomNameException()
         if (trimmedName.length > 100) throw InvalidRoomNameException()
 
-        val room = roomRepository.save(
-            RoomEntity(
-                name = trimmedName,
-                encrypted = encrypted == true,
-                keyVersion = if (encrypted == true) 1 else null,
-                type = RoomType.GROUP,
-            ))
+        val room =
+            roomRepository.save(
+                RoomEntity(
+                    name = trimmedName,
+                    encrypted = encrypted == true,
+                    keyVersion = if (encrypted == true) 1 else null,
+                    type = RoomType.GROUP,
+                ),
+            )
 
         val userRoom = UserRoomEntity(UserRoomId(userId, room.id), RoomRole.OWNER, RoomType.GROUP)
         userRoomRepository.save(userRoom)
@@ -87,37 +101,50 @@ class RoomService(
         val joinedRooms = roomRepository.findRoomsForUser(userId)
 
         val privateRoomIds = joinedRooms.filter { it.type == RoomType.PRIVATE }.map { it.room.id }
-        val dmPartners: Map<UUID, String> = if (privateRoomIds.isNotEmpty()) {
-            userRoomRepository.findOtherUsersInPrivateRooms(privateRoomIds, userId)
-                .associate { it.roomId to it.username }
-        } else {
-            emptyMap()
-        }
+        val dmPartners: Map<UUID, String> =
+            if (privateRoomIds.isNotEmpty()) {
+                userRoomRepository
+                    .findOtherUsersInPrivateRooms(privateRoomIds, userId)
+                    .associate { it.roomId to it.username }
+            } else {
+                emptyMap()
+            }
 
-        val rooms = joinedRooms.map { room ->
-            val name = if (room.type == RoomType.PRIVATE) dmPartners[room.room.id] ?: "Error"
-                       else room.room.name
-            RoomDTO(roomId = room.room.id.toString(), roomName = name, encrypted = room.room.encrypted, role = room.role, type = room.type)
-        }
+        val rooms =
+            joinedRooms.map { room ->
+                val name =
+                    if (room.type == RoomType.PRIVATE) {
+                        dmPartners[room.room.id] ?: "Error"
+                    } else {
+                        room.room.name
+                    }
+                RoomDTO(
+                    roomId = room.room.id.toString(),
+                    roomName = name,
+                    encrypted = room.room.encrypted,
+                    role = room.role,
+                    type = room.type,
+                )
+            }
         redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(rooms), roomCacheTTL)
         return rooms
     }
 
-    fun getRoom(roomId: UUID): Optional<RoomEntity> {
-        return roomRepository.findById(roomId)
-    }
+    fun getRoom(roomId: UUID): Optional<RoomEntity> = roomRepository.findById(roomId)
 
     fun getAllUsersInRoom(roomIdString: String): List<RoomUserDTO> {
-        val roomId = try {
-            UUID.fromString(roomIdString)
-        } catch (_: IllegalArgumentException) {
-            throw InvalidUUIDException()
-        }
+        val roomId =
+            try {
+                UUID.fromString(roomIdString)
+            } catch (_: IllegalArgumentException) {
+                throw InvalidUUIDException()
+            }
 
         val userId = getId()
 
-        val userRoom = userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
-            ?: throw RoomNotFoundException()
+        val userRoom =
+            userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
+                ?: throw RoomNotFoundException()
 
         if (!userRoom.role.isAtLeast(RoomPermissions.VIEW_MEMBERS)) throw NotPermittedException()
 
@@ -138,7 +165,10 @@ class RoomService(
     // ==========================
     // Room membership
     // ==========================
-    fun joinRoom(id: UUID, roomId: UUID) {
+    fun joinRoom(
+        id: UUID,
+        roomId: UUID,
+    ) {
         val user = userService.getUserById(id) ?: throw InvalidUserException()
         val userRoom = UserRoomEntity(UserRoomId(id, roomId), RoomRole.MEMBER, RoomType.GROUP)
 
@@ -150,14 +180,15 @@ class RoomService(
     }
 
     @Transactional
-    fun leaveRoom(roomId: String?){
+    fun leaveRoom(roomId: String?) {
         val user = userService.getUserById(getId()) ?: throw InvalidUserException()
 
-        val roomUUID = try {
-            UUID.fromString(roomId)
-        } catch (_: IllegalArgumentException) {
-            throw InvalidUUIDException()
-        }
+        val roomUUID =
+            try {
+                UUID.fromString(roomId)
+            } catch (_: IllegalArgumentException) {
+                throw InvalidUUIDException()
+            }
 
         val existed = userRoomRepository.existsByIdUserIdAndIdRoomId(user.id, roomUUID)
         if (!existed) {
@@ -177,23 +208,26 @@ class RoomService(
     fun editRoom(roomDTO: RoomDTO) {
         val userId = getId()
 
-        val roomId = try {
-            UUID.fromString(roomDTO.roomId)
-        } catch (_: IllegalArgumentException) {
-            throw InvalidUUIDException()
-        }
+        val roomId =
+            try {
+                UUID.fromString(roomDTO.roomId)
+            } catch (_: IllegalArgumentException) {
+                throw InvalidUUIDException()
+            }
 
         val name = roomDTO.roomName?.trim()
         if (name.isNullOrBlank()) throw InvalidRoomNameException()
         if (name.length > 100) throw InvalidRoomNameException()
 
-        val userRoom = userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
-            ?: throw RoomNotFoundException()
+        val userRoom =
+            userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
+                ?: throw RoomNotFoundException()
 
         if (!userRoom.role.isAtLeast(RoomPermissions.EDIT_ROOM)) throw NotPermittedException()
 
-        val room = roomRepository.findById(roomId).orElse(null)
-            ?: throw RoomNotFoundException()
+        val room =
+            roomRepository.findById(roomId).orElse(null)
+                ?: throw RoomNotFoundException()
 
         room.name = name
         roomRepository.save(room)
@@ -203,17 +237,19 @@ class RoomService(
     }
 
     @Transactional
-    fun deleteRoom(roomId: String?){
+    fun deleteRoom(roomId: String?) {
         val userId = getId()
 
-        val roomUUID = try {
-            UUID.fromString(roomId)
-        } catch (_: IllegalArgumentException) {
-            throw InvalidUUIDException()
-        }
+        val roomUUID =
+            try {
+                UUID.fromString(roomId)
+            } catch (_: IllegalArgumentException) {
+                throw InvalidUUIDException()
+            }
 
-        val userRoom = userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomUUID)
-            ?: throw RoomNotFoundException()
+        val userRoom =
+            userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomUUID)
+                ?: throw RoomNotFoundException()
 
         if (!userRoom.role.isAtLeast(RoomPermissions.DELETE_ROOM)) throw NotPermittedException()
 
@@ -235,10 +271,12 @@ class RoomService(
 
         if (targetId == userId) throw NotPermittedException()
 
-        val userUserRoom = userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
-            ?: throw RoomNotFoundException()
-        val targetUserRoom = userRoomRepository.findByIdUserIdAndIdRoomId(targetId, roomId)
-            ?: throw RoomNotFoundException()
+        val userUserRoom =
+            userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
+                ?: throw RoomNotFoundException()
+        val targetUserRoom =
+            userRoomRepository.findByIdUserIdAndIdRoomId(targetId, roomId)
+                ?: throw RoomNotFoundException()
 
         if (targetUserRoom.role == RoomRole.OWNER) throw NotPermittedException()
 
@@ -250,12 +288,12 @@ class RoomService(
     }
 
     @Transactional
-    fun removeUserFromRoom(administrationDTO: AdministrationDTO){
+    fun removeUserFromRoom(administrationDTO: AdministrationDTO) {
         val userId = getId()
 
-        val roomId: UUID;
-        val targetId: UUID;
-        val action: RoomAction;
+        val roomId: UUID
+        val targetId: UUID
+        val action: RoomAction
 
         try {
             roomId = UUID.fromString(administrationDTO.roomId)
@@ -272,8 +310,9 @@ class RoomService(
             throw InvalidBanException()
         }
 
-        val userRoom = userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
-            ?: throw RoomNotFoundException()
+        val userRoom =
+            userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
+                ?: throw RoomNotFoundException()
 
         val requiredPermission = if (action == RoomAction.BAN) RoomPermissions.BAN_USER else RoomPermissions.KICK_USER
         if (!userRoom.role.isAtLeast(requiredPermission)) throw NotPermittedException()
@@ -290,8 +329,8 @@ class RoomService(
     fun unbanUser(unbanDTO: UnbanDTO) {
         val userId = getId()
 
-        val roomId: UUID;
-        val targetId: UUID;
+        val roomId: UUID
+        val targetId: UUID
 
         try {
             roomId = UUID.fromString(unbanDTO.roomId)
@@ -304,8 +343,9 @@ class RoomService(
             throw InvalidBanException()
         }
 
-        val userRoom = userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
-            ?: throw RoomNotFoundException()
+        val userRoom =
+            userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
+                ?: throw RoomNotFoundException()
 
         if (!userRoom.role.isAtLeast(RoomPermissions.UNBAN_USER)) throw NotPermittedException()
 
@@ -315,14 +355,16 @@ class RoomService(
     fun getAllBansForRoom(roomIdString: String?): List<RoomUserDTO> {
         val userId = getId()
 
-        val roomId = try {
-            UUID.fromString(roomIdString)
-        } catch (_: IllegalArgumentException) {
-            throw InvalidUUIDException()
-        }
+        val roomId =
+            try {
+                UUID.fromString(roomIdString)
+            } catch (_: IllegalArgumentException) {
+                throw InvalidUUIDException()
+            }
 
-        val userRoom = userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
-            ?: throw RoomNotFoundException()
+        val userRoom =
+            userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId)
+                ?: throw RoomNotFoundException()
 
         if (!userRoom.role.isAtLeast(RoomPermissions.VIEW_BANS)) throw NotPermittedException()
 
@@ -334,7 +376,7 @@ class RoomService(
                 id = user.id,
                 username = user.username,
                 avatarUrl = user.avatarUrl,
-                online = false
+                online = false,
             )
         }
     }
@@ -345,11 +387,12 @@ class RoomService(
     fun getOrStartPrivateMessage(userIdDTO: UserIdDTO): UUID {
         val userId = getId()
 
-        val friendId = try {
-            UUID.fromString(userIdDTO.userId)
-        } catch (_: IllegalArgumentException) {
-            throw InvalidUUIDException()
-        }
+        val friendId =
+            try {
+                UUID.fromString(userIdDTO.userId)
+            } catch (_: IllegalArgumentException) {
+                throw InvalidUUIDException()
+            }
 
         val friend = friendService.getFriendEntityById(friendId, userId)
 
@@ -359,22 +402,23 @@ class RoomService(
             return roomExists.id
         }
 
-        val room = roomRepository.save(
-            RoomEntity(
-                id = roomId,
-                name = "",
-                type = RoomType.PRIVATE,
-                encrypted = false,
-                keyVersion = null
+        val room =
+            roomRepository.save(
+                RoomEntity(
+                    id = roomId,
+                    name = "",
+                    type = RoomType.PRIVATE,
+                    encrypted = false,
+                    keyVersion = null,
+                ),
             )
-        )
 
         userRoomRepository.save(
             UserRoomEntity(
                 id = UserRoomId(userId, room.id),
                 role = RoomRole.MEMBER,
                 type = RoomType.PRIVATE,
-            )
+            ),
         )
 
         userRoomRepository.save(
@@ -382,7 +426,7 @@ class RoomService(
                 id = UserRoomId(friend.id, room.id),
                 role = RoomRole.MEMBER,
                 type = RoomType.PRIVATE,
-            )
+            ),
         )
         bustRoomsCache(userId, friend.id)
 
@@ -392,66 +436,83 @@ class RoomService(
     // ==========================
     // Internal helpers
     // ==========================
-    private fun generatePrivateRoomId(user1: UUID, user2: UUID): UUID {
+    private fun generatePrivateRoomId(
+        user1: UUID,
+        user2: UUID,
+    ): UUID {
         if (user1 == user2) throw FriendYourselfException()
 
-        val ordered = if (user1 < user2) {
-            "${user1}:${user2}"
-        } else {
-            "${user2}:${user1}"
-        }
+        val ordered =
+            if (user1 < user2) {
+                "$user1:$user2"
+            } else {
+                "$user2:$user1"
+            }
 
         return UUID.nameUUIDFromBytes(ordered.toByteArray())
     }
 
-    private fun parseIds(dto: ChangeRoleDTO): Pair<UUID, UUID> {
-        return try {
+    private fun parseIds(dto: ChangeRoleDTO): Pair<UUID, UUID> =
+        try {
             UUID.fromString(dto.roomId) to UUID.fromString(dto.userId)
         } catch (_: IllegalArgumentException) {
             throw InvalidUUIDException()
         }
-    }
 
     private fun resolveNewRole(
         action: RoleAction,
         actorRole: RoomRole,
-        targetRole: RoomRole
-    ): RoomRole {
-        return when (action) {
+        targetRole: RoomRole,
+    ): RoomRole =
+        when (action) {
             RoleAction.PROMOTE -> promote(actorRole, targetRole)
             RoleAction.DEMOTE -> demote(actorRole, targetRole)
         }
-    }
 
-    private fun promote(actor: RoomRole, target: RoomRole): RoomRole {
-        return when (target) {
+    private fun promote(
+        actor: RoomRole,
+        target: RoomRole,
+    ): RoomRole =
+        when (target) {
             RoomRole.MEMBER -> {
                 requirePermission(actor, RoomPermissions.PROMOTE_TO_MODERATOR)
                 RoomRole.MODERATOR
             }
+
             RoomRole.MODERATOR -> {
                 requirePermission(actor, RoomPermissions.PROMOTE_TO_ADMIN)
                 RoomRole.ADMIN
             }
-            else -> throw NotPermittedException()
-        }
-    }
 
-    private fun demote(actor: RoomRole, target: RoomRole): RoomRole {
-        return when (target) {
+            else -> {
+                throw NotPermittedException()
+            }
+        }
+
+    private fun demote(
+        actor: RoomRole,
+        target: RoomRole,
+    ): RoomRole =
+        when (target) {
             RoomRole.ADMIN -> {
                 requirePermission(actor, RoomPermissions.DEMOTE_TO_MODERATOR)
                 RoomRole.MODERATOR
             }
+
             RoomRole.MODERATOR -> {
                 requirePermission(actor, RoomPermissions.DEMOTE_TO_MEMBER)
                 RoomRole.MEMBER
             }
-            else -> throw NotPermittedException()
-        }
-    }
 
-    private fun requirePermission(actorRole: RoomRole, requiredRole: RoomRole) {
+            else -> {
+                throw NotPermittedException()
+            }
+        }
+
+    private fun requirePermission(
+        actorRole: RoomRole,
+        requiredRole: RoomRole,
+    ) {
         if (!actorRole.isAtLeast(requiredRole)) throw NotPermittedException()
     }
 }

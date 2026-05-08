@@ -2,9 +2,10 @@ package com.blikeng.chatapp.dtos.user
 
 import com.blikeng.chatapp.dtos.room.JoinedRoomDTO
 import java.time.Instant
-import java.util.*
+import java.util.Date
+import java.util.UUID
 
-data class UserDTO (
+data class UserDTO(
     val userId: UUID,
     val username: String,
     val bio: String?,

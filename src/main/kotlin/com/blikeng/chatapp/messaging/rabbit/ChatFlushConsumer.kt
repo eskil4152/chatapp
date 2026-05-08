@@ -6,7 +6,6 @@ import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.services.ChatFlushService
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.rabbitmq.client.Channel
-import jakarta.annotation.PreDestroy
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory.getLogger
 import org.springframework.amqp.core.Message
@@ -39,7 +38,7 @@ class ChatFlushConsumer(
     data class PendingRabbitMessage(
         val payload: RabbitMessageDTO,
         val channel: Channel,
-        val deliveryTag: Long
+        val deliveryTag: Long,
     )
 
     // ==========================
@@ -47,12 +46,12 @@ class ChatFlushConsumer(
     // ==========================
     @RabbitListener(
         queues = ["chat.buffer"],
-        containerFactory = "rabbitListenerContainerFactory"
+        containerFactory = "rabbitListenerContainerFactory",
     )
     fun onMessage(
         payload: RabbitMessageDTO,
         message: Message,
-        channel: Channel
+        channel: Channel,
     ) {
         var shouldFlush = false
 
@@ -61,8 +60,8 @@ class ChatFlushConsumer(
                 PendingRabbitMessage(
                     payload = payload,
                     channel = channel,
-                    deliveryTag = message.messageProperties.deliveryTag
-                )
+                    deliveryTag = message.messageProperties.deliveryTag,
+                ),
             )
 
             if (pending.size >= BATCH_SIZE) {
@@ -84,10 +83,11 @@ class ChatFlushConsumer(
     }
 
     private fun flushPending() {
-        val batch = synchronized(lock) {
-            if (pending.isEmpty()) return
-            pending.toList().also { pending.clear() }
-        }
+        val batch =
+            synchronized(lock) {
+                if (pending.isEmpty()) return
+                pending.toList().also { pending.clear() }
+            }
 
         try {
             val userIds = batch.map { it.payload.userId }.toSet()
@@ -109,7 +109,7 @@ class ChatFlushConsumer(
                 log.error(
                     "Dropping Rabbit message {} because user {} was not found",
                     invalid.payload.id,
-                    invalid.payload.userId
+                    invalid.payload.userId,
                 )
                 invalid.channel.basicAck(invalid.deliveryTag, false)
             }
@@ -118,21 +118,22 @@ class ChatFlushConsumer(
                 return
             }
 
-            val entities = validMessages.map { pendingMessage ->
-                val msg = pendingMessage.payload
-                val user = users.getValue(msg.userId)
+            val entities =
+                validMessages.map { pendingMessage ->
+                    val msg = pendingMessage.payload
+                    val user = users.getValue(msg.userId)
 
-                ChatEntity(
-                    id = msg.id,
-                    user = user,
-                    roomId = msg.roomId,
-                    message = msg.message,
-                    ciphertext = msg.ciphertext,
-                    nonce = msg.nonce,
-                    keyVersion = msg.keyVersion,
-                    timestamp = msg.timestamp
-                )
-            }
+                    ChatEntity(
+                        id = msg.id,
+                        user = user,
+                        roomId = msg.roomId,
+                        message = msg.message,
+                        ciphertext = msg.ciphertext,
+                        nonce = msg.nonce,
+                        keyVersion = msg.keyVersion,
+                        timestamp = msg.timestamp,
+                    )
+                }
 
             chatFlushService.saveBatch(entities)
 
@@ -154,13 +155,13 @@ class ChatFlushConsumer(
                     pendingMessage.channel.basicNack(
                         pendingMessage.deliveryTag,
                         false,
-                        true
+                        true,
                     )
                 } catch (nackEx: Exception) {
                     log.error(
                         "Failed to nack RabbitMQ message with deliveryTag={}",
                         pendingMessage.deliveryTag,
-                        nackEx
+                        nackEx,
                     )
                 }
             }

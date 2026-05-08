@@ -9,6 +9,7 @@ import com.blikeng.chatapp.entities.UserRoomId
 import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.errors.ErrorMessages
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
+import com.blikeng.chatapp.notifications.events.RoomPresenceEvent
 import com.blikeng.chatapp.repositories.ChatRepository
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
@@ -17,26 +18,36 @@ import com.blikeng.chatapp.services.ChatService
 import com.blikeng.chatapp.services.UserService
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.micrometer.core.instrument.MeterRegistry
-import io.mockk.*
+import io.mockk.Runs
+import io.mockk.clearMocks
+import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit5.MockKExtension
-import org.junit.jupiter.api.Assertions.*
+import io.mockk.just
+import io.mockk.mockk
+import io.mockk.verify
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNull
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.amqp.rabbit.core.RabbitTemplate
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.redis.core.ListOperations
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.core.ValueOperations
 import org.springframework.http.HttpStatus
 import org.springframework.web.socket.WebSocketSession
-import java.util.*
 import java.util.Collections.emptyList
+import java.util.Optional
+import java.util.UUID
 import java.util.concurrent.CopyOnWriteArraySet
-import org.junit.jupiter.api.assertThrows
 
 @ExtendWith(MockKExtension::class)
 class ChatRoomSessionTests {
@@ -49,15 +60,27 @@ class ChatRoomSessionTests {
     // ==========================
 
     @MockK lateinit var chatRepository: ChatRepository
+
     @MockK lateinit var roomRepository: RoomRepository
+
     @MockK lateinit var userRoomRepository: UserRoomRepository
+
     @MockK lateinit var encrypt: ChatEncrypt
+
     @RelaxedMockK lateinit var redisTemplate: RedisTemplate<String, String>
+
     @MockK lateinit var rabbitTemplate: RabbitTemplate
+
     @MockK lateinit var listOps: ListOperations<String, String>
+
     @MockK lateinit var presenceHandler: PresenceHandler
+
     @MockK lateinit var userService: UserService
-    @MockK(relaxed = true) lateinit var meterRegistry: MeterRegistry
+
+    @MockK lateinit var eventPublisher: ApplicationEventPublisher
+
+    @MockK(relaxed = true)
+    lateinit var meterRegistry: MeterRegistry
 
     @InjectMockKs lateinit var chatService: ChatService
     private val objectMapper = jacksonObjectMapper()
@@ -79,7 +102,8 @@ class ChatRoomSessionTests {
     // ==========================
     @Test
     fun shouldRemoveSessionForEveryRoom() {
-        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns
+            UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
         every { userRoomRepository.findUsersByRoomId(any()) } returns emptyList()
         every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
 
@@ -108,7 +132,8 @@ class ChatRoomSessionTests {
 
     @Test
     fun shouldNotRemoveRoomIfOtherUsersArePresentInRoom() {
-        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns
+            UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
         every { userRoomRepository.findUsersByRoomId(any()) } returns emptyList()
         every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
 
@@ -123,10 +148,11 @@ class ChatRoomSessionTests {
         every { session2.attributes } returns hashMapOf("userId" to UUID.randomUUID())
         every { session2.isOpen } returns true
         every { session2.sendMessage(any()) } just Runs
-        every { userRoomRepository.findUserRoomsByRoomId(any()) } returns listOf(
-            UserRoomEntity(UserRoomId(UUID.randomUUID(), roomId), RoomRole.MEMBER, RoomType.GROUP),
-            UserRoomEntity(UserRoomId(UUID.randomUUID(), roomId), RoomRole.MEMBER, RoomType.GROUP)
-        )
+        every { userRoomRepository.findUserRoomsByRoomId(any()) } returns
+            listOf(
+                UserRoomEntity(UserRoomId(UUID.randomUUID(), roomId), RoomRole.MEMBER, RoomType.GROUP),
+                UserRoomEntity(UserRoomId(UUID.randomUUID(), roomId), RoomRole.MEMBER, RoomType.GROUP),
+            )
         every { userService.getAllById(any()) } returns emptyList()
 
         chatService.joinRoom(roomId, session)
@@ -161,7 +187,8 @@ class ChatRoomSessionTests {
     // ==========================
     @Test
     fun shouldJoinRoom() {
-        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns
+            UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
         every { userRoomRepository.findUsersByRoomId(any()) } returns emptyList()
         every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
 
@@ -186,11 +213,13 @@ class ChatRoomSessionTests {
 
         every { session.attributes } returns hashMapOf("userId" to UUID.randomUUID())
         every { session.isOpen } returns false
-        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns
+            UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
         every { userRoomRepository.findUsersByRoomId(any()) } returns emptyList()
-        every { roomRepository.findById(roomId) } returns Optional.of(
-            RoomEntity(id = roomId, name = "r", type = RoomType.GROUP)
-        )
+        every { roomRepository.findById(roomId) } returns
+            Optional.of(
+                RoomEntity(id = roomId, name = "r", type = RoomType.GROUP),
+            )
 
         chatService.joinRoom(roomId, session)
 
@@ -211,11 +240,13 @@ class ChatRoomSessionTests {
         every { existingSession.isOpen } returns false
         every { joiningSession.isOpen } returns true
 
-        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns
+            UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
         every { userRoomRepository.findUsersByRoomId(any()) } returns emptyList()
-        every { roomRepository.findById(roomId) } returns Optional.of(
-            RoomEntity(id = roomId, name = "r", type = RoomType.GROUP)
-        )
+        every { roomRepository.findById(roomId) } returns
+            Optional.of(
+                RoomEntity(id = roomId, name = "r", type = RoomType.GROUP),
+            )
         every { joiningSession.sendMessage(any()) } just Runs
         every { userRoomRepository.findUserRoomsByRoomId(any()) } returns listOf()
         every { userService.getAllById(any()) } returns emptyList()
@@ -232,9 +263,10 @@ class ChatRoomSessionTests {
         val session = mockk<WebSocketSession>()
         every { session.attributes } returns emptyMap()
 
-        val exception = assertThrows<ApiException> {
-            chatService.joinRoom(UUID.randomUUID(), session)
-        }
+        val exception =
+            assertThrows<ApiException> {
+                chatService.joinRoom(UUID.randomUUID(), session)
+            }
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.status)
         assertEquals(ErrorMessages.INVALID_TOKEN, exception.message)
@@ -246,9 +278,10 @@ class ChatRoomSessionTests {
         every { session.attributes } returns hashMapOf("userId" to UUID.randomUUID())
         every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } answers { null }
 
-        val exception = assertThrows<ApiException> {
-            chatService.joinRoom(UUID.randomUUID(), session)
-        }
+        val exception =
+            assertThrows<ApiException> {
+                chatService.joinRoom(UUID.randomUUID(), session)
+            }
 
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
         assertEquals(ErrorMessages.ROOM_NOT_FOUND, exception.message)
@@ -258,24 +291,26 @@ class ChatRoomSessionTests {
     fun shouldFailToJoinRoomIfRoomDoesNotExistInDatabase() {
         val session = mockk<WebSocketSession>()
         every { session.attributes } returns hashMapOf("userId" to UUID.randomUUID())
-        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns
+            UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
         every { roomRepository.findById(any()) } returns Optional.empty()
 
-        val exception = assertThrows<ApiException> {
-            chatService.joinRoom(UUID.randomUUID(), session)
-        }
+        val exception =
+            assertThrows<ApiException> {
+                chatService.joinRoom(UUID.randomUUID(), session)
+            }
 
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
         assertEquals(ErrorMessages.ROOM_NOT_FOUND, exception.message)
     }
-
 
     // ==========================
     // Room leave
     // ==========================
     @Test
     fun shouldLeaveRoom() {
-        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns
+            UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
         every { userRoomRepository.findUsersByRoomId(any()) } returns emptyList()
         every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
         every { presenceHandler.isUserOnline(any()) } returns false
@@ -337,7 +372,8 @@ class ChatRoomSessionTests {
 
     @Test
     fun shouldLeaveRoomOnlyFromOneSessionIfMultipleSessionsExist() {
-        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
+        every { userRoomRepository.findByIdUserIdAndIdRoomId(any(), any()) } returns
+            UserRoomEntity(UserRoomId(UUID.randomUUID(), UUID.randomUUID()), RoomRole.MEMBER, RoomType.GROUP)
         every { userRoomRepository.findUsersByRoomId(any()) } returns emptyList()
         every { roomRepository.findById(any()) } returns Optional.of(RoomEntity(id = UUID.randomUUID(), name = "r", type = RoomType.GROUP))
         every { presenceHandler.isUserOnline(any()) } returns false
@@ -442,10 +478,11 @@ class ChatRoomSessionTests {
         val userId = UUID.randomUUID()
 
         every { userRoomRepository.findAllIdRoomIdsByIdUserId(userId) } returns listOf(roomId)
+        every { eventPublisher.publishEvent(any<RoomPresenceEvent>()) } just Runs
 
         chatService.notifyRoomPresence(userId, true)
 
-        verify(exactly = 1) { redisTemplate.convertAndSend("room:$roomId", any<String>()) }
+        verify(exactly = 1) { eventPublisher.publishEvent(any<RoomPresenceEvent>()) }
     }
 
     @Test
@@ -455,10 +492,10 @@ class ChatRoomSessionTests {
         val userId = UUID.randomUUID()
 
         every { userRoomRepository.findAllIdRoomIdsByIdUserId(userId) } returns listOf(roomId1, roomId2)
+        every { eventPublisher.publishEvent(any<RoomPresenceEvent>()) } just Runs
 
         chatService.notifyRoomPresence(userId, false)
 
-        verify(exactly = 1) { redisTemplate.convertAndSend("room:$roomId1", any<String>()) }
-        verify(exactly = 1) { redisTemplate.convertAndSend("room:$roomId2", any<String>()) }
+        verify(exactly = 2) { eventPublisher.publishEvent(any<RoomPresenceEvent>()) }
     }
 }

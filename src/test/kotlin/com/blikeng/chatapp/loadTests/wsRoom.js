@@ -1,7 +1,7 @@
 import http from 'k6/http';
 import ws from 'k6/ws';
-import { check, sleep } from 'k6';
-import { BASE, WS_URL, jsonParams, makeOptions } from './lib.js';
+import {check, sleep} from 'k6';
+import {BASE, jsonParams, makeOptions, WS_URL} from './lib.js';
 
 const COOKIES_FILE = __ENV.COOKIES_FILE;
 if (!COOKIES_FILE) throw new Error('COOKIES_FILE is required — run auth.js first');

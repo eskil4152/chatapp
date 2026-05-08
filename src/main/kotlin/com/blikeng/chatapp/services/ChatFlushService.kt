@@ -10,8 +10,9 @@ import org.springframework.transaction.annotation.Transactional
 // Used by the RabbitMQ flush consumer during asynchronous message persistence.
 // ==========================
 @Service
-class ChatFlushService(private val chatRepository: ChatRepository) {
-
+class ChatFlushService(
+    private val chatRepository: ChatRepository,
+) {
     @Transactional
     fun saveBatch(batch: List<ChatEntity>) {
         chatRepository.saveAll(batch)

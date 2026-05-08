@@ -3,24 +3,24 @@ package com.blikeng.chatapp.securityTests.auth
 import com.blikeng.chatapp.security.auth.JwtAuthFilter
 import com.blikeng.chatapp.security.auth.JwtService
 import com.blikeng.chatapp.services.UserRevocationService
-import org.springframework.core.env.Environment
 import io.mockk.Called
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import jakarta.servlet.http.Cookie
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.core.env.Environment
 import org.springframework.mock.web.MockFilterChain
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
-import java.util.*
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNotNull
-import org.junit.jupiter.api.Assertions.assertNull
+import java.util.UUID
 
 class JwtAuthFilterTests {
     // ==========================
@@ -83,11 +83,12 @@ class JwtAuthFilterTests {
     @Test
     fun shouldSetAuthenticationWhenTokenIsValid() {
         val userId = UUID.randomUUID()
-        every { jwtService.validateToken("good") } returns JwtService.JwtPrincipal(
-            username = "u",
-            userId = userId,
-            role = "ADMIN"
-        )
+        every { jwtService.validateToken("good") } returns
+            JwtService.JwtPrincipal(
+                username = "u",
+                userId = userId,
+                role = "ADMIN",
+            )
         every { userRevocationService.isRevoked(userId) } returns false
         every { userRevocationService.isBanned(userId) } returns false
 
@@ -156,11 +157,12 @@ class JwtAuthFilterTests {
     @Test
     fun shouldNotAuthenticateRevokedUser() {
         val userId = UUID.randomUUID()
-        every { jwtService.validateToken("good") } returns JwtService.JwtPrincipal(
-            username = "u",
-            userId = userId,
-            role = "USER"
-        )
+        every { jwtService.validateToken("good") } returns
+            JwtService.JwtPrincipal(
+                username = "u",
+                userId = userId,
+                role = "USER",
+            )
         every { userRevocationService.isRevoked(userId) } returns true
 
         val req = MockHttpServletRequest()
@@ -177,11 +179,12 @@ class JwtAuthFilterTests {
     @Test
     fun shouldNotAuthenticateBannedUser() {
         val userId = UUID.randomUUID()
-        every { jwtService.validateToken("good") } returns JwtService.JwtPrincipal(
-            username = "u",
-            userId = userId,
-            role = "USER"
-        )
+        every { jwtService.validateToken("good") } returns
+            JwtService.JwtPrincipal(
+                username = "u",
+                userId = userId,
+                role = "USER",
+            )
         every { userRevocationService.isRevoked(userId) } returns false
         every { userRevocationService.isBanned(userId) } returns true
         every { environment.activeProfiles } returns arrayOf("test")

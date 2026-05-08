@@ -1,6 +1,6 @@
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "DISABLED" ]
     paths-ignore:
       - "README.md"
       - "docs/**"

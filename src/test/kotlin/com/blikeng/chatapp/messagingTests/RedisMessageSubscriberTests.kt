@@ -2,18 +2,22 @@ package com.blikeng.chatapp.messagingTests
 
 import com.blikeng.chatapp.messaging.redis.LocalBroadcaster
 import com.blikeng.chatapp.messaging.redis.RedisMessageSubscriber
-import io.mockk.*
+import io.mockk.Runs
+import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.just
+import io.mockk.mockk
+import io.mockk.verify
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.data.redis.connection.Message
 import org.springframework.data.redis.connection.MessageListener
 import org.springframework.data.redis.listener.PatternTopic
 import org.springframework.data.redis.listener.RedisMessageListenerContainer
-import java.util.*
-import org.junit.jupiter.api.Assertions.assertEquals
+import java.util.UUID
 
 @ExtendWith(MockKExtension::class)
 class RedisMessageSubscriberTests {
@@ -25,6 +29,7 @@ class RedisMessageSubscriberTests {
     // ==========================
 
     @MockK lateinit var localBroadcaster: LocalBroadcaster
+
     @MockK lateinit var container: RedisMessageListenerContainer
 
     @InjectMockKs lateinit var subscriber: RedisMessageSubscriber

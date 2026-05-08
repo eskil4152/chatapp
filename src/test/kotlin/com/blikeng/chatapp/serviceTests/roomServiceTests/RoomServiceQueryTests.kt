@@ -1,6 +1,10 @@
 package com.blikeng.chatapp.serviceTests.roomServiceTests
 
-import com.blikeng.chatapp.entities.*
+import com.blikeng.chatapp.entities.RoomRole
+import com.blikeng.chatapp.entities.RoomType
+import com.blikeng.chatapp.entities.UserEntity
+import com.blikeng.chatapp.entities.UserRoomEntity
+import com.blikeng.chatapp.entities.UserRoomId
 import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
@@ -20,6 +24,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.redis.core.RedisTemplate
@@ -27,8 +32,7 @@ import org.springframework.data.redis.core.ValueOperations
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
-import java.util.*
-import org.junit.jupiter.api.assertThrows
+import java.util.UUID
 
 @ExtendWith(MockKExtension::class)
 class RoomServiceQueryTests {
@@ -43,13 +47,21 @@ class RoomServiceQueryTests {
     // ==========================
 
     @InjectMockKs lateinit var roomService: RoomService
+
     @MockK private lateinit var roomRepository: RoomRepository
+
     @MockK private lateinit var userService: UserService
+
     @MockK private lateinit var userRoomRepository: UserRoomRepository
+
     @MockK private lateinit var friendService: FriendService
+
     @MockK private lateinit var bannedUserService: BannedUserService
+
     @RelaxedMockK private lateinit var eventPublisher: ApplicationEventPublisher
+
     @RelaxedMockK private lateinit var redisTemplate: RedisTemplate<String, String>
+
     @RelaxedMockK private lateinit var objectMapper: ObjectMapper
 
     @BeforeEach
@@ -60,7 +72,9 @@ class RoomServiceQueryTests {
     }
 
     @AfterEach
-    fun clearSecurity() { SecurityContextHolder.clearContext() }
+    fun clearSecurity() {
+        SecurityContextHolder.clearContext()
+    }
 
     @Test
     fun shouldGetAllUsersInRoom() {
@@ -73,13 +87,14 @@ class RoomServiceQueryTests {
 
         every { userService.getUserById(userId) } returns UserEntity(id = userId, username = "requester", password = "")
         every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns
-                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.MODERATOR, type = RoomType.GROUP)
+            UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.MODERATOR, type = RoomType.GROUP)
 
         val memberRoom = UserRoomEntity(id = UserRoomId(memberId, roomId), role = RoomRole.MEMBER, type = RoomType.GROUP)
         every { userRoomRepository.findUserRoomsByRoomId(roomId) } returns listOf(memberRoom)
-        every { userService.getAllById(listOf(memberId)) } returns listOf(
-            UserEntity(id = memberId, username = "member", password = "")
-        )
+        every { userService.getAllById(listOf(memberId)) } returns
+            listOf(
+                UserEntity(id = memberId, username = "member", password = ""),
+            )
 
         val result = roomService.getAllUsersInRoom(roomId.toString())
 
@@ -100,13 +115,14 @@ class RoomServiceQueryTests {
 
         every { userService.getUserById(userId) } returns UserEntity(id = userId, username = "requester", password = "")
         every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns
-                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.MODERATOR, type = RoomType.GROUP)
+            UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.MODERATOR, type = RoomType.GROUP)
 
         val memberRoom = UserRoomEntity(id = UserRoomId(mappedUserId, roomId), role = RoomRole.MEMBER, type = RoomType.GROUP)
         every { userRoomRepository.findUserRoomsByRoomId(roomId) } returns listOf(memberRoom)
-        every { userService.getAllById(listOf(mappedUserId)) } returns listOf(
-            UserEntity(id = unmappedUserId, username = "ghost", password = "")
-        )
+        every { userService.getAllById(listOf(mappedUserId)) } returns
+            listOf(
+                UserEntity(id = unmappedUserId, username = "ghost", password = ""),
+            )
 
         val result = roomService.getAllUsersInRoom(roomId.toString())
 
@@ -150,7 +166,7 @@ class RoomServiceQueryTests {
 
         every { userService.getUserById(userId) } returns UserEntity(username = "u", password = "")
         every { userRoomRepository.findByIdUserIdAndIdRoomId(userId, roomId) } returns
-                UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.MEMBER, type = RoomType.GROUP)
+            UserRoomEntity(id = UserRoomId(userId, roomId), role = RoomRole.MEMBER, type = RoomType.GROUP)
 
         val exception = assertThrows<ApiException> { roomService.getAllUsersInRoom(roomId.toString()) }
         assertEquals(HttpStatus.FORBIDDEN, exception.status)

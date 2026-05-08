@@ -13,5 +13,5 @@ class BannedUser(
     val userId: UUID,
     val bannedBy: UUID,
     val bannedAt: Instant = Instant.now(),
-    val reason: String? = null
+    val reason: String? = null,
 )

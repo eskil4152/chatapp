@@ -1,7 +1,7 @@
 package com.blikeng.chatapp.securityTests.ratelimit
 
 import com.blikeng.chatapp.security.ratelimit.RateLimitInterceptor
-import com.blikeng.chatapp.security.ratelimit.RateLimitService
+import com.blikeng.chatapp.security.ratelimit.RateLimitingService
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -20,13 +20,12 @@ import org.junit.jupiter.api.Test
 // - Bypass of rate limiting for non-API endpoints
 // ==========================
 class RateLimitInterceptorTests {
-    private fun interceptor(rateLimitService: RateLimitService) =
-        RateLimitInterceptor(rateLimitService, 5, 10, 3, 3, 60)
+    private fun interceptor(rateLimitingService: RateLimitingService) = RateLimitInterceptor(rateLimitingService, 5, 10, 3, 3, 60)
 
     @Test
     fun shouldAllowLoginRequestWhenWithinLimit() {
-        val rateLimitService = mockk<RateLimitService>()
-        val interceptor = interceptor(rateLimitService)
+        val rateLimitingService = mockk<RateLimitingService>()
+        val interceptor = interceptor(rateLimitingService)
 
         val request = mockk<HttpServletRequest>()
         val response = mockk<HttpServletResponse>(relaxed = true)
@@ -34,7 +33,7 @@ class RateLimitInterceptorTests {
         every { request.remoteAddr } returns "127.0.0.1"
         every { request.requestURI } returns "/api/login"
         every {
-            rateLimitService.tryConsume("login:127.0.0.1", 5, any())
+            rateLimitingService.tryConsume("login:127.0.0.1", 5, any())
         } returns true
 
         val allowed = interceptor.preHandle(request, response, Any())
@@ -44,8 +43,8 @@ class RateLimitInterceptorTests {
 
     @Test
     fun shouldRejectLoginRequestWhenOverLimit() {
-        val rateLimitService = mockk<RateLimitService>()
-        val interceptor = interceptor(rateLimitService)
+        val rateLimitingService = mockk<RateLimitingService>()
+        val interceptor = interceptor(rateLimitingService)
 
         val request = mockk<HttpServletRequest>()
         val response = mockk<HttpServletResponse>(relaxed = true)
@@ -53,7 +52,7 @@ class RateLimitInterceptorTests {
         every { request.remoteAddr } returns "127.0.0.1"
         every { request.requestURI } returns "/api/login"
         every {
-            rateLimitService.tryConsume("login:127.0.0.1", 5, any())
+            rateLimitingService.tryConsume("login:127.0.0.1", 5, any())
         } returns false
 
         val allowed = interceptor.preHandle(request, response, Any())
@@ -63,8 +62,8 @@ class RateLimitInterceptorTests {
 
     @Test
     fun shouldUseRegisterLimitForRegisterPath() {
-        val rateLimitService = mockk<RateLimitService>()
-        val interceptor = interceptor(rateLimitService)
+        val rateLimitingService = mockk<RateLimitingService>()
+        val interceptor = interceptor(rateLimitingService)
 
         val request = mockk<HttpServletRequest>()
         val response = mockk<HttpServletResponse>(relaxed = true)
@@ -72,7 +71,7 @@ class RateLimitInterceptorTests {
         every { request.remoteAddr } returns "127.0.0.1"
         every { request.requestURI } returns "/api/register"
         every {
-            rateLimitService.tryConsume("register:127.0.0.1", 10, any())
+            rateLimitingService.tryConsume("register:127.0.0.1", 10, any())
         } returns true
 
         val allowed = interceptor.preHandle(request, response, Any())
@@ -82,8 +81,8 @@ class RateLimitInterceptorTests {
 
     @Test
     fun shouldUseUserLimitForUserPath() {
-        val rateLimitService = mockk<RateLimitService>()
-        val interceptor = interceptor(rateLimitService)
+        val rateLimitingService = mockk<RateLimitingService>()
+        val interceptor = interceptor(rateLimitingService)
 
         val request = mockk<HttpServletRequest>()
         val response = mockk<HttpServletResponse>(relaxed = true)
@@ -91,7 +90,7 @@ class RateLimitInterceptorTests {
         every { request.remoteAddr } returns "127.0.0.1"
         every { request.requestURI } returns "/api/user/edit"
         every {
-            rateLimitService.tryConsume("editUser:127.0.0.1", 3, any())
+            rateLimitingService.tryConsume("editUser:127.0.0.1", 3, any())
         } returns true
 
         val allowed = interceptor.preHandle(request, response, Any())
@@ -101,8 +100,8 @@ class RateLimitInterceptorTests {
 
     @Test
     fun shouldUsePasswordLimitForPasswordPath() {
-        val rateLimitService = mockk<RateLimitService>()
-        val interceptor = interceptor(rateLimitService)
+        val rateLimitingService = mockk<RateLimitingService>()
+        val interceptor = interceptor(rateLimitingService)
 
         val request = mockk<HttpServletRequest>()
         val response = mockk<HttpServletResponse>(relaxed = true)
@@ -110,7 +109,7 @@ class RateLimitInterceptorTests {
         every { request.remoteAddr } returns "127.0.0.1"
         every { request.requestURI } returns "/api/user/edit/password"
         every {
-            rateLimitService.tryConsume("editPassword:127.0.0.1", 3, any())
+            rateLimitingService.tryConsume("editPassword:127.0.0.1", 3, any())
         } returns true
 
         val allowed = interceptor.preHandle(request, response, Any())
@@ -120,8 +119,8 @@ class RateLimitInterceptorTests {
 
     @Test
     fun shouldUseFallbackLimitForOtherPaths() {
-        val rateLimitService = mockk<RateLimitService>()
-        val interceptor = interceptor(rateLimitService)
+        val rateLimitingService = mockk<RateLimitingService>()
+        val interceptor = interceptor(rateLimitingService)
 
         val request = mockk<HttpServletRequest>()
         val response = mockk<HttpServletResponse>(relaxed = true)
@@ -129,7 +128,7 @@ class RateLimitInterceptorTests {
         every { request.remoteAddr } returns "127.0.0.1"
         every { request.requestURI } returns "/api/rooms"
         every {
-            rateLimitService.tryConsume("others:127.0.0.1", 60, any())
+            rateLimitingService.tryConsume("others:127.0.0.1", 60, any())
         } returns true
 
         val allowed = interceptor.preHandle(request, response, Any())
@@ -139,8 +138,8 @@ class RateLimitInterceptorTests {
 
     @Test
     fun shouldProceedWithUnknownIfUnknownIP() {
-        val rateLimitService = mockk<RateLimitService>()
-        val interceptor = interceptor(rateLimitService)
+        val rateLimitingService = mockk<RateLimitingService>()
+        val interceptor = interceptor(rateLimitingService)
 
         val request = mockk<HttpServletRequest>()
         val response = mockk<HttpServletResponse>(relaxed = true)
@@ -148,7 +147,7 @@ class RateLimitInterceptorTests {
         every { request.remoteAddr } returns null
         every { request.requestURI } returns "/api/rooms"
         every {
-            rateLimitService.tryConsume("others:unknown", 60, any())
+            rateLimitingService.tryConsume("others:unknown", 60, any())
         } returns true
 
         val allowed = interceptor.preHandle(request, response, Any())
@@ -158,8 +157,8 @@ class RateLimitInterceptorTests {
 
     @Test
     fun shouldAllowNonApiPathsWithoutRateLimit() {
-        val rateLimitService = mockk<RateLimitService>()
-        val interceptor = interceptor(rateLimitService)
+        val rateLimitingService = mockk<RateLimitingService>()
+        val interceptor = interceptor(rateLimitingService)
 
         val request = mockk<HttpServletRequest>()
         val response = mockk<HttpServletResponse>(relaxed = true)
@@ -171,6 +170,6 @@ class RateLimitInterceptorTests {
 
         assertTrue(allowed)
 
-        verify(exactly = 0) { rateLimitService.tryConsume(any(), any(), any()) }
+        verify(exactly = 0) { rateLimitingService.tryConsume(any(), any(), any()) }
     }
 }

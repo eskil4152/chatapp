@@ -1,6 +1,6 @@
 import http from 'k6/http';
-import { check } from 'k6';
-import { BASE, jsonParams, getAuthCookie } from './lib.js';
+import {check} from 'k6';
+import {BASE, getAuthCookie, jsonParams} from './lib.js';
 
 // Logs in all seeded users once and saves their auth cookies to results/cookies.json.
 // Run after seed.js. Requires server started with --spring.profiles.active=load

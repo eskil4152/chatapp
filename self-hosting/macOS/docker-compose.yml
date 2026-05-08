@@ -1,0 +1,68 @@
+services:
+  app:
+    image: ghcr.io/eskil4152/chatapp:latest
+    container_name: chatapp
+    restart: unless-stopped
+    env_file:
+      - .env
+    networks:
+      - chatapp-net
+    ports:
+      - "5050:5050"
+      - "8081:8081"
+    volumes:
+      - ./logs:/logs
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: chatapp-prometheus
+    restart: unless-stopped
+    networks:
+      - chatapp-net
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: chatapp-grafana
+    restart: unless-stopped
+    networks:
+      - chatapp-net
+    ports:
+      - "3001:3000"
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    pid: host
+    networks:
+      - chatapp-net
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/rootfs
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  chatapp-net:
+    driver: bridge

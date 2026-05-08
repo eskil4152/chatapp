@@ -1,5 +1,5 @@
 package com.blikeng.chatapp.dtos
 
-data class UsernameDTO (
+data class UsernameDTO(
     val username: String,
 )

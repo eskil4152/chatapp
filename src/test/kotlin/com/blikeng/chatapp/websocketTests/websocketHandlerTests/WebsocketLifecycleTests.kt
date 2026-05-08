@@ -5,20 +5,24 @@ import com.blikeng.chatapp.services.ChatService
 import com.blikeng.chatapp.websocket.ChatWebSocketHandler
 import com.blikeng.chatapp.websocket.SessionRegistry
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import io.mockk.*
+import io.mockk.Runs
+import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.just
+import io.mockk.mockk
+import io.mockk.verify
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.http.HttpStatus
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.WebSocketSession
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-import org.junit.jupiter.api.assertThrows
-import org.junit.jupiter.api.Assertions.assertEquals
 
 @ExtendWith(MockKExtension::class)
 class WebsocketLifecycleTests {
@@ -28,8 +32,11 @@ class WebsocketLifecycleTests {
     // ==========================
 
     @MockK private lateinit var chatService: ChatService
+
     @MockK private lateinit var wsRateLimitService: WsRateLimitService
+
     @MockK private lateinit var sessionRegistry: SessionRegistry
+
     @MockK private lateinit var session: WebSocketSession
 
     private val objectMapper = jacksonObjectMapper()
@@ -63,9 +70,10 @@ class WebsocketLifecycleTests {
     fun connectionEstablishedShouldFail() {
         every { session.attributes } returns mutableMapOf("username" to "u")
 
-        val exception = assertThrows<ResponseStatusException> {
-            handler.afterConnectionEstablished(session)
-        }
+        val exception =
+            assertThrows<ResponseStatusException> {
+                handler.afterConnectionEstablished(session)
+            }
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.statusCode)
         assertEquals("No userID found", exception.reason)
@@ -96,9 +104,10 @@ class WebsocketLifecycleTests {
     fun connectionClosedShouldFail() {
         every { session.attributes } returns mutableMapOf("username" to "u")
 
-        val ex = assertThrows<ResponseStatusException> {
-            handler.afterConnectionClosed(session, CloseStatus.NORMAL)
-        }
+        val ex =
+            assertThrows<ResponseStatusException> {
+                handler.afterConnectionClosed(session, CloseStatus.NORMAL)
+            }
 
         assertEquals(HttpStatus.UNAUTHORIZED, ex.statusCode)
         assertEquals("No userID found", ex.reason)
@@ -115,10 +124,11 @@ class WebsocketLifecycleTests {
 
         every { session1.close(CloseStatus.GOING_AWAY) } just Runs
         every { session2.close(CloseStatus.GOING_AWAY) } just Runs
-        every { sessionRegistry.users } returns ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
-            put(UUID.randomUUID(), mutableSetOf(session1))
-            put(UUID.randomUUID(), mutableSetOf(session2))
-        }
+        every { sessionRegistry.users } returns
+            ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
+                put(UUID.randomUUID(), mutableSetOf(session1))
+                put(UUID.randomUUID(), mutableSetOf(session2))
+            }
 
         handler.shutdown()
 
@@ -135,9 +145,10 @@ class WebsocketLifecycleTests {
         every { session2.id } returns "s2"
         every { session1.close(CloseStatus.GOING_AWAY) } throws RuntimeException("boom")
         every { session2.close(CloseStatus.GOING_AWAY) } just Runs
-        every { sessionRegistry.users } returns ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
-            put(UUID.randomUUID(), mutableSetOf(session1, session2))
-        }
+        every { sessionRegistry.users } returns
+            ConcurrentHashMap<UUID, MutableSet<WebSocketSession>>().apply {
+                put(UUID.randomUUID(), mutableSetOf(session1, session2))
+            }
 
         handler.shutdown()
 

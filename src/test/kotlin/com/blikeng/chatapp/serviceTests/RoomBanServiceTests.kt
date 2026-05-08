@@ -4,19 +4,19 @@ import com.blikeng.chatapp.entities.RoomBan
 import com.blikeng.chatapp.entities.RoomBanId
 import com.blikeng.chatapp.repositories.RoomBanRepository
 import com.blikeng.chatapp.services.BannedUserService
+import io.mockk.Runs
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.just
-import io.mockk.Runs
 import io.mockk.verify
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.extension.ExtendWith
-import java.util.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
+import java.util.UUID
 
 @ExtendWith(MockKExtension::class)
 class RoomBanServiceTests {
@@ -78,10 +78,11 @@ class RoomBanServiceTests {
     @Test
     fun shouldGetBannedUserIds() {
         val roomId = UUID.randomUUID()
-        val roomBans: List<RoomBan> = listOf(
-            RoomBan(RoomBanId(UUID.randomUUID(), roomId)),
-            RoomBan(RoomBanId(UUID.randomUUID(), roomId))
-        )
+        val roomBans: List<RoomBan> =
+            listOf(
+                RoomBan(RoomBanId(UUID.randomUUID(), roomId)),
+                RoomBan(RoomBanId(UUID.randomUUID(), roomId)),
+            )
 
         every { roomBanRepository.findAllByIdRoomId(roomId) } returns roomBans
 

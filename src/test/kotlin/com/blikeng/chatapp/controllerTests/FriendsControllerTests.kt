@@ -6,7 +6,7 @@ import com.blikeng.chatapp.dtos.friends.FriendDTO
 import com.blikeng.chatapp.errors.InvalidUserException
 import com.blikeng.chatapp.errors.UserNotFoundException
 import com.blikeng.chatapp.security.auth.JwtAuthFilter
-import com.blikeng.chatapp.security.ratelimit.RateLimitService
+import com.blikeng.chatapp.security.ratelimit.RateLimitingService
 import com.blikeng.chatapp.services.FriendService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
@@ -30,9 +30,9 @@ import java.util.UUID
     excludeFilters = [
         ComponentScan.Filter(
             type = FilterType.ASSIGNABLE_TYPE,
-            classes = [JwtAuthFilter::class]
-        )
-    ]
+            classes = [JwtAuthFilter::class],
+        ),
+    ],
 )
 @AutoConfigureMockMvc(addFilters = false)
 class FriendsControllerTests {
@@ -50,55 +50,57 @@ class FriendsControllerTests {
     @Autowired private lateinit var mockMvc: MockMvc
 
     @MockkBean
-    private lateinit var rateLimitService: RateLimitService
+    private lateinit var rateLimitingService: RateLimitingService
 
     @BeforeEach
     fun setup() {
-        every { rateLimitService.tryConsume(any(), any(), any()) } returns true
+        every { rateLimitingService.tryConsume(any(), any(), any()) } returns true
     }
 
-    val friend = FriendDTO(
-        UUID.randomUUID(),
-        "username",
-        "bio",
-        "email",
-        "full name",
-        "",
-        Date.from(Instant.now()),
-        Instant.now(),
-    )
+    val friend =
+        FriendDTO(
+            UUID.randomUUID(),
+            "username",
+            "bio",
+            "email",
+            "full name",
+            "",
+            Date.from(Instant.now()),
+            Instant.now(),
+        )
 
     @Test
-    fun shouldGetFriends(){
+    fun shouldGetFriends() {
         every { friendService.getFriends() } returns listOf(friend)
 
-        mockMvc.get("/api/friends") {
-            contentType = MediaType.APPLICATION_JSON
-        }
-            .andExpect {
+        mockMvc
+            .get("/api/friends") {
+                contentType = MediaType.APPLICATION_JSON
+            }.andExpect {
                 status { isOk() }
                 content { string(org.hamcrest.Matchers.containsString("username")) }
             }
     }
 
     @Test
-    fun shouldRemoveFriends(){
+    fun shouldRemoveFriends() {
         every { friendService.removeFriend(UserIdDTO(friend.userId.toString())) } returns Unit
 
-        mockMvc.delete("/api/friends/remove") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"userId": "${friend.userId}"}"""
-        }.andExpect { status { isOk() } }
+        mockMvc
+            .delete("/api/friends/remove") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"userId": "${friend.userId}"}"""
+            }.andExpect { status { isOk() } }
     }
 
     @Test
-    fun shouldGetFriendsInfo(){
+    fun shouldGetFriendsInfo() {
         every { friendService.getFriendInfo(friend.userId.toString()) } returns friend
 
-        mockMvc.get("/api/friends/${friend.userId}") {
-            contentType = MediaType.APPLICATION_JSON
-        }
-            .andExpect {
+        mockMvc
+            .get("/api/friends/${friend.userId}") {
+                contentType = MediaType.APPLICATION_JSON
+            }.andExpect {
                 status { isOk() }
                 jsonPath("$.username") {
                     value("username")
@@ -113,22 +115,22 @@ class FriendsControllerTests {
     // HTTP error mapping
     // ==========================
     @Test
-    fun shouldGetBadRequestFromInvalidUser(){
+    fun shouldGetBadRequestFromInvalidUser() {
         every { friendService.getFriends() } throws InvalidUserException()
 
-        mockMvc.get("/api/friends") {
-            contentType = MediaType.APPLICATION_JSON
-        }
-            .andExpect { status { isBadRequest() } }
+        mockMvc
+            .get("/api/friends") {
+                contentType = MediaType.APPLICATION_JSON
+            }.andExpect { status { isBadRequest() } }
     }
 
     @Test
-    fun shouldGetNotFoundUser(){
+    fun shouldGetNotFoundUser() {
         val fakeId = UUID.randomUUID()
         every { friendService.getFriendInfo(fakeId.toString()) } throws UserNotFoundException()
 
-        mockMvc.get("/api/friends/$fakeId")
+        mockMvc
+            .get("/api/friends/$fakeId")
             .andExpect { status { isNotFound() } }
     }
-
 }

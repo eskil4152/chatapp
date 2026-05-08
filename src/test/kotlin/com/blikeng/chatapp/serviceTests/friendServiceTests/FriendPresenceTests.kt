@@ -9,19 +9,23 @@ import com.blikeng.chatapp.repositories.UserRepository
 import com.blikeng.chatapp.services.FriendService
 import com.blikeng.chatapp.services.UserService
 import com.fasterxml.jackson.databind.ObjectMapper
-import io.mockk.*
+import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.mockk
+import io.mockk.slot
+import io.mockk.verify
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.core.ValueOperations
-import org.junit.jupiter.api.Assertions.assertEquals
 
 @ExtendWith(MockKExtension::class)
 class FriendPresenceTests {
@@ -34,10 +38,17 @@ class FriendPresenceTests {
     // ==========================
 
     @InjectMockKs private lateinit var friendService: FriendService
+
     @MockK private lateinit var friendsRepository: FriendsRepository
+
     @MockK private lateinit var userService: UserService
+
     @MockK private lateinit var userRepository: UserRepository
+
     @MockK private lateinit var presenceHandler: PresenceHandler
+
+    @MockK private lateinit var eventPublisher: ApplicationEventPublisher
+
     @RelaxedMockK private lateinit var redisTemplate: RedisTemplate<String, String>
     private val objectMapper = ObjectMapper()
 

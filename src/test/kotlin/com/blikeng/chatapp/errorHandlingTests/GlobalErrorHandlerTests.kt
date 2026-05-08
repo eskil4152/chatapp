@@ -3,7 +3,7 @@ package com.blikeng.chatapp.errorHandlingTests
 import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.errors.GlobalExceptionHandler
 import com.blikeng.chatapp.security.auth.JwtAuthFilter
-import com.blikeng.chatapp.security.ratelimit.RateLimitService
+import com.blikeng.chatapp.security.ratelimit.RateLimitingService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
 import org.junit.jupiter.api.BeforeEach
@@ -24,9 +24,9 @@ import org.springframework.web.bind.annotation.RestController
     excludeFilters = [
         ComponentScan.Filter(
             type = FilterType.ASSIGNABLE_TYPE,
-            classes = [JwtAuthFilter::class]
-        )
-    ]
+            classes = [JwtAuthFilter::class],
+        ),
+    ],
 )
 @Import(GlobalExceptionHandler::class)
 class GlobalErrorHandlerTests {
@@ -37,16 +37,17 @@ class GlobalErrorHandlerTests {
     lateinit var mockMvc: MockMvc
 
     @MockkBean
-    private lateinit var rateLimitService: RateLimitService
+    private lateinit var rateLimitingService: RateLimitingService
 
     @BeforeEach
     fun setup() {
-        every { rateLimitService.tryConsume(any(), any(), any()) } returns true
+        every { rateLimitingService.tryConsume(any(), any(), any()) } returns true
     }
 
     @Test
     fun shouldHandleApiException() {
-        mockMvc.get("/test/api-exception")
+        mockMvc
+            .get("/test/api-exception")
             .andExpect {
                 status { isBadRequest() }
                 content { string("Custom api error") }
@@ -55,7 +56,8 @@ class GlobalErrorHandlerTests {
 
     @Test
     fun shouldHandleUnknownException() {
-        mockMvc.get("/test/unknown-exception")
+        mockMvc
+            .get("/test/unknown-exception")
             .andExpect {
                 status { isInternalServerError() }
                 content { string("Unexpected error") }
@@ -65,16 +67,11 @@ class GlobalErrorHandlerTests {
 
 @RestController
 class TestExceptionController {
-
     @GetMapping("/test/api-exception")
-    fun throwApiException(): String {
-        throw TestApiException()
-    }
+    fun throwApiException(): String = throw TestApiException()
 
     @GetMapping("/test/unknown-exception")
-    fun throwUnknownException(): String {
-        throw RuntimeException("boom")
-    }
+    fun throwUnknownException(): String = throw RuntimeException("boom")
 }
 
 class TestApiException : ApiException(HttpStatus.BAD_REQUEST, "Custom api error")

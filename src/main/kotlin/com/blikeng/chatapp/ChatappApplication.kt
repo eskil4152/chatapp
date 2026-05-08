@@ -9,5 +9,5 @@ import org.springframework.scheduling.annotation.EnableScheduling
 class ChatappApplication
 
 fun main(args: Array<String>) {
-	runApplication<ChatappApplication>(*args)
+    runApplication<ChatappApplication>(*args)
 }

@@ -1,7 +1,7 @@
 import http from 'k6/http';
 import ws from 'k6/ws';
-import { check, sleep } from 'k6';
-import { BASE, WS_URL, jsonParams } from './lib.js';
+import {check, sleep} from 'k6';
+import {BASE, jsonParams, WS_URL} from './lib.js';
 
 // Mixed traffic simulation — splits 1000 VUs across realistic traffic patterns:
 //   400 → WS connections (connect + SYNC + JOIN + MESSAGE)  — spread across 20 rooms (~20 users/room)

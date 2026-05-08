@@ -10,8 +10,8 @@ import java.time.Instant
 import java.util.UUID
 
 interface UserBanRepository : JpaRepository<BannedUser, UUID> {
-
-    @Query("""
+    @Query(
+        """
         SELECT
             b.user_id        AS userId,
             u.username       AS username,
@@ -24,7 +24,9 @@ interface UserBanRepository : JpaRepository<BannedUser, UUID> {
         JOIN users u   ON u.id  = b.user_id
         JOIN users ban ON ban.id = b.banned_by
         ORDER BY b.banned_at DESC
-    """, nativeQuery = true)
+    """,
+        nativeQuery = true,
+    )
     fun findAllWithUsers(pageable: Pageable): Page<BanProjection>
 }
 

@@ -1,6 +1,7 @@
 package com.blikeng.chatapp.serviceTests.roomServiceTests
 
-import com.blikeng.chatapp.entities.*
+import com.blikeng.chatapp.entities.RoomRole
+import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.errors.ApiException
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserRoomRepository
@@ -9,13 +10,20 @@ import com.blikeng.chatapp.services.FriendService
 import com.blikeng.chatapp.services.RoomService
 import com.blikeng.chatapp.services.UserService
 import com.fasterxml.jackson.databind.ObjectMapper
-import io.mockk.*
+import io.mockk.Runs
+import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.just
+import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.redis.core.RedisTemplate
@@ -23,10 +31,7 @@ import org.springframework.data.redis.core.ValueOperations
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
-import java.util.*
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.assertThrows
+import java.util.UUID
 
 @ExtendWith(MockKExtension::class)
 class RoomServiceMembershipTests {
@@ -38,16 +43,32 @@ class RoomServiceMembershipTests {
     // - Auth, membership, and UUID validation failure cases
     // ==========================
 
-    @InjectMockKs lateinit var roomService: RoomService
+    @InjectMockKs
+    lateinit var roomService: RoomService
 
-    @MockK private lateinit var roomRepository: RoomRepository
-    @MockK private lateinit var userService: UserService
-    @MockK private lateinit var userRoomRepository: UserRoomRepository
-    @MockK private lateinit var friendsService: FriendService
-    @MockK private lateinit var bannedUserService: BannedUserService
-    @RelaxedMockK private lateinit var eventPublisher: ApplicationEventPublisher
-    @RelaxedMockK private lateinit var redisTemplate: RedisTemplate<String, String>
-    @RelaxedMockK private lateinit var objectMapper: ObjectMapper
+    @MockK
+    private lateinit var roomRepository: RoomRepository
+
+    @MockK
+    private lateinit var userService: UserService
+
+    @MockK
+    private lateinit var userRoomRepository: UserRoomRepository
+
+    @MockK
+    private lateinit var friendsService: FriendService
+
+    @MockK
+    private lateinit var bannedUserService: BannedUserService
+
+    @RelaxedMockK
+    private lateinit var eventPublisher: ApplicationEventPublisher
+
+    @RelaxedMockK
+    private lateinit var redisTemplate: RedisTemplate<String, String>
+
+    @RelaxedMockK
+    private lateinit var objectMapper: ObjectMapper
 
     @BeforeEach
     fun setupCache() {
@@ -57,7 +78,9 @@ class RoomServiceMembershipTests {
     }
 
     @AfterEach
-    fun clearSecurity() { SecurityContextHolder.clearContext() }
+    fun clearSecurity() {
+        SecurityContextHolder.clearContext()
+    }
 
     // ==========================
     // Join room

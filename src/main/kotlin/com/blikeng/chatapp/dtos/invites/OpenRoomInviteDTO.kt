@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.dtos.invites
 
-data class OpenRoomInviteDTO (
+data class OpenRoomInviteDTO(
     val type: String,
     val roomId: String,
     val maxUsages: Int,

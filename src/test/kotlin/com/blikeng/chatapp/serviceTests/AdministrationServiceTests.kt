@@ -3,17 +3,14 @@ package com.blikeng.chatapp.serviceTests
 import com.blikeng.chatapp.dtos.UserIdDTO
 import com.blikeng.chatapp.dtos.administration.BanUserDTO
 import com.blikeng.chatapp.dtos.administration.UserRoleDTO
-import com.blikeng.chatapp.repositories.BanProjection
-import java.time.Duration
-import java.time.Instant
 import com.blikeng.chatapp.dtos.room.RoleAction
 import com.blikeng.chatapp.entities.BannedUser
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.errors.ApiException
+import com.blikeng.chatapp.repositories.BanProjection
 import com.blikeng.chatapp.repositories.RoomRepository
 import com.blikeng.chatapp.repositories.UserBanRepository
 import com.blikeng.chatapp.repositories.UserRepository
-import com.blikeng.chatapp.repositories.UserRoomRepository
 import com.blikeng.chatapp.security.UserRole
 import com.blikeng.chatapp.services.AdministrationService
 import com.blikeng.chatapp.services.UserRevocationService
@@ -21,26 +18,33 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
-import io.mockk.*
+import io.mockk.Runs
+import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.just
+import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
+import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.core.ValueOperations
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
-import java.util.*
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.assertThrows
-import org.springframework.context.ApplicationEventPublisher
-import org.springframework.data.redis.core.RedisTemplate
+import java.time.Duration
+import java.time.Instant
+import java.util.Optional
+import java.util.UUID
 
 @ExtendWith(MockKExtension::class)
 class AdministrationServiceTests {
@@ -54,18 +58,28 @@ class AdministrationServiceTests {
     // - getAllUserBans: returns paginated list and validates page/size parameters
     // ==========================
     @MockK private lateinit var userRepository: UserRepository
+
     @MockK private lateinit var userBanRepository: UserBanRepository
+
     @MockK private lateinit var userRevocationService: UserRevocationService
+
     @MockK private lateinit var roomRepository: RoomRepository
+
     @MockK private lateinit var redisTemplate: RedisTemplate<String, String>
+
     @MockK private lateinit var objectMapper: com.fasterxml.jackson.databind.ObjectMapper
+
     @RelaxedMockK private lateinit var eventPublisher: ApplicationEventPublisher
-    @MockK(relaxed = true) lateinit var meterRegistry: MeterRegistry
+
+    @MockK(relaxed = true)
+    lateinit var meterRegistry: MeterRegistry
 
     @InjectMockKs private lateinit var administrationService: AdministrationService
 
     @AfterEach
-    fun clearSecurity() { SecurityContextHolder.clearContext() }
+    fun clearSecurity() {
+        SecurityContextHolder.clearContext()
+    }
 
     private fun authenticateAs(userId: UUID) {
         SecurityContextHolder.getContext().authentication =
@@ -166,9 +180,10 @@ class AdministrationServiceTests {
         every { userRepository.findById(callerId) } returns Optional.of(caller)
         every { userRepository.findById(targetId) } returns Optional.of(target)
 
-        val exception = assertThrows<ApiException> {
-            administrationService.changeUserRole(UserRoleDTO(id = targetId.toString(), action = RoleAction.DEMOTE))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                administrationService.changeUserRole(UserRoleDTO(id = targetId.toString(), action = RoleAction.DEMOTE))
+            }
         assertEquals(HttpStatus.FORBIDDEN, exception.status)
     }
 
@@ -184,9 +199,10 @@ class AdministrationServiceTests {
         every { userRepository.findById(callerId) } returns Optional.of(caller)
         every { userRepository.findById(targetId) } returns Optional.of(target)
 
-        val exception = assertThrows<ApiException> {
-            administrationService.changeUserRole(UserRoleDTO(id = targetId.toString(), action = RoleAction.DEMOTE))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                administrationService.changeUserRole(UserRoleDTO(id = targetId.toString(), action = RoleAction.DEMOTE))
+            }
         assertEquals(HttpStatus.FORBIDDEN, exception.status)
     }
 
@@ -195,13 +211,15 @@ class AdministrationServiceTests {
         val callerId = UUID.randomUUID()
         authenticateAs(callerId)
 
-        every { userRepository.findById(callerId) } returns Optional.of(
-            UserEntity(id = callerId, username = "admin", password = "", role = UserRole.ADMIN)
-        )
+        every { userRepository.findById(callerId) } returns
+            Optional.of(
+                UserEntity(id = callerId, username = "admin", password = "", role = UserRole.ADMIN),
+            )
 
-        val exception = assertThrows<ApiException> {
-            administrationService.changeUserRole(UserRoleDTO(id = "not-a-uuid", action = RoleAction.PROMOTE))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                administrationService.changeUserRole(UserRoleDTO(id = "not-a-uuid", action = RoleAction.PROMOTE))
+            }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
@@ -211,14 +229,16 @@ class AdministrationServiceTests {
         val targetId = UUID.randomUUID()
         authenticateAs(callerId)
 
-        every { userRepository.findById(callerId) } returns Optional.of(
-            UserEntity(id = callerId, username = "admin", password = "", role = UserRole.ADMIN)
-        )
+        every { userRepository.findById(callerId) } returns
+            Optional.of(
+                UserEntity(id = callerId, username = "admin", password = "", role = UserRole.ADMIN),
+            )
         every { userRepository.findById(targetId) } returns Optional.empty()
 
-        val exception = assertThrows<ApiException> {
-            administrationService.changeUserRole(UserRoleDTO(id = targetId.toString(), action = RoleAction.PROMOTE))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                administrationService.changeUserRole(UserRoleDTO(id = targetId.toString(), action = RoleAction.PROMOTE))
+            }
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
@@ -229,9 +249,10 @@ class AdministrationServiceTests {
 
         every { userRepository.findById(callerId) } returns Optional.empty()
 
-        val exception = assertThrows<ApiException> {
-            administrationService.changeUserRole(UserRoleDTO(id = UUID.randomUUID().toString(), action = RoleAction.PROMOTE))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                administrationService.changeUserRole(UserRoleDTO(id = UUID.randomUUID().toString(), action = RoleAction.PROMOTE))
+            }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
@@ -295,9 +316,10 @@ class AdministrationServiceTests {
         every { userRepository.findById(targetId) } returns Optional.of(target)
         every { userBanRepository.existsById(targetId) } returns true
 
-        val exception = assertThrows<ApiException> {
-            administrationService.banUser(BanUserDTO(id = targetId.toString()))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                administrationService.banUser(BanUserDTO(id = targetId.toString()))
+            }
         assertEquals(HttpStatus.CONFLICT, exception.status)
     }
 
@@ -313,9 +335,10 @@ class AdministrationServiceTests {
         every { userRepository.findById(callerId) } returns Optional.of(caller)
         every { userRepository.findById(targetId) } returns Optional.of(target)
 
-        val exception = assertThrows<ApiException> {
-            administrationService.banUser(BanUserDTO(id = targetId.toString()))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                administrationService.banUser(BanUserDTO(id = targetId.toString()))
+            }
         assertEquals(HttpStatus.FORBIDDEN, exception.status)
     }
 
@@ -324,13 +347,15 @@ class AdministrationServiceTests {
         val callerId = UUID.randomUUID()
         authenticateAs(callerId)
 
-        every { userRepository.findById(callerId) } returns Optional.of(
-            UserEntity(id = callerId, username = "admin", password = "", role = UserRole.ADMIN)
-        )
+        every { userRepository.findById(callerId) } returns
+            Optional.of(
+                UserEntity(id = callerId, username = "admin", password = "", role = UserRole.ADMIN),
+            )
 
-        val exception = assertThrows<ApiException> {
-            administrationService.banUser(BanUserDTO(id = "not-a-uuid"))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                administrationService.banUser(BanUserDTO(id = "not-a-uuid"))
+            }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
@@ -340,14 +365,16 @@ class AdministrationServiceTests {
         val targetId = UUID.randomUUID()
         authenticateAs(callerId)
 
-        every { userRepository.findById(callerId) } returns Optional.of(
-            UserEntity(id = callerId, username = "admin", password = "", role = UserRole.ADMIN)
-        )
+        every { userRepository.findById(callerId) } returns
+            Optional.of(
+                UserEntity(id = callerId, username = "admin", password = "", role = UserRole.ADMIN),
+            )
         every { userRepository.findById(targetId) } returns Optional.empty()
 
-        val exception = assertThrows<ApiException> {
-            administrationService.banUser(BanUserDTO(id = targetId.toString()))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                administrationService.banUser(BanUserDTO(id = targetId.toString()))
+            }
         assertEquals(HttpStatus.NOT_FOUND, exception.status)
     }
 
@@ -358,9 +385,10 @@ class AdministrationServiceTests {
 
         every { userRepository.findById(callerId) } returns Optional.empty()
 
-        val exception = assertThrows<ApiException> {
-            administrationService.banUser(BanUserDTO(id = UUID.randomUUID().toString()))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                administrationService.banUser(BanUserDTO(id = UUID.randomUUID().toString()))
+            }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
@@ -416,14 +444,16 @@ class AdministrationServiceTests {
         val targetId = UUID.randomUUID()
         authenticateAs(callerId)
 
-        every { userRepository.findById(callerId) } returns Optional.of(
-            UserEntity(id = callerId, username = "admin", password = "", role = UserRole.ADMIN)
-        )
+        every { userRepository.findById(callerId) } returns
+            Optional.of(
+                UserEntity(id = callerId, username = "admin", password = "", role = UserRole.ADMIN),
+            )
         every { userBanRepository.findById(targetId) } returns Optional.empty()
 
-        val exception = assertThrows<ApiException> {
-            administrationService.unbanUser(UserIdDTO(userId = targetId.toString()))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                administrationService.unbanUser(UserIdDTO(userId = targetId.toString()))
+            }
         assertEquals(HttpStatus.FORBIDDEN, exception.status)
     }
 
@@ -442,9 +472,10 @@ class AdministrationServiceTests {
         every { userBanRepository.findById(targetId) } returns Optional.of(ban)
         every { userRepository.findById(bannerId) } returns Optional.of(banner)
 
-        val exception = assertThrows<ApiException> {
-            administrationService.unbanUser(UserIdDTO(userId = targetId.toString()))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                administrationService.unbanUser(UserIdDTO(userId = targetId.toString()))
+            }
         assertEquals(HttpStatus.FORBIDDEN, exception.status)
     }
 
@@ -453,13 +484,15 @@ class AdministrationServiceTests {
         val callerId = UUID.randomUUID()
         authenticateAs(callerId)
 
-        every { userRepository.findById(callerId) } returns Optional.of(
-            UserEntity(id = callerId, username = "admin", password = "", role = UserRole.ADMIN)
-        )
+        every { userRepository.findById(callerId) } returns
+            Optional.of(
+                UserEntity(id = callerId, username = "admin", password = "", role = UserRole.ADMIN),
+            )
 
-        val exception = assertThrows<ApiException> {
-            administrationService.unbanUser(UserIdDTO(userId = "not-a-uuid"))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                administrationService.unbanUser(UserIdDTO(userId = "not-a-uuid"))
+            }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
@@ -470,9 +503,10 @@ class AdministrationServiceTests {
 
         every { userRepository.findById(callerId) } returns Optional.empty()
 
-        val exception = assertThrows<ApiException> {
-            administrationService.unbanUser(UserIdDTO(userId = UUID.randomUUID().toString()))
-        }
+        val exception =
+            assertThrows<ApiException> {
+                administrationService.unbanUser(UserIdDTO(userId = UUID.randomUUID().toString()))
+            }
         assertEquals(HttpStatus.BAD_REQUEST, exception.status)
     }
 
@@ -484,9 +518,10 @@ class AdministrationServiceTests {
         val callerId = UUID.randomUUID()
         authenticateAs(callerId)
 
-        every { userRepository.findById(callerId) } returns Optional.of(
-            UserEntity(id = callerId, username = "admin", password = "", role = UserRole.ADMIN)
-        )
+        every { userRepository.findById(callerId) } returns
+            Optional.of(
+                UserEntity(id = callerId, username = "admin", password = "", role = UserRole.ADMIN),
+            )
         every { userBanRepository.findAllWithUsers(PageRequest.of(0, 25)) } returns PageImpl(emptyList())
 
         val result = administrationService.getAllUserBans(0, 25)
@@ -553,7 +588,7 @@ class AdministrationServiceTests {
             userRevocationService = userRevocationService,
             meterRegistry = registry,
             redisTemplate = redisTemplate,
-            objectMapper = jacksonObjectMapper()
+            objectMapper = jacksonObjectMapper(),
         )
 
     @Test
@@ -618,15 +653,27 @@ class AdministrationServiceTests {
     @Test
     fun shouldGroupHttpRequestsByUriAndMethod() {
         val registry = SimpleMeterRegistry()
-        Timer.builder("http.server.requests")
-            .tag("uri", "/api/rooms").tag("method", "GET").tag("status", "200")
-            .register(registry).record(Duration.ofMillis(50))
-        Timer.builder("http.server.requests")
-            .tag("uri", "/api/rooms").tag("method", "GET").tag("status", "404")
-            .register(registry).record(Duration.ofMillis(10))
-        Timer.builder("http.server.requests")
-            .tag("uri", "/api/users").tag("method", "POST").tag("status", "201")
-            .register(registry).record(Duration.ofMillis(30))
+        Timer
+            .builder("http.server.requests")
+            .tag("uri", "/api/rooms")
+            .tag("method", "GET")
+            .tag("status", "200")
+            .register(registry)
+            .record(Duration.ofMillis(50))
+        Timer
+            .builder("http.server.requests")
+            .tag("uri", "/api/rooms")
+            .tag("method", "GET")
+            .tag("status", "404")
+            .register(registry)
+            .record(Duration.ofMillis(10))
+        Timer
+            .builder("http.server.requests")
+            .tag("uri", "/api/users")
+            .tag("method", "POST")
+            .tag("status", "201")
+            .register(registry)
+            .record(Duration.ofMillis(30))
 
         val result = buildServiceWithRealObjectMapper(registry).getAdvancedSiteInfo()
 
@@ -681,9 +728,11 @@ class AdministrationServiceTests {
     @Test
     fun shouldDefaultUriAndMethodToUnknownWhenTagsMissing() {
         val registry = SimpleMeterRegistry()
-        Timer.builder("http.server.requests")
+        Timer
+            .builder("http.server.requests")
             .tag("status", "200")
-            .register(registry).record(Duration.ofMillis(10))
+            .register(registry)
+            .record(Duration.ofMillis(10))
 
         val result = buildServiceWithRealObjectMapper(registry).getAdvancedSiteInfo()
 
@@ -695,21 +744,31 @@ class AdministrationServiceTests {
     @Test
     fun shouldDefaultStatusToZeroWhenTagMissing() {
         val registry = SimpleMeterRegistry()
-        Timer.builder("http.server.requests")
-            .tag("uri", "/api/rooms").tag("method", "GET")
-            .register(registry).record(Duration.ofMillis(10))
+        Timer
+            .builder("http.server.requests")
+            .tag("uri", "/api/rooms")
+            .tag("method", "GET")
+            .register(registry)
+            .record(Duration.ofMillis(10))
 
         val result = buildServiceWithRealObjectMapper(registry).getAdvancedSiteInfo()
 
-        val status = result.httpRequests.single().statuses.single()
+        val status =
+            result.httpRequests
+                .single()
+                .statuses
+                .single()
         assertEquals(0, status.status)
     }
 
     @Test
     fun shouldDefaultAllMetricsToZeroWhenNoRecordings() {
         val registry = SimpleMeterRegistry()
-        Timer.builder("http.server.requests")
-            .tag("uri", "/api/rooms").tag("method", "GET").tag("status", "200")
+        Timer
+            .builder("http.server.requests")
+            .tag("uri", "/api/rooms")
+            .tag("method", "GET")
+            .tag("status", "200")
             .register(registry)
 
         val endpoint = buildServiceWithRealObjectMapper(registry).getAdvancedSiteInfo().httpRequests.single()
@@ -754,11 +813,18 @@ class AdministrationServiceTests {
     @Test
     fun shouldReturnMaxMsFromTimerWithRecordingsWhenGroupContainsMixedTimers() {
         val registry = SimpleMeterRegistry()
-        Timer.builder("http.server.requests")
-            .tag("uri", "/api/rooms").tag("method", "GET").tag("status", "200")
-            .register(registry).record(Duration.ofMillis(150))
-        Timer.builder("http.server.requests")
-            .tag("uri", "/api/rooms").tag("method", "GET").tag("status", "500")
+        Timer
+            .builder("http.server.requests")
+            .tag("uri", "/api/rooms")
+            .tag("method", "GET")
+            .tag("status", "200")
+            .register(registry)
+            .record(Duration.ofMillis(150))
+        Timer
+            .builder("http.server.requests")
+            .tag("uri", "/api/rooms")
+            .tag("method", "GET")
+            .tag("status", "500")
             .register(registry) // no recording
 
         val result = buildServiceWithRealObjectMapper(registry).getAdvancedSiteInfo()
@@ -769,12 +835,20 @@ class AdministrationServiceTests {
     @Test
     fun shouldReturnHighestMaxMsAcrossGroupedTimers() {
         val registry = SimpleMeterRegistry()
-        Timer.builder("http.server.requests")
-            .tag("uri", "/api/rooms").tag("method", "GET").tag("status", "200")
-            .register(registry).record(Duration.ofMillis(100))
-        Timer.builder("http.server.requests")
-            .tag("uri", "/api/rooms").tag("method", "GET").tag("status", "500")
-            .register(registry).record(Duration.ofMillis(300))
+        Timer
+            .builder("http.server.requests")
+            .tag("uri", "/api/rooms")
+            .tag("method", "GET")
+            .tag("status", "200")
+            .register(registry)
+            .record(Duration.ofMillis(100))
+        Timer
+            .builder("http.server.requests")
+            .tag("uri", "/api/rooms")
+            .tag("method", "GET")
+            .tag("status", "500")
+            .register(registry)
+            .record(Duration.ofMillis(300))
 
         val result = buildServiceWithRealObjectMapper(registry).getAdvancedSiteInfo()
 
@@ -785,12 +859,20 @@ class AdministrationServiceTests {
     @Test
     fun shouldReturnTotalCountAcrossTimersInGroup() {
         val registry = SimpleMeterRegistry()
-        val t200 = Timer.builder("http.server.requests")
-            .tag("uri", "/api/rooms").tag("method", "GET").tag("status", "200")
-            .register(registry)
-        val t404 = Timer.builder("http.server.requests")
-            .tag("uri", "/api/rooms").tag("method", "GET").tag("status", "404")
-            .register(registry)
+        val t200 =
+            Timer
+                .builder("http.server.requests")
+                .tag("uri", "/api/rooms")
+                .tag("method", "GET")
+                .tag("status", "200")
+                .register(registry)
+        val t404 =
+            Timer
+                .builder("http.server.requests")
+                .tag("uri", "/api/rooms")
+                .tag("method", "GET")
+                .tag("status", "404")
+                .register(registry)
         repeat(3) { t200.record(Duration.ofMillis(10)) }
         repeat(2) { t404.record(Duration.ofMillis(10)) }
 
@@ -802,12 +884,20 @@ class AdministrationServiceTests {
     @Test
     fun shouldReturnErrorRateForFiveHundredErrors() {
         val registry = SimpleMeterRegistry()
-        val t200 = Timer.builder("http.server.requests")
-            .tag("uri", "/api/rooms").tag("method", "GET").tag("status", "200")
-            .register(registry)
-        val t500 = Timer.builder("http.server.requests")
-            .tag("uri", "/api/rooms").tag("method", "GET").tag("status", "500")
-            .register(registry)
+        val t200 =
+            Timer
+                .builder("http.server.requests")
+                .tag("uri", "/api/rooms")
+                .tag("method", "GET")
+                .tag("status", "200")
+                .register(registry)
+        val t500 =
+            Timer
+                .builder("http.server.requests")
+                .tag("uri", "/api/rooms")
+                .tag("method", "GET")
+                .tag("status", "500")
+                .register(registry)
         repeat(3) { t200.record(Duration.ofMillis(10)) }
         repeat(1) { t500.record(Duration.ofMillis(10)) }
 
@@ -819,9 +909,13 @@ class AdministrationServiceTests {
     @Test
     fun shouldReturnZeroErrorRateWhenNoFiveHundredErrors() {
         val registry = SimpleMeterRegistry()
-        Timer.builder("http.server.requests")
-            .tag("uri", "/api/rooms").tag("method", "GET").tag("status", "200")
-            .register(registry).record(Duration.ofMillis(10))
+        Timer
+            .builder("http.server.requests")
+            .tag("uri", "/api/rooms")
+            .tag("method", "GET")
+            .tag("status", "200")
+            .register(registry)
+            .record(Duration.ofMillis(10))
 
         val result = buildServiceWithRealObjectMapper(registry).getAdvancedSiteInfo()
 
@@ -831,12 +925,20 @@ class AdministrationServiceTests {
     @Test
     fun shouldReturnWeightedMeanMsAcrossTimers() {
         val registry = SimpleMeterRegistry()
-        val t200 = Timer.builder("http.server.requests")
-            .tag("uri", "/api/rooms").tag("method", "GET").tag("status", "200")
-            .register(registry)
-        val t500 = Timer.builder("http.server.requests")
-            .tag("uri", "/api/rooms").tag("method", "GET").tag("status", "500")
-            .register(registry)
+        val t200 =
+            Timer
+                .builder("http.server.requests")
+                .tag("uri", "/api/rooms")
+                .tag("method", "GET")
+                .tag("status", "200")
+                .register(registry)
+        val t500 =
+            Timer
+                .builder("http.server.requests")
+                .tag("uri", "/api/rooms")
+                .tag("method", "GET")
+                .tag("status", "500")
+                .register(registry)
         repeat(2) { t200.record(Duration.ofMillis(50)) }
         repeat(1) { t500.record(Duration.ofMillis(100)) }
 

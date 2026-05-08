@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.dtos.user
 
-data class ChangeUserDTO (
+data class ChangeUserDTO(
     val bio: String,
     val email: String,
     val fullName: String,

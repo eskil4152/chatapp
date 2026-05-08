@@ -1,6 +1,6 @@
 package com.blikeng.chatapp.websocketTests
 
-import com.blikeng.chatapp.dtos.websocket.WsFriendSnapshot
+import com.blikeng.chatapp.dtos.websocket.friends.WsFriendSnapshot
 import com.blikeng.chatapp.messaging.redis.PresenceHandler
 import com.blikeng.chatapp.services.ChatService
 import com.blikeng.chatapp.services.FriendService
@@ -8,15 +8,22 @@ import com.blikeng.chatapp.services.InviteService
 import com.blikeng.chatapp.websocket.SessionRegistry
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
-import io.mockk.*
-import org.junit.jupiter.api.Assertions.*
+import io.mockk.Runs
+import io.mockk.every
+import io.mockk.just
+import io.mockk.mockk
+import io.mockk.verify
+import org.junit.jupiter.api.Assertions.assertDoesNotThrow
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNull
 import org.springframework.test.util.ReflectionTestUtils
 import org.springframework.web.socket.WebSocketSession
 import java.io.IOException
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.Executors
 
 class SessionRegistryTests {
@@ -40,7 +47,16 @@ class SessionRegistryTests {
         every { presenceHandler.userConnected(any()) } returns 1L
         every { presenceHandler.userDisconnected(any()) } returns 0L
 
-        sessionRegistry = SessionRegistry(presenceHandler, friendService, chatService, inviteService, objectMapper, Executors.newVirtualThreadPerTaskExecutor(), meterRegistry)
+        sessionRegistry =
+            SessionRegistry(
+                presenceHandler,
+                friendService,
+                chatService,
+                inviteService,
+                objectMapper,
+                Executors.newVirtualThreadPerTaskExecutor(),
+                meterRegistry,
+            )
     }
 
     @Test
@@ -337,7 +353,7 @@ class SessionRegistryTests {
     }
 
     @Test
-    fun shouldCloseAllSessionsForBannedUser(){
+    fun shouldCloseAllSessionsForBannedUser() {
         val userId = UUID.randomUUID()
         val session1 = mockk<WebSocketSession>()
         val session2 = mockk<WebSocketSession>()

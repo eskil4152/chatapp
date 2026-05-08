@@ -3,10 +3,10 @@ package com.blikeng.chatapp.securityTests.auth
 import com.blikeng.chatapp.entities.UserEntity
 import com.blikeng.chatapp.security.auth.JwtService
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.assertNull
-import java.util.*
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertNull
 import org.junit.jupiter.api.assertThrows
+import java.util.UUID
 
 class JwtServiceTests {
     // ==========================
@@ -16,10 +16,11 @@ class JwtServiceTests {
     // - Extraction of username and userId from valid tokens
     // - Handling of invalid tokens
     // ==========================
-    private val jwtService = JwtService("superSecretKeyForTheTestsWhichIsAbsolutelySecureEnoughAndFarEnoughBitsToBeAbleToBeMadeIntoASecureEnoughKey")
+    private val jwtService =
+        JwtService("superSecretKeyForTheTestsWhichIsAbsolutelySecureEnoughAndFarEnoughBitsToBeAbleToBeMadeIntoASecureEnoughKey")
 
     @Test
-    fun shouldGenerateToken(){
+    fun shouldGenerateToken() {
         val user = UserEntity(username = "u", password = "p")
         val token = jwtService.generateToken(user)
 
@@ -28,7 +29,7 @@ class JwtServiceTests {
     }
 
     @Test
-    fun shouldValidateTokenWhenCorrectUser(){
+    fun shouldValidateTokenWhenCorrectUser() {
         val user = UserEntity(id = UUID.randomUUID(), username = "u", password = "p")
         val secondUser = UserEntity(id = UUID.randomUUID(), username = "u2", password = "p2")
 
@@ -53,9 +54,10 @@ class JwtServiceTests {
     fun shouldThrowWhenSecretIsTooShort() {
         val secret = "short-secret"
 
-        val exception = assertThrows<IllegalArgumentException> {
-            JwtService(secret)
-        }
+        val exception =
+            assertThrows<IllegalArgumentException> {
+                JwtService(secret)
+            }
 
         assertTrue(exception.message!!.contains("Secret must be at least 64 bytes long"))
     }

@@ -17,7 +17,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 // ==========================
 @Configuration
 class SecurityConfig(
-    private val jwtAuthFilter: JwtAuthFilter
+    private val jwtAuthFilter: JwtAuthFilter,
 ) {
     @Bean
     fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
@@ -31,20 +31,15 @@ class SecurityConfig(
                 authRequest.requestMatchers("/api/register").permitAll()
                 authRequest.requestMatchers("/error").permitAll()
 
-                authRequest.requestMatchers("/actuator/health").permitAll()
-                authRequest.requestMatchers("/actuator/info").permitAll()
-                authRequest.requestMatchers("/actuator/prometheus").hasRole("ADMIN")
-                authRequest.requestMatchers("/actuator/**").hasRole("TRUSTED")
-
                 authRequest.requestMatchers("/api/admin/site-info").hasRole("TRUSTED")
                 authRequest.requestMatchers("/api/admin/advanced-site-info").hasRole("ADMIN")
                 authRequest.requestMatchers("/api/admin/**").hasRole("MODERATOR")
 
+                authRequest.requestMatchers("/actuator/**").permitAll()
                 authRequest.anyRequest().hasRole("USER")
-            }
-            .httpBasic { it.disable() }
+            }.httpBasic { it.disable() }
             .formLogin { it.disable() }
-            .cors {  }
+            .cors { }
             .csrf { it.disable() }
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter::class.java)
             .exceptionHandling {

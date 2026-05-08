@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
-import java.util.*
+import java.util.UUID
 
 interface PrivateRoomPartner {
     val roomId: UUID
@@ -15,12 +15,21 @@ interface PrivateRoomPartner {
 }
 
 @Repository
-interface UserRoomRepository: JpaRepository<UserRoomEntity, UserRoomId> {
-    fun existsByIdUserIdAndIdRoomId(userId: UUID, roomId: UUID): Boolean
+interface UserRoomRepository : JpaRepository<UserRoomEntity, UserRoomId> {
+    fun existsByIdUserIdAndIdRoomId(
+        userId: UUID,
+        roomId: UUID,
+    ): Boolean
 
-    fun findByIdUserIdAndIdRoomId(userId: UUID, roomId: UUID): UserRoomEntity?
+    fun findByIdUserIdAndIdRoomId(
+        userId: UUID,
+        roomId: UUID,
+    ): UserRoomEntity?
 
-    fun deleteByIdUserIdAndIdRoomId(userId: UUID, roomId: UUID)
+    fun deleteByIdUserIdAndIdRoomId(
+        userId: UUID,
+        roomId: UUID,
+    )
 
     @Query("SELECT u FROM UserEntity u JOIN UserRoomEntity ur ON u.id = ur.id.userId WHERE ur.id.roomId = :roomId")
     fun findUsersByRoomId(roomId: UUID): List<UserEntity>
@@ -29,7 +38,8 @@ interface UserRoomRepository: JpaRepository<UserRoomEntity, UserRoomId> {
     fun findUserRoomsByRoomId(roomId: UUID): List<UserRoomEntity>
 
     // Finds the other participant in a private room by excluding the current user.
-    @Query("""
+    @Query(
+        """
     SELECT u
     FROM UserEntity u
     WHERE u.id = (
@@ -38,29 +48,39 @@ interface UserRoomRepository: JpaRepository<UserRoomEntity, UserRoomId> {
         WHERE ur.id.roomId = :roomId
         AND ur.id.userId <> :userId
     )
-""")
-    fun findOtherUser(roomId: UUID, userId: UUID): UserEntity?
+""",
+    )
+    fun findOtherUser(
+        roomId: UUID,
+        userId: UUID,
+    ): UserEntity?
 
-    @Query("""
+    @Query(
+        """
         SELECT ur.id.roomId
         FROM UserRoomEntity ur
-        WHERE ur.id.userId = :userId""")
+        WHERE ur.id.userId = :userId""",
+    )
     fun findAllIdRoomIdsByIdUserId(userId: UUID): List<UUID>
 
-    @Query("""
+    @Query(
+        """
         SELECT ur.id.userId
         FROM UserRoomEntity ur
-        WHERE ur.id.roomId = :roomId""")
+        WHERE ur.id.roomId = :roomId""",
+    )
     fun findAllIdUserIdsByIdRoomId(roomId: UUID): List<UUID>
 
-    @Query("""
+    @Query(
+        """
         SELECT ur.id.roomId as roomId, u.username as username
         FROM UserRoomEntity ur
         JOIN UserEntity u ON u.id = ur.id.userId
         WHERE ur.id.roomId IN :roomIds
-        AND ur.id.userId <> :userId""")
+        AND ur.id.userId <> :userId""",
+    )
     fun findOtherUsersInPrivateRooms(
         @Param("roomIds") roomIds: List<UUID>,
-        @Param("userId") userId: UUID
+        @Param("userId") userId: UUID,
     ): List<PrivateRoomPartner>
 }

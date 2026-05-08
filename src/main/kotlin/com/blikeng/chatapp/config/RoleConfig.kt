@@ -8,12 +8,16 @@ import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl
 @Configuration
 class RoleConfig {
     @Bean
-    fun roleHierarchy(): RoleHierarchy {
-        return RoleHierarchyImpl.withDefaultRolePrefix()
-            .role("SUPERUSER").implies("ADMIN")
-            .role("ADMIN").implies("MODERATOR")
-            .role("MODERATOR").implies("TRUSTED")
-            .role("TRUSTED").implies("USER")
+    fun roleHierarchy(): RoleHierarchy =
+        RoleHierarchyImpl
+            .withDefaultRolePrefix()
+            .role("SUPERUSER")
+            .implies("ADMIN")
+            .role("ADMIN")
+            .implies("MODERATOR")
+            .role("MODERATOR")
+            .implies("TRUSTED")
+            .role("TRUSTED")
+            .implies("USER")
             .build()
-    }
 }

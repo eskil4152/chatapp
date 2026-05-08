@@ -16,6 +16,7 @@ import com.blikeng.chatapp.services.InviteService
 import com.blikeng.chatapp.services.RoomService
 import com.blikeng.chatapp.services.UserService
 import com.fasterxml.jackson.databind.ObjectMapper
+import io.mockk.Runs
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
@@ -23,10 +24,11 @@ import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.just
 import io.mockk.mockk
-import io.mockk.Runs
 import io.mockk.verify
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.redis.core.RedisTemplate
@@ -35,9 +37,8 @@ import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
 import java.time.Instant
-import java.util.*
-import org.junit.jupiter.api.assertThrows
-import org.junit.jupiter.api.Assertions.assertEquals
+import java.util.Optional
+import java.util.UUID
 
 @ExtendWith(MockKExtension::class)
 class InviteResponseTests {
@@ -50,15 +51,25 @@ class InviteResponseTests {
     // ==========================
 
     @InjectMockKs private lateinit var inviteService: InviteService
+
     @MockK private lateinit var userService: UserService
+
     @MockK private lateinit var userRepository: UserRepository
+
     @MockK private lateinit var userRoomRepository: UserRoomRepository
+
     @MockK private lateinit var friendService: FriendService
+
     @MockK private lateinit var inviteRepository: InviteRepository
+
     @MockK private lateinit var roomService: RoomService
+
     @MockK private lateinit var bannedUserService: BannedUserService
+
     @RelaxedMockK private lateinit var eventPublisher: ApplicationEventPublisher
+
     @RelaxedMockK private lateinit var redisTemplate: RedisTemplate<String, String>
+
     @RelaxedMockK private lateinit var objectMapper: ObjectMapper
 
     private val user1 = UserEntity(id = UUID.randomUUID(), username = "user1", password = "pw")
@@ -77,7 +88,10 @@ class InviteResponseTests {
             UsernamePasswordAuthenticationToken(userId, null, emptyList())
     }
 
-    private fun pendingFriendRequest(from: UUID = user2.id, to: UUID = user1.id) = InviteEntity(
+    private fun pendingFriendRequest(
+        from: UUID = user2.id,
+        to: UUID = user1.id,
+    ) = InviteEntity(
         type = InviteType.FRIEND_REQUEST,
         fromUserId = from,
         toUserId = to,
@@ -85,14 +99,15 @@ class InviteResponseTests {
         status = InviteStatus.PENDING,
     )
 
-    private fun pendingRoomInvite(to: UUID = user1.id) = InviteEntity(
-        type = InviteType.ROOM_INVITE,
-        fromUserId = user2.id,
-        toUserId = to,
-        roomId = roomId,
-        expiresAt = Instant.now().plusSeconds(3600),
-        status = InviteStatus.PENDING,
-    )
+    private fun pendingRoomInvite(to: UUID = user1.id) =
+        InviteEntity(
+            type = InviteType.ROOM_INVITE,
+            fromUserId = user2.id,
+            toUserId = to,
+            roomId = roomId,
+            expiresAt = Instant.now().plusSeconds(3600),
+            status = InviteStatus.PENDING,
+        )
 
     // ==========================
     // Friend request responses
@@ -121,9 +136,10 @@ class InviteResponseTests {
         every { userService.getUserById(user2.id) } returns null
         every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
 
-        val ex = assertThrows<ApiException> {
-            inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
-        }
+        val ex =
+            assertThrows<ApiException> {
+                inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
+            }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
 
@@ -148,9 +164,10 @@ class InviteResponseTests {
         every { userService.getUserById(user2.id) } returns user2
         every { inviteRepository.findById(wrongInvite.id) } returns Optional.of(wrongInvite)
 
-        val ex = assertThrows<ApiException> {
-            inviteService.respondToRequest(InviteResponseDTO(inviteId = wrongInvite.id.toString(), response = InviteResponse.ACCEPTED))
-        }
+        val ex =
+            assertThrows<ApiException> {
+                inviteService.respondToRequest(InviteResponseDTO(inviteId = wrongInvite.id.toString(), response = InviteResponse.ACCEPTED))
+            }
         assertEquals(HttpStatus.NOT_FOUND, ex.status)
     }
 
@@ -181,9 +198,10 @@ class InviteResponseTests {
         every { userService.getUserById(user2.id) } returns null
         every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
 
-        val ex = assertThrows<ApiException> {
-            inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
-        }
+        val ex =
+            assertThrows<ApiException> {
+                inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
+            }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
 
@@ -207,15 +225,16 @@ class InviteResponseTests {
     @Test
     fun shouldAcceptOpenRoomInvite() {
         setAuth(user1.id)
-        val invite = InviteEntity(
-            type = InviteType.OPEN_ROOM_INVITE,
-            fromUserId = user2.id,
-            roomId = roomId,
-            usages = 0,
-            maxUsages = 10,
-            expiresAt = Instant.now().plusSeconds(3600),
-            status = InviteStatus.PENDING,
-        )
+        val invite =
+            InviteEntity(
+                type = InviteType.OPEN_ROOM_INVITE,
+                fromUserId = user2.id,
+                roomId = roomId,
+                usages = 0,
+                maxUsages = 10,
+                expiresAt = Instant.now().plusSeconds(3600),
+                status = InviteStatus.PENDING,
+            )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(user1.id, roomId) } returns false
@@ -223,7 +242,17 @@ class InviteResponseTests {
         every { inviteRepository.incrementUsagesIfAvailable(invite.id) } returns 1
         every { inviteRepository.deleteByToUserIdAndRoomId(user1.id, roomId) } just Runs
         every { roomService.joinRoom(user1.id, roomId) } just Runs
-        val refreshed = InviteEntity(id = invite.id, type = invite.type, fromUserId = invite.fromUserId, roomId = invite.roomId, usages = 1, maxUsages = 10, expiresAt = invite.expiresAt, status = InviteStatus.PENDING)
+        val refreshed =
+            InviteEntity(
+                id = invite.id,
+                type = invite.type,
+                fromUserId = invite.fromUserId,
+                roomId = invite.roomId,
+                usages = 1,
+                maxUsages = 10,
+                expiresAt = invite.expiresAt,
+                status = InviteStatus.PENDING,
+            )
         every { inviteRepository.findById(invite.id) } returns Optional.of(refreshed)
         every { inviteRepository.save(any()) } answers { firstArg() }
 
@@ -239,9 +268,10 @@ class InviteResponseTests {
         every { userService.getUserById(user2.id) } returns user2
         every { inviteRepository.findById(wrongInvite.id) } returns Optional.of(wrongInvite)
 
-        val ex = assertThrows<ApiException> {
-            inviteService.respondToRequest(InviteResponseDTO(inviteId = wrongInvite.id.toString(), response = InviteResponse.ACCEPTED))
-        }
+        val ex =
+            assertThrows<ApiException> {
+                inviteService.respondToRequest(InviteResponseDTO(inviteId = wrongInvite.id.toString(), response = InviteResponse.ACCEPTED))
+            }
         assertEquals(HttpStatus.NOT_FOUND, ex.status)
     }
 
@@ -251,126 +281,137 @@ class InviteResponseTests {
     @Test
     fun shouldFailToAcceptOpenRoomInviteWhenAlreadyMember() {
         setAuth(user1.id)
-        val invite = InviteEntity(
-            type = InviteType.OPEN_ROOM_INVITE,
-            fromUserId = user2.id,
-            roomId = roomId,
-            usages = 0,
-            maxUsages = 10,
-            expiresAt = Instant.now().plusSeconds(3600),
-            status = InviteStatus.PENDING,
-        )
+        val invite =
+            InviteEntity(
+                type = InviteType.OPEN_ROOM_INVITE,
+                fromUserId = user2.id,
+                roomId = roomId,
+                usages = 0,
+                maxUsages = 10,
+                expiresAt = Instant.now().plusSeconds(3600),
+                status = InviteStatus.PENDING,
+            )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(user1.id, roomId) } returns true
 
-        val ex = assertThrows<ApiException> {
-            inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
-        }
+        val ex =
+            assertThrows<ApiException> {
+                inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
+            }
         assertEquals(HttpStatus.CONFLICT, ex.status)
     }
 
     @Test
     fun shouldFailToAcceptOpenRoomInviteWhenBanned() {
         setAuth(user1.id)
-        val invite = InviteEntity(
-            type = InviteType.OPEN_ROOM_INVITE,
-            fromUserId = user2.id,
-            roomId = roomId,
-            usages = 0,
-            maxUsages = 10,
-            expiresAt = Instant.now().plusSeconds(3600),
-            status = InviteStatus.PENDING,
-        )
+        val invite =
+            InviteEntity(
+                type = InviteType.OPEN_ROOM_INVITE,
+                fromUserId = user2.id,
+                roomId = roomId,
+                usages = 0,
+                maxUsages = 10,
+                expiresAt = Instant.now().plusSeconds(3600),
+                status = InviteStatus.PENDING,
+            )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(user1.id, roomId) } returns false
         every { bannedUserService.isUserBanned(user1.id, roomId) } returns true
 
-        val ex = assertThrows<ApiException> {
-            inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
-        }
+        val ex =
+            assertThrows<ApiException> {
+                inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
+            }
         assertEquals(HttpStatus.FORBIDDEN, ex.status)
     }
 
     @Test
     fun shouldFailToAcceptOpenRoomInviteWhenExhausted() {
         setAuth(user1.id)
-        val invite = InviteEntity(
-            type = InviteType.OPEN_ROOM_INVITE,
-            fromUserId = user2.id,
-            roomId = roomId,
-            usages = 10,
-            maxUsages = 10,
-            expiresAt = Instant.now().plusSeconds(3600),
-            status = InviteStatus.PENDING,
-        )
+        val invite =
+            InviteEntity(
+                type = InviteType.OPEN_ROOM_INVITE,
+                fromUserId = user2.id,
+                roomId = roomId,
+                usages = 10,
+                maxUsages = 10,
+                expiresAt = Instant.now().plusSeconds(3600),
+                status = InviteStatus.PENDING,
+            )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(user1.id, roomId) } returns false
         every { bannedUserService.isUserBanned(user1.id, roomId) } returns false
         every { inviteRepository.incrementUsagesIfAvailable(invite.id) } returns 0
 
-        val ex = assertThrows<ApiException> {
-            inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
-        }
+        val ex =
+            assertThrows<ApiException> {
+                inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
+            }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
 
     @Test
     fun shouldFailToAcceptRoomInviteWhenRoomIdIsNull() {
         setAuth(user1.id)
-        val invite = InviteEntity(
-            type = InviteType.ROOM_INVITE,
-            fromUserId = user2.id,
-            toUserId = user1.id,
-            roomId = null,
-            expiresAt = Instant.now().plusSeconds(3600),
-            status = InviteStatus.PENDING,
-        )
+        val invite =
+            InviteEntity(
+                type = InviteType.ROOM_INVITE,
+                fromUserId = user2.id,
+                toUserId = user1.id,
+                roomId = null,
+                expiresAt = Instant.now().plusSeconds(3600),
+                status = InviteStatus.PENDING,
+            )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
         every { userService.getUserById(user2.id) } returns user2
 
-        val ex = assertThrows<ApiException> {
-            inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
-        }
+        val ex =
+            assertThrows<ApiException> {
+                inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
+            }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
 
     @Test
     fun shouldFailToAcceptOpenRoomInviteWhenRoomIdIsNull() {
         setAuth(user1.id)
-        val invite = InviteEntity(
-            type = InviteType.OPEN_ROOM_INVITE,
-            fromUserId = user2.id,
-            roomId = null,
-            usages = 0,
-            maxUsages = 10,
-            expiresAt = Instant.now().plusSeconds(3600),
-            status = InviteStatus.PENDING,
-        )
+        val invite =
+            InviteEntity(
+                type = InviteType.OPEN_ROOM_INVITE,
+                fromUserId = user2.id,
+                roomId = null,
+                usages = 0,
+                maxUsages = 10,
+                expiresAt = Instant.now().plusSeconds(3600),
+                status = InviteStatus.PENDING,
+            )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
 
-        val ex = assertThrows<ApiException> {
-            inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
-        }
+        val ex =
+            assertThrows<ApiException> {
+                inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
+            }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
 
     @Test
     fun shouldFailToAcceptOpenRoomInviteWhenRefreshedNotFound() {
         setAuth(user1.id)
-        val invite = InviteEntity(
-            type = InviteType.OPEN_ROOM_INVITE,
-            fromUserId = user2.id,
-            roomId = roomId,
-            usages = 0,
-            maxUsages = 10,
-            expiresAt = Instant.now().plusSeconds(3600),
-            status = InviteStatus.PENDING,
-        )
+        val invite =
+            InviteEntity(
+                type = InviteType.OPEN_ROOM_INVITE,
+                fromUserId = user2.id,
+                roomId = roomId,
+                usages = 0,
+                maxUsages = 10,
+                expiresAt = Instant.now().plusSeconds(3600),
+                status = InviteStatus.PENDING,
+            )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findById(invite.id) } returnsMany listOf(Optional.of(invite), Optional.empty())
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(user1.id, roomId) } returns false
@@ -379,24 +420,26 @@ class InviteResponseTests {
         every { inviteRepository.deleteByToUserIdAndRoomId(user1.id, roomId) } just Runs
         every { roomService.joinRoom(user1.id, roomId) } just Runs
 
-        val ex = assertThrows<ApiException> {
-            inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
-        }
+        val ex =
+            assertThrows<ApiException> {
+                inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
+            }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
 
     @Test
     fun shouldMarkInviteExhaustedWhenUsagesReachMax() {
         setAuth(user1.id)
-        val invite = InviteEntity(
-            type = InviteType.OPEN_ROOM_INVITE,
-            fromUserId = user2.id,
-            roomId = roomId,
-            usages = 0,
-            maxUsages = 1,
-            expiresAt = Instant.now().plusSeconds(3600),
-            status = InviteStatus.PENDING,
-        )
+        val invite =
+            InviteEntity(
+                type = InviteType.OPEN_ROOM_INVITE,
+                fromUserId = user2.id,
+                roomId = roomId,
+                usages = 0,
+                maxUsages = 1,
+                expiresAt = Instant.now().plusSeconds(3600),
+                status = InviteStatus.PENDING,
+            )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(user1.id, roomId) } returns false
@@ -404,7 +447,17 @@ class InviteResponseTests {
         every { inviteRepository.incrementUsagesIfAvailable(invite.id) } returns 1
         every { inviteRepository.deleteByToUserIdAndRoomId(user1.id, roomId) } just Runs
         every { roomService.joinRoom(user1.id, roomId) } just Runs
-        val refreshed = InviteEntity(id = invite.id, type = invite.type, fromUserId = invite.fromUserId, roomId = invite.roomId, usages = 1, maxUsages = 1, expiresAt = invite.expiresAt, status = InviteStatus.PENDING)
+        val refreshed =
+            InviteEntity(
+                id = invite.id,
+                type = invite.type,
+                fromUserId = invite.fromUserId,
+                roomId = invite.roomId,
+                usages = 1,
+                maxUsages = 1,
+                expiresAt = invite.expiresAt,
+                status = InviteStatus.PENDING,
+            )
         every { inviteRepository.findById(invite.id) } returns Optional.of(refreshed)
         every { inviteRepository.save(any()) } answers { firstArg() }
 
@@ -417,15 +470,16 @@ class InviteResponseTests {
     @Test
     fun shouldNotExhaustInviteWhenMaxUsagesIsNull() {
         setAuth(user1.id)
-        val invite = InviteEntity(
-            type = InviteType.OPEN_ROOM_INVITE,
-            fromUserId = user2.id,
-            roomId = roomId,
-            usages = 0,
-            maxUsages = null,
-            expiresAt = Instant.now().plusSeconds(3600),
-            status = InviteStatus.PENDING,
-        )
+        val invite =
+            InviteEntity(
+                type = InviteType.OPEN_ROOM_INVITE,
+                fromUserId = user2.id,
+                roomId = roomId,
+                usages = 0,
+                maxUsages = null,
+                expiresAt = Instant.now().plusSeconds(3600),
+                status = InviteStatus.PENDING,
+            )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(user1.id, roomId) } returns false
@@ -433,7 +487,17 @@ class InviteResponseTests {
         every { inviteRepository.incrementUsagesIfAvailable(invite.id) } returns 1
         every { inviteRepository.deleteByToUserIdAndRoomId(user1.id, roomId) } just Runs
         every { roomService.joinRoom(user1.id, roomId) } just Runs
-        val refreshed = InviteEntity(id = invite.id, type = invite.type, fromUserId = invite.fromUserId, roomId = invite.roomId, usages = 1, maxUsages = null, expiresAt = invite.expiresAt, status = InviteStatus.PENDING)
+        val refreshed =
+            InviteEntity(
+                id = invite.id,
+                type = invite.type,
+                fromUserId = invite.fromUserId,
+                roomId = invite.roomId,
+                usages = 1,
+                maxUsages = null,
+                expiresAt = invite.expiresAt,
+                status = InviteStatus.PENDING,
+            )
         every { inviteRepository.findById(invite.id) } returns Optional.of(refreshed)
 
         inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
@@ -444,15 +508,16 @@ class InviteResponseTests {
     @Test
     fun shouldNotExhaustInviteWhenUsagesIsNull() {
         setAuth(user1.id)
-        val invite = InviteEntity(
-            type = InviteType.OPEN_ROOM_INVITE,
-            fromUserId = user2.id,
-            roomId = roomId,
-            usages = 0,
-            maxUsages = 10,
-            expiresAt = Instant.now().plusSeconds(3600),
-            status = InviteStatus.PENDING,
-        )
+        val invite =
+            InviteEntity(
+                type = InviteType.OPEN_ROOM_INVITE,
+                fromUserId = user2.id,
+                roomId = roomId,
+                usages = 0,
+                maxUsages = 10,
+                expiresAt = Instant.now().plusSeconds(3600),
+                status = InviteStatus.PENDING,
+            )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
         every { userRoomRepository.existsByIdUserIdAndIdRoomId(user1.id, roomId) } returns false
@@ -460,7 +525,17 @@ class InviteResponseTests {
         every { inviteRepository.incrementUsagesIfAvailable(invite.id) } returns 1
         every { inviteRepository.deleteByToUserIdAndRoomId(user1.id, roomId) } just Runs
         every { roomService.joinRoom(user1.id, roomId) } just Runs
-        val refreshed = InviteEntity(id = invite.id, type = invite.type, fromUserId = invite.fromUserId, roomId = invite.roomId, usages = null, maxUsages = 10, expiresAt = invite.expiresAt, status = InviteStatus.PENDING)
+        val refreshed =
+            InviteEntity(
+                id = invite.id,
+                type = invite.type,
+                fromUserId = invite.fromUserId,
+                roomId = invite.roomId,
+                usages = null,
+                maxUsages = 10,
+                expiresAt = invite.expiresAt,
+                status = InviteStatus.PENDING,
+            )
         every { inviteRepository.findById(invite.id) } returns Optional.of(refreshed)
 
         inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
@@ -474,19 +549,21 @@ class InviteResponseTests {
     @Test
     fun shouldFailWhenInviteNotPending() {
         setAuth(user1.id)
-        val invite = InviteEntity(
-            type = InviteType.FRIEND_REQUEST,
-            fromUserId = user2.id,
-            toUserId = user1.id,
-            expiresAt = Instant.now().plusSeconds(3600),
-            status = InviteStatus.ACCEPTED,
-        )
+        val invite =
+            InviteEntity(
+                type = InviteType.FRIEND_REQUEST,
+                fromUserId = user2.id,
+                toUserId = user1.id,
+                expiresAt = Instant.now().plusSeconds(3600),
+                status = InviteStatus.ACCEPTED,
+            )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
 
-        val ex = assertThrows<ApiException> {
-            inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
-        }
+        val ex =
+            assertThrows<ApiException> {
+                inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
+            }
         assertEquals(HttpStatus.NOT_FOUND, ex.status)
     }
 
@@ -495,9 +572,12 @@ class InviteResponseTests {
         setAuth(user1.id)
         every { userService.getUserById(user1.id) } returns null
 
-        val ex = assertThrows<ApiException> {
-            inviteService.respondToRequest(InviteResponseDTO(inviteId = UUID.randomUUID().toString(), response = InviteResponse.ACCEPTED))
-        }
+        val ex =
+            assertThrows<ApiException> {
+                inviteService.respondToRequest(
+                    InviteResponseDTO(inviteId = UUID.randomUUID().toString(), response = InviteResponse.ACCEPTED),
+                )
+            }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
 
@@ -508,29 +588,32 @@ class InviteResponseTests {
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findById(id) } returns Optional.empty()
 
-        val ex = assertThrows<ApiException> {
-            inviteService.respondToRequest(InviteResponseDTO(inviteId = id.toString(), response = InviteResponse.ACCEPTED))
-        }
+        val ex =
+            assertThrows<ApiException> {
+                inviteService.respondToRequest(InviteResponseDTO(inviteId = id.toString(), response = InviteResponse.ACCEPTED))
+            }
         assertEquals(HttpStatus.NOT_FOUND, ex.status)
     }
 
     @Test
     fun shouldFailWhenInviteExpired() {
         setAuth(user1.id)
-        val invite = InviteEntity(
-            type = InviteType.FRIEND_REQUEST,
-            fromUserId = user2.id,
-            toUserId = user1.id,
-            expiresAt = Instant.now().minusSeconds(1),
-            status = InviteStatus.PENDING,
-        )
+        val invite =
+            InviteEntity(
+                type = InviteType.FRIEND_REQUEST,
+                fromUserId = user2.id,
+                toUserId = user1.id,
+                expiresAt = Instant.now().minusSeconds(1),
+                status = InviteStatus.PENDING,
+            )
         every { userService.getUserById(user1.id) } returns user1
         every { inviteRepository.findById(invite.id) } returns Optional.of(invite)
         every { inviteRepository.save(any()) } answers { firstArg() }
 
-        val ex = assertThrows<ApiException> {
-            inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
-        }
+        val ex =
+            assertThrows<ApiException> {
+                inviteService.respondToRequest(InviteResponseDTO(inviteId = invite.id.toString(), response = InviteResponse.ACCEPTED))
+            }
         assertEquals(HttpStatus.NOT_FOUND, ex.status)
         assertEquals(InviteStatus.EXPIRED, invite.status)
     }
@@ -540,9 +623,10 @@ class InviteResponseTests {
         setAuth(user1.id)
         every { userService.getUserById(user1.id) } returns user1
 
-        val ex = assertThrows<ApiException> {
-            inviteService.respondToRequest(InviteResponseDTO(inviteId = "not-a-uuid", response = InviteResponse.ACCEPTED))
-        }
+        val ex =
+            assertThrows<ApiException> {
+                inviteService.respondToRequest(InviteResponseDTO(inviteId = "not-a-uuid", response = InviteResponse.ACCEPTED))
+            }
         assertEquals(HttpStatus.BAD_REQUEST, ex.status)
     }
 }

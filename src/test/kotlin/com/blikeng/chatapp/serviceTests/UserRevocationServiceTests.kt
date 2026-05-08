@@ -6,14 +6,14 @@ import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.verify
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.core.ValueOperations
 import java.time.Duration
-import java.util.*
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertTrue
+import java.util.UUID
 
 @ExtendWith(MockKExtension::class)
 class UserRevocationServiceTests {
@@ -24,6 +24,7 @@ class UserRevocationServiceTests {
     // ==========================
 
     @MockK lateinit var redisTemplate: RedisTemplate<String, String>
+
     @MockK lateinit var valueOps: ValueOperations<String, String>
 
     @InjectMockKs lateinit var userRevocationService: UserRevocationService
